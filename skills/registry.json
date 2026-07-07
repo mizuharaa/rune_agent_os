@@ -1,0 +1,69 @@
+{
+  "goal": "stand up AIOS v1",
+  "updated": "2026-07-08T00:06:35",
+  "skills": {
+    "workflow-audit": {
+      "status": "learning",
+      "uses": 2,
+      "desc": "Read the event wire, find repeated manual sequences, flag automation candidates",
+      "branch": "meta",
+      "trigger": "/audit",
+      "goals": [
+        "stand up AIOS v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-07T23:00:00",
+      "last_used": "2026-07-08T00:06:35"
+    },
+    "skill-creation": {
+      "status": "learning",
+      "uses": 2,
+      "desc": "Name it, drop it, ship it, reuse it: scaffold a new skill with a trigger verb",
+      "branch": "meta",
+      "trigger": "/newskill",
+      "goals": [
+        "stand up AIOS v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-07T23:00:00",
+      "last_used": "2026-07-07T23:00:00"
+    },
+    "automation": {
+      "status": "active",
+      "uses": 3,
+      "desc": "Turn a repeated workflow into a hook, script, or cron so it never needs willpower again",
+      "branch": "ops",
+      "trigger": "/automate",
+      "goals": [
+        "stand up AIOS v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-07T23:00:00",
+      "last_used": "2026-07-07T23:00:00"
+    },
+    "loop-engineering": {
+      "status": "learning",
+      "uses": 2,
+      "desc": "Critic->doer loop: iterate an agent toward a checkable /goal predicate under a max-iteration budget",
+      "branch": "engineering",
+      "trigger": "/loop-engineer",
+      "goals": [
+        "stand up AIOS v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-07T23:00:00",
+      "last_used": "2026-07-07T23:55:14"
+    },
+    "vault-gardening": {
+      "status": "archived",
+      "uses": 0,
+      "desc": "Periodic Obsidian vault dedup/consolidate/archive pass (sample candidate)",
+      "branch": "ops",
+      "trigger": "/garden",
+      "goals": [],
+      "decay": 2,
+      "created": "2026-07-07T23:00:00",
+      "last_used": null
+    }
+  }
+}

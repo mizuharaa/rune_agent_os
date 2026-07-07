@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIOS // MISSION CONTROL</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230a0e12'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%232ba3bd' stroke-width='1.5'/%3E%3Ccircle cx='8' cy='8' r='1.8' fill='%2363a338'/%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0a0e12; --panel:#0e141b; --panel2:#111923; --line:#1c2733;
+    --ink:#d6dbe0; --ink2:#8a939e; --ink3:#566068;
+    --eng:#2ba3bd; --ops:#c07c20; --meta:#c257b2; --sys:#63a338;
+    --bad:#c2554a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:13px/1.5 "Cascadia Mono","Cascadia Code",Consolas,monospace;
+    background-image:
+      linear-gradient(rgba(43,163,189,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(43,163,189,.03) 1px, transparent 1px);
+    background-size:36px 36px;
+  }
+  a{color:var(--eng)}
+  /* ---------- header ---------- */
+  header{
+    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
+    padding:10px 18px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, #0d131a, #0a0e12);
+    position:sticky; top:0; z-index:5;
+  }
+  .brand{font-size:15px; letter-spacing:.18em; font-weight:700}
+  .brand b{color:var(--eng); font-weight:700}
+  .stat{color:var(--ink2); white-space:nowrap}
+  .stat b{color:var(--ink); font-weight:600}
+  .spacer{flex:1}
+  #clock{color:var(--ink2); letter-spacing:.08em}
+  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:baseline}
+  .ok{background:var(--sys)} .down{background:var(--bad)}
+  #wire.ok-t{color:var(--sys)} #wire.down-t{color:var(--bad)}
+  /* ---------- layout ---------- */
+  main{
+    display:grid; gap:14px; padding:14px 18px 24px;
+    grid-template-columns:300px minmax(0,1fr) 360px;
+    align-items:start; max-width:1720px; margin:0 auto;
+  }
+  @media (max-width:1150px){ main{grid-template-columns:1fr} }
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:6px}
+  .panel>h2{
+    font-size:11px; letter-spacing:.22em; color:var(--ink2); font-weight:600;
+    padding:9px 12px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel>h2 .tag{margin-left:auto; letter-spacing:0; color:var(--ink3); font-weight:400}
+  .pad{padding:12px}
+  .col{display:flex; flex-direction:column; gap:14px; min-width:0}
+  /* ---------- conductor ring ---------- */
+  .ringwrap{position:relative; width:216px; height:216px; margin:14px auto}
+  .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
+  .sweep{
+    position:absolute; inset:6px; border-radius:50%;
+    background:conic-gradient(from 0deg, rgba(43,163,189,.4), rgba(43,163,189,.06) 70deg, transparent 110deg);
+    opacity:0;
+  }
+  .sweep.fire{animation:sweep 2.2s linear 1}
+  @keyframes sweep{0%{opacity:1; transform:rotate(0)} 90%{opacity:1} 100%{opacity:0; transform:rotate(360deg)}}
+  .ringcore{
+    position:absolute; inset:34px; border-radius:50%;
+    background:var(--panel2); border:1px solid var(--line);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:12px; gap:4px;
+  }
+  .ringcore .who{font-size:10px; letter-spacing:.24em; color:var(--ink3)}
+  .ringcore .goal{font-size:12px; color:var(--ink); line-height:1.35}
+  .ringcore .live{font-size:10px; color:var(--sys); letter-spacing:.1em}
+  .ringlbl{position:absolute; font-size:9px; letter-spacing:.2em; color:var(--ink3)}
+  .ringlbl.n{top:-6px; left:50%; transform:translateX(-50%)}
+  .ringlbl.e{right:-8px; top:50%; transform:translateY(-50%) rotate(90deg)}
+  .ringlbl.s{bottom:-6px; left:50%; transform:translateX(-50%)}
+  .ringlbl.w{left:-8px; top:50%; transform:translateY(-50%) rotate(-90deg)}
+  .loopnote{color:var(--ink3); font-size:11px; text-align:center; padding:0 14px 12px}
+  /* ---------- status readout ---------- */
+  .readout{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12px}
+  .readout dt{color:var(--ink3)} .readout dd{color:var(--ink)}
+  .readout .warn{color:var(--ops)} .readout .good{color:var(--sys)} .readout .bad{color:var(--bad)}
+  /* ---------- sessions ---------- */
+  .sessions{display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); padding:12px}
+  .sess{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px 12px; min-width:0}
+  .sess .top{display:flex; align-items:baseline; gap:10px}
+  .sess .sid{font-weight:700; letter-spacing:.06em}
+  .sess .badge{font-size:10px; padding:1px 7px; border-radius:3px; letter-spacing:.14em}
+  .badge.live{color:var(--sys); border:1px solid var(--sys)}
+  .badge.idle{color:var(--ink3); border:1px solid var(--ink3)}
+  .sess .last{margin-left:auto; color:var(--ink3); font-size:11px; white-space:nowrap}
+  .rail{display:flex; gap:3px; margin:10px 0 4px}
+  .rail span{
+    flex:1; text-align:center; font-size:9px; letter-spacing:.1em; color:var(--ink3);
+    border-top:3px solid var(--line); padding-top:4px; text-transform:uppercase;
+  }
+  .rail span.on{color:var(--ink); border-top-color:var(--eng)}
+  .rail span.cur{color:var(--eng); border-top-color:var(--eng); font-weight:700}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .chip{
+    font-size:11px; padding:2px 8px; border-radius:3px;
+    border:1px solid var(--meta); color:var(--ink);
+    background:rgba(194,87,178,.12);
+  }
+  .chip.done{opacity:.38; border-color:var(--ink3); background:transparent; text-decoration:line-through}
+  .chip .r{color:var(--ink3); margin-left:4px; font-size:10px}
+  .sess .lastline{color:var(--ink2); font-size:11px; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .none{color:var(--ink3); padding:16px; text-align:center}
+  /* ---------- skill tree ---------- */
+  .branch{border-left:3px solid var(--line); margin:10px 12px; padding:2px 0 2px 12px}
+  .branch h3{font-size:10px; letter-spacing:.22em; color:var(--ink2); margin-bottom:8px; text-transform:uppercase}
+  .skill{display:grid; grid-template-columns:150px 140px auto 1fr; gap:4px 12px; align-items:center; padding:5px 0; min-width:0}
+  .skill .nm{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .skill .nm small{display:block; color:var(--ink3); font-weight:400}
+  .barwrap{display:flex; align-items:center; gap:8px}
+  .bar{height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex:1}
+  .bar i{display:block; height:100%; border-radius:3px}
+  .uses{font-size:10px; color:var(--ink2); white-space:nowrap}
+  .skill .st{font-size:10px; letter-spacing:.12em; padding:1px 7px; border-radius:3px; border:1px solid var(--ink3); color:var(--ink2); white-space:nowrap; justify-self:start}
+  .st.active{border-color:var(--sys); color:var(--sys)}
+  .st.learning{border-color:var(--ops); color:var(--ops)}
+  .st.archived{opacity:.45}
+  .skill .meta2{font-size:11px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  @media (max-width:1400px){ .skill{grid-template-columns:150px 140px auto} .skill .meta2{grid-column:1/-1} }
+  .skill.dim{opacity:.45}
+  .goalchip{color:var(--ink2)}
+  /* ---------- hermes ---------- */
+  .qbox{width:100%; background:var(--bg); color:var(--ink); border:1px solid var(--line);
+    border-radius:4px; padding:7px 10px; font:inherit; outline:none}
+  .qbox:focus{border-color:var(--eng)}
+  .hstats{color:var(--ink3); font-size:11px; margin:8px 0 4px}
+  #hits{max-height:290px; overflow-y:auto}
+  .hit{border-top:1px solid var(--line); padding:8px 2px}
+  .hit .p{color:var(--ink); font-weight:600}
+  .hit .p .sc{color:var(--sys); font-weight:400; margin-right:6px}
+  .hit .s{color:var(--ink2); font-size:12px; margin-top:3px;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
+  .hit .s:hover{-webkit-line-clamp:unset}
+  .hit .t{color:var(--ink3); font-size:10px; margin-top:3px; letter-spacing:.06em}
+  .hit.stale{opacity:.5}
+  .hit.stale .p::after{content:" [STALE]"; color:var(--ops)}
+  /* ---------- stream ---------- */
+  #stream{max-height:520px; overflow-y:auto; padding:6px 0}
+  .ev{display:flex; gap:8px; padding:3px 12px; font-size:12px; align-items:baseline}
+  .ev:hover{background:var(--panel2)}
+  .ev .tm{color:var(--ink3); white-space:nowrap}
+  .ev .ss{color:var(--ink2); white-space:nowrap; min-width:66px}
+  .ev .ty{white-space:nowrap; min-width:78px; font-weight:600}
+  .ev .dt{color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1}
+  footer{color:var(--ink3); text-align:center; padding:6px 0 18px; font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">AIOS<b>//</b>MISSION CONTROL</span>
+  <span class="stat">SESSIONS <b id="c-sess">–</b></span>
+  <span class="stat">AGENTS <b id="c-agents">–</b></span>
+  <span class="stat">SKILLS <b id="c-skills">–</b></span>
+  <span class="stat">HERMES <b id="c-hermes">–</b></span>
+  <span class="stat">EVENTS <b id="c-events">–</b></span>
+  <span class="spacer"></span>
+  <span id="wire" class="ok-t"><span class="dot ok" id="wiredot"></span>WIRE OK</span>
+  <span id="clock">--:--:--</span>
+</header>
+
+<main>
+  <!-- left: conductor -->
+  <div class="col">
+    <section class="panel">
+      <h2>CONDUCTOR <span class="tag">feedback loop</span></h2>
+      <div class="ringwrap">
+        <div class="ring"></div>
+        <div class="sweep" id="sweep"></div>
+        <span class="ringlbl n">PLAN</span><span class="ringlbl e">DELEGATE</span>
+        <span class="ringlbl s">REVIEW</span><span class="ringlbl w">REFLECT</span>
+        <div class="ringcore">
+          <span class="who">GOAL</span>
+          <span class="goal" id="goal">–</span>
+          <span class="live" id="ringlive"></span>
+        </div>
+      </div>
+      <p class="loopnote">sweep fires on every live poll of the wire —<br>a frozen ring means a dead system</p>
+    </section>
+    <section class="panel">
+      <h2>SYSTEM STATUS</h2>
+      <dl class="readout pad" id="readout"></dl>
+    </section>
+  </div>
+
+  <!-- middle: sessions + skills -->
+  <div class="col">
+    <section class="panel">
+      <h2>ACTIVE SESSIONS <span class="tag">one wire, every tab</span></h2>
+      <div class="sessions" id="sessions"></div>
+    </section>
+    <section class="panel">
+      <h2>SKILL TREE <span class="tag">earned after 3 uses · prune decays</span></h2>
+      <div id="skilltree"></div>
+    </section>
+  </div>
+
+  <!-- right: hermes + stream -->
+  <div class="col">
+    <section class="panel">
+      <h2>HERMES FLYWHEEL <span class="tag">never re-solve</span></h2>
+      <div class="pad">
+        <input class="qbox" id="q" type="search" placeholder="query solved problems…" autocomplete="off">
+        <div class="hstats" id="hstats"></div>
+        <div id="hits"></div>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>EVENT STREAM <span class="tag">state/events.jsonl</span></h2>
+      <div id="stream"></div>
+    </section>
+  </div>
+</main>
+<footer>AIOS · substrate for whatever runs on top · MIT</footer>
+
+<script>
+"use strict";
+const ACCENT = {meta:"#c257b2", ops:"#c07c20", engineering:"#2ba3bd", misc:"#63a338"};
+const EVCOLOR = {
+  "session-start":"#63a338","session-stop":"#566068","stage":"#2ba3bd","tool":"#8a939e",
+  "spawn":"#c257b2","agent-exit":"#c257b2","loop":"#c07c20","review":"#2ba3bd",
+  "test":"#c07c20","ship":"#63a338","goal":"#63a338","skill":"#c257b2","audit":"#c07c20"
+};
+const STAGES = ["think","plan","build","review","test","ship"];
+const LIVE_MS = 15*60*1000;
+const S = {events:[], skills:null, solved:[], approvals:{tokens:[]}, wire:true};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function jget(path){
+  const r = await fetch(path, {cache:"no-store"});
+  if(!r.ok) throw new Error(path);
+  return r.text();
+}
+const jsonl = t => t.split("\n").filter(l => l.trim()).map(l => { try{return JSON.parse(l)}catch(e){return null} }).filter(Boolean);
+
+async function poll(){
+  try{
+    const [ev, reg, sol, app] = await Promise.all([
+      jget("/state/events.jsonl"), jget("/skills/registry.json"),
+      jget("/hermes/solved.jsonl"), jget("/state/approvals.json")
+    ]);
+    S.events = jsonl(ev); S.skills = JSON.parse(reg);
+    S.solved = jsonl(sol); S.approvals = JSON.parse(app);
+    S.wire = true;
+    const sw = $("sweep"); sw.classList.remove("fire"); void sw.offsetWidth; sw.classList.add("fire");
+  }catch(e){ S.wire = false; }
+  render();
+}
+
+function sessions(){
+  const m = new Map();
+  for(const e of S.events){
+    const id = e.session || "?";
+    if(!m.has(id)) m.set(id, {id, n:0, agents:[], exits:0, stage:null, last:null, lastline:""});
+    const s = m.get(id);
+    s.n++; s.last = e.ts || s.last;
+    if(e.stage && STAGES.includes(e.stage)) s.stage = e.stage;
+    if(e.event === "spawn") s.agents.push({name:e.agent || "agent", detail:e.detail || ""});
+    if(e.event === "agent-exit") s.exits++;
+    if(e.detail) s.lastline = e.detail;
+  }
+  const out = [...m.values()];
+  for(const s of out) s.live = s.last && (Date.now() - Date.parse(s.last)) < LIVE_MS;
+  out.sort((a,b) => (b.last||"").localeCompare(a.last||""));
+  return out;
+}
+
+function render(){
+  const ss = sessions();
+  const liveAgents = ss.reduce((n,s) => n + Math.max(0, s.agents.length - s.exits), 0);
+  const reg = S.skills || {goal:"–", skills:{}};
+  const sk = Object.entries(reg.skills || {});
+  const earned = sk.filter(([,v]) => v.status === "active").length;
+  const staleN = S.solved.filter(r => r.stale).length;
+
+  // header
+  $("c-sess").textContent = ss.filter(s=>s.live).length + "/" + ss.length;
+  $("c-agents").textContent = liveAgents;
+  $("c-skills").textContent = earned + "/" + sk.length;
+  $("c-hermes").textContent = S.solved.length;
+  $("c-events").textContent = S.events.length;
+  $("wire").className = S.wire ? "ok-t" : "down-t";
+  $("wiredot").className = "dot " + (S.wire ? "ok" : "down");
+  $("wire").childNodes[1].textContent = S.wire ? "WIRE OK" : "WIRE DOWN";
+
+  // conductor
+  $("goal").textContent = reg.goal || "(no goal set)";
+  $("ringlive").textContent = ss.filter(s=>s.live).length + " LIVE SESSION" + (ss.filter(s=>s.live).length===1?"":"S");
+
+  // readout
+  const lastEv = S.events[S.events.length-1];
+  const age = lastEv && lastEv.ts ? Math.round((Date.now()-Date.parse(lastEv.ts))/1000) : null;
+  const tokens = (S.approvals.tokens||[]).filter(t => t.expires*1000 > Date.now());
+  $("readout").innerHTML =
+    `<dt>guard</dt><dd class="${tokens.length ? "warn":"good"}">${tokens.length ? tokens.length+" open token(s): "+tokens.map(t=>esc(t.action)).join(", ") : "ARMED · no open tokens"}</dd>` +
+    `<dt>wire</dt><dd class="${S.wire?"good":"bad"}">${S.wire ? "polling ok" : "UNREACHABLE"}</dd>` +
+    `<dt>last event</dt><dd>${age===null ? "–" : age<120 ? age+"s ago" : Math.round(age/60)+"m ago"}</dd>` +
+    `<dt>hermes</dt><dd>${S.solved.length} solved · ${staleN} stale</dd>` +
+    `<dt>registry</dt><dd>${sk.length} skills · ${earned} earned</dd>`;
+
+  // sessions
+  $("sessions").innerHTML = ss.length ? ss.map(s => {
+    const cur = STAGES.indexOf(s.stage);
+    const rail = STAGES.map((st,i) =>
+      `<span class="${i<cur?"on":i===cur?"cur":""}">${st}</span>`).join("");
+    const chips = s.agents.map((a,i) =>
+      `<span class="chip ${i < s.exits ? "done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?'<span class="r">✓</span>':""}</span>`).join("");
+    return `<div class="sess">
+      <div class="top"><span class="sid">◈ ${esc(s.id)}</span>
+        <span class="badge ${s.live?"live":"idle"}">${s.live?"LIVE":"IDLE"}</span>
+        <span class="last">${esc((s.last||"").slice(11,19))}</span></div>
+      <div class="rail">${rail}</div>
+      ${s.agents.length ? `<div class="chips">${chips}</div>` : ""}
+      <div class="lastline">▸ ${esc(s.lastline || "no detail")}</div>
+    </div>`;
+  }).join("") : `<div class="none">no sessions on the wire yet</div>`;
+
+  // skill tree
+  const branches = {};
+  for(const [name,v] of sk) (branches[v.branch || "misc"] ??= []).push([name,v]);
+  $("skilltree").innerHTML = Object.entries(branches).map(([br,items]) => {
+    const ac = ACCENT[br] || ACCENT.misc;
+    return `<div class="branch" style="border-left-color:${ac}">
+      <h3 style="color:${ac}">${esc(br)}</h3>` +
+      items.map(([name,v]) => {
+        const pct = Math.min(100, (v.uses||0)/3*100);
+        const dim = v.status === "archived" ? "dim" : "";
+        return `<div class="skill ${dim}">
+          <span class="nm">${esc(name)}<small>${esc(v.trigger||"")}</small></span>
+          <span class="barwrap"><span class="bar"><i style="width:${pct}%;background:${ac}"></i></span><span class="uses">${Math.min(v.uses||0,3)}/3</span></span>
+          <span class="st ${esc(v.status)}">${esc(v.status)}</span>
+          <span class="meta2" style="grid-column:auto">${(v.goals&&v.goals.length)?`⛿ <span class="goalchip">${esc(v.goals.join(" · "))}</span>`:"no goal link — decays at prune"}</span>
+        </div>`;
+      }).join("") + `</div>`;
+  }).join("") || `<div class="none">registry empty</div>`;
+
+  renderHermes();
+  renderStream();
+  document.title = `AIOS // ${ss.filter(s=>s.live).length} live · ${S.events.length} ev`;
+}
+
+const tok = t => new Set((t.toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w => w.length > 2));
+function renderHermes(){
+  const q = $("q").value.trim();
+  let rows;
+  if(q){
+    const qs = tok(q);
+    rows = S.solved.map(r => {
+      const doc = tok(r.problem+" "+r.solution+" "+(r.tags||[]).join(" "));
+      let sc = qs.size ? [...qs].filter(w => doc.has(w)).length/qs.size : 0;
+      if(r.stale) sc *= .5;
+      return [sc, r];
+    }).filter(([sc]) => sc > 0).sort((a,b) => b[0]-a[0]).slice(0,5);
+    $("hstats").textContent = rows.length
+      ? rows.filter(([sc])=>sc>=.34).length + " hit(s) · threshold 0.34"
+      : "MISS — solve it, then feed the flywheel: hermes.py note";
+  }else{
+    rows = S.solved.slice().reverse().slice(0,4).map(r => [null, r]);
+    $("hstats").textContent = S.solved.length + " solved · " +
+      S.solved.filter(r=>r.stale).length + " stale · type to search";
+  }
+  $("hits").innerHTML = rows.map(([sc,r]) =>
+    `<div class="hit ${r.stale?"stale":""}">
+      <div class="p">${sc!==null?`<span class="sc">${sc.toFixed(2)}</span>`:""}${esc(r.problem)}</div>
+      <div class="s">${esc(r.solution)}</div>
+      <div class="t">[${esc(r.id)}] ${(r.tags||[]).map(esc).join(" · ")} · ${esc((r.ts||"").slice(0,10))}</div>
+    </div>`).join("");
+}
+$("q").addEventListener("input", renderHermes);
+
+function renderStream(){
+  const el = $("stream");
+  const pinned = el.scrollTop < 8; // stay pinned to newest unless user scrolled
+  el.innerHTML = S.events.slice(-80).reverse().map(e =>
+    `<div class="ev">
+      <span class="tm">${esc((e.ts||"").slice(11,19))}</span>
+      <span class="ss">${esc(e.session||"?")}</span>
+      <span class="ty" style="color:${EVCOLOR[e.event]||"#8a939e"}">${esc(e.event||"?")}</span>
+      <span class="dt">${esc(e.detail || e.tool || (e.stage?("stage → "+e.stage):"") || e.agent || "")}</span>
+    </div>`).join("");
+  if(pinned) el.scrollTop = 0;
+}
+
+setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("en-GB"); }, 1000);
+poll();
+setInterval(poll, 2500);
+</script>
+</body>
+</html>

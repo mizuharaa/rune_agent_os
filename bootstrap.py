@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AIOS bootstrap: verify every layer with real commands.
+"""Maestro bootstrap: verify every layer with real commands.
 
   python bootstrap.py         run all layer checks (exit 1 on any FAIL)
   python bootstrap.py boot    run the CLAUDE.md boot sequence (vault, skills, announce)
@@ -102,7 +102,7 @@ def main():
 
 
 def boot():
-    print("== AIOS boot ==")
+    print("== Maestro boot ==")
     print("[1/3] soul: read soul/soul.md (conductor identity)")
     for label, args in (
         ("[2/3] vault", [os.path.join("memory", "pipeline.py"), "vault"]),

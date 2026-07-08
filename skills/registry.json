@@ -1,6 +1,6 @@
 {
-  "goal": "stand up AIOS v1",
-  "updated": "2026-07-08T00:06:35",
+  "goal": "stand up Maestro v1",
+  "updated": "2026-07-08T01:08:30",
   "skills": {
     "workflow-audit": {
       "status": "learning",
@@ -9,7 +9,7 @@
       "branch": "meta",
       "trigger": "/audit",
       "goals": [
-        "stand up AIOS v1"
+        "stand up Maestro v1"
       ],
       "decay": 0,
       "created": "2026-07-07T23:00:00",
@@ -22,7 +22,7 @@
       "branch": "meta",
       "trigger": "/newskill",
       "goals": [
-        "stand up AIOS v1"
+        "stand up Maestro v1"
       ],
       "decay": 0,
       "created": "2026-07-07T23:00:00",
@@ -35,7 +35,7 @@
       "branch": "ops",
       "trigger": "/automate",
       "goals": [
-        "stand up AIOS v1"
+        "stand up Maestro v1"
       ],
       "decay": 0,
       "created": "2026-07-07T23:00:00",
@@ -48,7 +48,7 @@
       "branch": "engineering",
       "trigger": "/loop-engineer",
       "goals": [
-        "stand up AIOS v1"
+        "stand up Maestro v1"
       ],
       "decay": 0,
       "created": "2026-07-07T23:00:00",
@@ -64,6 +64,32 @@
       "decay": 2,
       "created": "2026-07-07T23:00:00",
       "last_used": null
+    },
+    "web-design": {
+      "status": "active",
+      "uses": 3,
+      "desc": "Design and iterate web UI with the playwright MCP: screenshot, critique against the slop checklist, fix, repeat",
+      "branch": "design",
+      "trigger": "/webdesign",
+      "goals": [
+        "stand up Maestro v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-08T00:21:24",
+      "last_used": "2026-07-08T01:08:30"
+    },
+    "3d-interaction": {
+      "status": "learning",
+      "uses": 1,
+      "desc": "3D reactive UI without dependencies: CSS perspective transforms, pointer-tracking tilt, depth shadows, reduced-motion fallbacks",
+      "branch": "design",
+      "trigger": "/3d",
+      "goals": [
+        "stand up Maestro v1"
+      ],
+      "decay": 0,
+      "created": "2026-07-08T00:21:24",
+      "last_used": "2026-07-08T01:08:30"
     }
   }
 }

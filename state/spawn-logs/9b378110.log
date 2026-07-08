@@ -1,0 +1,11 @@
+Boot sequence complete and the one pending directive is done.
+
+**Boot:** Soul loaded (conductor charter), vault fresh at `C:\Obsidian_Brain\Daniel_Obsidian_Vault` with 79 notes, skill registry listed, and the session announced on the wire.
+
+**Directive `9d32e87a` (weekly skill review):** Ran `python skills/engine.py review` and emitted `directive-done`. The inbox has no other entries. Findings:
+
+- **Prune preview:** all live skills serve the goal "stand up AIOS v1" — nothing decayed, nothing to archive.
+- **Deserve their third use** (each at 2/3, one use from earned): **loop-engineering** (`/loop-engineer`), **skill-creation** (`/newskill`), and **workflow-audit** (`/audit`). Any mission touching those areas should route through the trigger to lock them in.
+- **Earned:** automation (3/3). **Candidates** untouched at 0/3: 3d-interaction, web-design. **Archived:** vault-gardening.
+
+One note: the claude.ai Google Drive MCP server needs authorization before its tools work — that's done via your claude.ai connector settings, not something I can do from this non-interactive session.

@@ -3,397 +3,922 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AIOS // MISSION CONTROL</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230a0e12'/%3E%3Ccircle cx='8' cy='8' r='5' fill='none' stroke='%232ba3bd' stroke-width='1.5'/%3E%3Ccircle cx='8' cy='8' r='1.8' fill='%2363a338'/%3E%3C/svg%3E">
+<title>Maestro</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23135c38'/%3E%3Cpath d='M4.2 11.8L10.5 4.6' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='11.6' cy='4.2' r='1.6' fill='%23a9dcbd'/%3E%3C/svg%3E">
 <style>
   :root{
-    --bg:#0a0e12; --panel:#0e141b; --panel2:#111923; --line:#1c2733;
-    --ink:#d6dbe0; --ink2:#8a939e; --ink3:#566068;
-    --eng:#2ba3bd; --ops:#c07c20; --meta:#c257b2; --sys:#63a338;
-    --bad:#c2554a;
+    --canvas:#eef0ea; --card:#ffffff; --line:#e5e8df; --line2:#d6dbcf;
+    --ink:#15211a; --ink2:#5c6a60; --ink3:#98a29a;
+    --green:#135c38; --green-deep:#0d2f1e; --green-dark:#0e2818;
+    --mint:#a9dcbd; --mint-soft:#ddefe4; --green-mid:#1e7c4c;
+    --red:#d05043;
+    --mono:"Cascadia Mono",Consolas,monospace;
+    --shadow:0 1px 2px rgba(21,33,26,.04), 0 6px 18px -8px rgba(21,33,26,.10);
+    --lift:0 2px 4px rgba(21,33,26,.06), 0 16px 34px -12px rgba(21,33,26,.18);
+    --r:18px;
   }
   *{box-sizing:border-box; margin:0; padding:0}
-  html,body{height:100%}
-  body{
-    background:var(--bg); color:var(--ink);
-    font:13px/1.5 "Cascadia Mono","Cascadia Code",Consolas,monospace;
-    background-image:
-      linear-gradient(rgba(43,163,189,.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(43,163,189,.03) 1px, transparent 1px);
-    background-size:36px 36px;
-  }
-  a{color:var(--eng)}
-  /* ---------- header ---------- */
-  header{
-    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
-    padding:10px 18px; border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg, #0d131a, #0a0e12);
-    position:sticky; top:0; z-index:5;
-  }
-  .brand{font-size:15px; letter-spacing:.18em; font-weight:700}
-  .brand b{color:var(--eng); font-weight:700}
-  .stat{color:var(--ink2); white-space:nowrap}
-  .stat b{color:var(--ink); font-weight:600}
+  html{scroll-behavior:smooth}
+  body{background:var(--canvas); color:var(--ink); min-height:100vh;
+    font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+  button{font:inherit; cursor:pointer; border:none; background:none; color:inherit}
+  input,textarea,select{font:inherit; color:var(--ink)}
+  .mono{font-family:var(--mono)}
+  a{color:var(--green); text-decoration:none}
+  /* ============ shell ============ */
+  .shell{display:grid; grid-template-columns:224px minmax(0,1fr); min-height:100vh}
+  aside{background:var(--card); border-right:1px solid var(--line);
+    padding:22px 14px 16px; display:flex; flex-direction:column; gap:2px;
+    position:sticky; top:0; height:100vh; overflow-y:auto}
+  .logo{display:flex; align-items:center; gap:10px; padding:0 8px 20px}
+  .logo .mark{width:34px; height:34px; border-radius:10px; background:var(--green); flex:none; position:relative}
+  .logo .mark::before{content:""; position:absolute; left:8px; bottom:8px; width:15px; height:2.4px;
+    background:#fff; border-radius:2px; transform:rotate(-42deg); transform-origin:left center}
+  .logo .mark::after{content:""; position:absolute; right:7px; top:7px; width:5.5px; height:5.5px;
+    border-radius:50%; background:var(--mint)}
+  .logo b{font-size:17px; font-weight:750; letter-spacing:-.01em}
+  .logo small{display:block; color:var(--ink3); font-size:11px}
+  .navlab{font-size:10.5px; color:var(--ink3); font-weight:650; letter-spacing:.04em; padding:12px 10px 5px}
+  nav a{display:flex; align-items:center; gap:10px; padding:8.5px 10px; border-radius:10px;
+    color:var(--ink2); font-weight:530; position:relative; transition:background .15s,color .15s}
+  nav a svg{width:17px; height:17px; stroke:currentColor; fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; flex:none}
+  nav a:hover{background:var(--canvas); color:var(--ink)}
+  nav a.on{background:var(--mint-soft); color:var(--green); font-weight:650}
+  nav a.on::before{content:""; position:absolute; left:-14px; top:22%; bottom:22%; width:3px;
+    border-radius:0 3px 3px 0; background:var(--green)}
+  nav a .bub{margin-left:auto; font-size:10.5px; font-family:var(--mono); background:var(--canvas);
+    border-radius:99px; padding:1px 7px; min-width:22px; text-align:center; color:var(--ink2)}
+  nav a.on .bub{background:#fff}
+  .side-dark{margin-top:auto; background:var(--green-dark); border-radius:14px; padding:13px 14px; color:#dfeee5; position:relative; overflow:hidden}
+  .side-dark::before{content:""; position:absolute; inset:-40% -20% auto auto; width:120px; height:120px;
+    border:14px solid rgba(169,220,189,.10); border-radius:50%}
+  .side-dark .t{font-size:12px; font-weight:650; color:#fff}
+  .side-dark .row{display:flex; justify-content:space-between; font-family:var(--mono); font-size:11px; padding-top:6px; color:#9dbfa9}
+  .side-dark .row b{color:var(--mint); font-weight:600}
+  /* ============ main ============ */
+  .main{min-width:0; padding:0 26px 40px; overflow-x:clip}
+  .topbar{display:flex; align-items:center; gap:12px; padding:16px 0 8px; flex-wrap:wrap}
+  #burger{display:none; border:1px solid var(--line); background:var(--card); border-radius:9px; padding:6px 10px}
+  .search{flex:1; max-width:420px; min-width:180px; display:flex; align-items:center; gap:9px;
+    background:var(--card); border:1px solid var(--line); border-radius:99px; padding:8.5px 16px; box-shadow:var(--shadow)}
+  .search svg{width:15px; height:15px; stroke:var(--ink3); fill:none; stroke-width:2; stroke-linecap:round}
+  .search input{border:none; outline:none; background:none; width:100%; font-size:13.5px}
+  .search input::placeholder{color:var(--ink3)}
   .spacer{flex:1}
-  #clock{color:var(--ink2); letter-spacing:.08em}
-  .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:baseline}
-  .ok{background:var(--sys)} .down{background:var(--bad)}
-  #wire.ok-t{color:var(--sys)} #wire.down-t{color:var(--bad)}
-  /* ---------- layout ---------- */
-  main{
-    display:grid; gap:14px; padding:14px 18px 24px;
-    grid-template-columns:300px minmax(0,1fr) 360px;
-    align-items:start; max-width:1720px; margin:0 auto;
+  .clockchip{font-family:var(--mono); font-size:12.5px; color:var(--ink2); background:var(--card);
+    border:1px solid var(--line); border-radius:99px; padding:7px 14px; box-shadow:var(--shadow)}
+  .titlerow{display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; padding:14px 0 16px}
+  .titlerow h1{font-size:24px; font-weight:750; letter-spacing:-.01em}
+  .titlerow .sub{color:var(--ink2); font-size:13px; padding-bottom:3px}
+  .btn{display:inline-flex; align-items:center; gap:8px; border-radius:99px; padding:9px 18px;
+    font-weight:620; font-size:13.5px; transition:transform .12s, box-shadow .2s, background .15s}
+  .btn svg{width:15px; height:15px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round}
+  .btn.solid{background:var(--green); color:#fff; box-shadow:0 6px 16px -6px rgba(19,92,56,.5)}
+  .btn.solid:hover{transform:translateY(-1px); background:var(--green-mid)}
+  .btn.line{border:1.5px solid var(--line2); color:var(--ink); background:var(--card)}
+  .btn.line:hover{border-color:var(--green); color:var(--green)}
+  .btn.sm{padding:6px 13px; font-size:12.5px}
+  .btn.danger:hover{border-color:var(--red); color:var(--red)}
+  .btn[disabled]{opacity:.5; pointer-events:none}
+  /* ============ grid & cards ============ */
+  section.page{display:none; animation:fade .25s ease}
+  section.page.show{display:block}
+  @keyframes fade{from{opacity:0; transform:translateY(5px)} to{opacity:1; transform:none}}
+  .grid{display:grid; gap:14px}
+  .grid>*{min-width:0}
+  .cols-4{grid-template-columns:repeat(4,1fr)}
+  .row-mid{grid-template-columns:1.35fr .95fr 1fr}
+  .row-bot{grid-template-columns:1.35fr .95fr 1fr}
+  .cols-2{grid-template-columns:1.4fr 1fr}
+  @media (max-width:1240px){ .cols-4{grid-template-columns:repeat(2,1fr)} .row-mid,.row-bot{grid-template-columns:1fr 1fr} .cols-2{grid-template-columns:1fr} }
+  @media (max-width:820px){ .cols-4,.row-mid,.row-bot{grid-template-columns:1fr} }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+    box-shadow:var(--shadow); padding:18px; min-width:0; position:relative}
+  .card h3{font-size:14.5px; font-weight:700; letter-spacing:-.005em; display:flex; align-items:center; gap:8px}
+  .card h3 .tag{margin-left:auto; color:var(--ink3); font-weight:450; font-size:11.5px}
+  .stack{display:flex; flex-direction:column; gap:14px; min-width:0}
+  /* corner circle button */
+  .cbtn{position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
+    border:1.5px solid var(--line2); display:grid; place-items:center; color:var(--ink2);
+    background:var(--card); transition:all .15s}
+  .cbtn svg{width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
+  .cbtn:hover{background:var(--green); border-color:var(--green); color:#fff}
+  /* ============ stat cards ============ */
+  .stat{padding:16px 18px 15px}
+  .stat .lab{font-size:13px; font-weight:600; color:var(--ink2)}
+  .stat .num{font-size:34px; font-weight:760; letter-spacing:-.02em; line-height:1.15; margin:7px 0 9px; font-family:var(--mono)}
+  .stat .num em{font-style:normal; font-size:16px; color:var(--ink3); font-weight:600}
+  .deltapill{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:650;
+    background:var(--mint-soft); color:var(--green); border-radius:99px; padding:3px 9px}
+  .deltapill.neg{background:#f7e4e2; color:var(--red)}
+  .deltapill.mut{background:var(--canvas); color:var(--ink2)}
+  .stat.dark{background:var(--green); border-color:var(--green); color:#fff; overflow:hidden}
+  .stat.dark::before{content:""; position:absolute; right:-34px; bottom:-52px; width:130px; height:130px;
+    border:16px solid rgba(255,255,255,.09); border-radius:50%}
+  .stat.dark .lab{color:#cfe7d8}
+  .stat.dark .num{color:#fff}
+  .stat.dark .deltapill{background:rgba(255,255,255,.16); color:#dff3e6}
+  .stat.dark .cbtn{background:#fff; border-color:#fff; color:var(--green)}
+  /* ============ capsule bar chart ============ */
+  .caps{display:flex; align-items:flex-end; gap:14px; height:190px; padding:18px 6px 4px}
+  .capcol{flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; min-width:0; position:relative}
+  .captrack{flex:1; width:100%; max-width:34px; border-radius:99px; position:relative; overflow:hidden;
+    background:repeating-linear-gradient(45deg,#f2f4ee 0 4px,#e2e6dc 4px 6px)}
+  .capfill{position:absolute; left:0; right:0; bottom:0; border-radius:99px; transition:height .5s ease}
+  .capx{font-size:11px; color:var(--ink3); font-family:var(--mono)}
+  .peakpill{position:absolute; top:-4px; left:50%; transform:translateX(-50%); background:var(--ink);
+    color:#fff; font-size:10.5px; font-family:var(--mono); border-radius:99px; padding:2px 8px; white-space:nowrap; z-index:2}
+  /* ============ gauge ============ */
+  .gaugewrap{display:flex; flex-direction:column; align-items:center; padding:6px 0 2px}
+  .glegend{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; font-size:12px; color:var(--ink2); padding-top:10px}
+  .glegend i{width:9px; height:9px; border-radius:3px; display:inline-block; margin-right:5px}
+  /* ============ list rows (solutions / sessions) ============ */
+  .lrow{display:flex; align-items:center; gap:11px; padding:10px 2px; border-top:1px solid var(--line); min-width:0}
+  .lrow:first-of-type{border-top:none}
+  .lrow .sq{width:34px; height:34px; border-radius:10px; flex:none; display:grid; place-items:center;
+    font-weight:700; font-size:13px; color:var(--green); background:var(--mint-soft)}
+  .lrow .sq.alt{background:var(--canvas); color:var(--ink2)}
+  .lrow .bd{flex:1; min-width:0}
+  .lrow .bd .t{font-weight:620; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .lrow .bd .s{font-size:11.5px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .pill{font-size:11px; font-weight:650; border-radius:99px; padding:3px 11px; white-space:nowrap}
+  .pill.live{background:var(--mint-soft); color:var(--green)}
+  .pill.idle{background:var(--canvas); color:var(--ink2)}
+  .pill.warn{background:#f7e4e2; color:var(--red)}
+  /* ============ dark wire card ============ */
+  .wirecard{background:var(--green-dark); border-color:var(--green-dark); color:#e8f3ec; overflow:hidden}
+  .wirecard::before{content:""; position:absolute; right:-46px; top:-40px; width:190px; height:190px;
+    border:1.5px solid rgba(169,220,189,.16); border-radius:50%; box-shadow:0 0 0 26px rgba(169,220,189,.05), 0 0 0 54px rgba(169,220,189,.035)}
+  .wirecard h3{color:#fff}
+  .wireclock{font-family:var(--mono); font-size:40px; font-weight:700; letter-spacing:.02em; padding:14px 0 4px}
+  .wiresub{font-size:12px; color:#9dbfa9; font-family:var(--mono)}
+  .wirebtns{display:flex; gap:10px; padding-top:16px}
+  .rbtn{width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:rgba(255,255,255,.12); color:#fff; transition:background .15s}
+  .rbtn:hover{background:rgba(255,255,255,.22)}
+  .rbtn.stop{background:var(--red)}
+  .rbtn svg{width:15px; height:15px; fill:currentColor; stroke:none}
+  /* ============ launcher ============ */
+  .deck textarea{width:100%; min-height:84px; resize:vertical; background:#fbfcf9;
+    border:1.5px solid var(--line2); border-radius:14px; padding:12px 14px; outline:none; transition:.15s}
+  .deck textarea:focus{border-color:var(--green); box-shadow:0 0 0 3.5px var(--mint-soft)}
+  .modes{display:flex; gap:8px; margin:12px 0 10px; flex-wrap:wrap}
+  .mode{border:1.5px solid var(--line2); border-radius:99px; padding:6px 14px; font-size:12.5px; font-weight:600; color:var(--ink2); background:var(--card); transition:.15s}
+  .mode.on{background:var(--green); border-color:var(--green); color:#fff}
+  .opts{display:flex; gap:14px; margin-bottom:13px; flex-wrap:wrap; font-size:12.5px; color:var(--ink2); align-items:center}
+  .opts label{display:inline-flex; align-items:center; gap:7px; font-weight:600}
+  .opts select{background:#fbfcf9; border:1.5px solid var(--line2); border-radius:10px; padding:6px 10px; outline:none}
+  .opts select:focus{border-color:var(--green)}
+  .hintline{font-size:12px; color:var(--ink3)}
+  /* ============ instances ============ */
+  .icards{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); padding-top:12px}
+  .icards>*{min-width:0}
+  .inst{border:1px solid var(--line); border-radius:14px; padding:13px 14px; background:var(--card); transition:box-shadow .2s, transform .2s}
+  .inst:hover{box-shadow:var(--lift); transform:translateY(-2px)}
+  .inst .top{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .inst .sid{font-family:var(--mono); font-weight:700; font-size:13px}
+  .inst .spend{font-size:11px; color:var(--ink3); font-family:var(--mono); margin:4px 0 7px}
+  .inst .spend b{color:var(--green); font-weight:650}
+  .inst .mi{font-size:12.5px; color:var(--ink2); margin-bottom:10px; line-height:1.45;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
+  .rail{display:flex; gap:4px; margin:10px 0 4px}
+  .rail span{flex:1; text-align:center; font-size:9px; font-weight:600; color:var(--ink3);
+    border-top:3px solid var(--canvas); padding-top:4px; font-family:var(--mono); transition:.3s}
+  .rail span.on{color:var(--ink2); border-top-color:var(--mint)}
+  .rail span.cur{color:var(--green); border-top-color:var(--green)}
+  .achips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
+  .achip{font-size:11px; font-weight:600; padding:2px 10px; border-radius:99px; background:var(--mint-soft); color:var(--green)}
+  .achip.done{opacity:.55; background:var(--canvas); color:var(--ink3)}
+  .none{color:var(--ink3); padding:18px 4px; text-align:center; font-size:13px}
+  .dirs .lrow .id{font-family:var(--mono); font-size:11px; color:var(--ink3)}
+  /* ============ skills ============ */
+  .branch{margin:14px 0; border-left:3px solid var(--line); padding:2px 0 2px 16px}
+  .branch h4{font-size:12.5px; font-weight:700; margin-bottom:8px}
+  .skill{display:grid; grid-template-columns:190px 170px auto 1fr; gap:6px 16px; align-items:center; padding:7px 0}
+  .skill>*{min-width:0}
+  @media (max-width:1240px){ .skill{grid-template-columns:150px 1fr auto} .skill .meta2{grid-column:1/-1} }
+  .skill .nm{font-weight:650; font-size:13px}
+  .skill .nm small{display:block; color:var(--ink3); font-weight:450; font-family:var(--mono); font-size:11px}
+  .captiny{display:flex; align-items:center; gap:8px}
+  .captiny .trk{flex:1; height:8px; border-radius:99px; overflow:hidden;
+    background:repeating-linear-gradient(45deg,#f2f4ee 0 4px,#e2e6dc 4px 6px)}
+  .captiny .trk i{display:block; height:100%; border-radius:99px; background:var(--green); transition:width .5s}
+  .captiny .n{font-size:11px; color:var(--ink2); font-family:var(--mono)}
+  .skill.dim{opacity:.5}
+  .skill .meta2{font-size:12px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  /* ============ brain ============ */
+  .qbox{width:100%; background:#fbfcf9; border:1.5px solid var(--line2); border-radius:12px; padding:10px 14px; outline:none; transition:.15s}
+  .qbox:focus{border-color:var(--green); box-shadow:0 0 0 3.5px var(--mint-soft)}
+  .hstats{color:var(--ink3); font-size:12px; margin:10px 2px 2px}
+  .hit{border-top:1px solid var(--line); padding:11px 2px}
+  .hit:first-of-type{border-top:none}
+  .hit .p{font-weight:650; font-size:13.5px}
+  .hit .p .sc{color:var(--green); font-family:var(--mono); font-weight:600; margin-right:7px; font-size:12px}
+  .hit .s{color:var(--ink2); font-size:12.5px; margin-top:4px}
+  .hit .t{color:var(--ink3); font-size:11px; margin-top:5px; font-family:var(--mono)}
+  .hit.stale{opacity:.55}
+  /* ============ graph ============ */
+  #graph{width:100%; height:470px; display:block; cursor:grab}
+  .gnode{cursor:pointer}
+  .gdetail .gt{font-size:11.5px; color:var(--ink3); font-family:var(--mono)}
+  .gdetail .gp{font-weight:700; font-size:15px; margin:6px 0}
+  .gdetail .gs{font-size:13px; color:var(--ink2)}
+  .gdetail .gtag{display:inline-block; font-size:11px; font-family:var(--mono); color:var(--green);
+    background:var(--mint-soft); border-radius:99px; padding:2px 10px; margin:4px 5px 0 0}
+  /* ============ integrations ============ */
+  .intgrid{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(235px,1fr)); padding-top:12px}
+  .intgrid>*{min-width:0}
+  .intcard{border:1px solid var(--line); border-radius:14px; padding:14px; background:var(--card)}
+  .intcard .ih{display:flex; align-items:center; gap:9px; font-weight:700; font-size:13px}
+  .intcard .ih svg{width:16px; height:16px; stroke:var(--green); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round}
+  .intcard .ih .st{margin-left:auto; font-size:10.5px; font-weight:650; color:var(--green); background:var(--mint-soft); border-radius:99px; padding:2px 9px}
+  .intcard ul{list-style:none; margin-top:10px; font-size:12.5px; color:var(--ink2)}
+  .intcard li{padding:4px 0; border-top:1px dashed var(--line); display:flex; gap:8px; align-items:baseline}
+  .intcard li:first-child{border-top:none}
+  .intcard li .mono{font-size:11px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .intcard .add{margin-top:10px; font-size:11.5px; color:var(--ink3)}
+  .intcard .add code{font-family:var(--mono); background:var(--canvas); border-radius:6px; padding:1px 6px}
+  /* ============ audit ============ */
+  .filters{display:flex; gap:10px; padding:12px 0 0; flex-wrap:wrap}
+  .filters select,.filters input{background:#fbfcf9; border:1.5px solid var(--line2); border-radius:10px; padding:7px 11px; outline:none; font-size:13px}
+  .filters input{flex:1; min-width:150px}
+  .audit{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px; table-layout:fixed}
+  .audit td{padding:6px 8px; border-top:1px solid var(--line); vertical-align:top}
+  .audit tr:hover td{background:#f7f9f4}
+  .audit .tm{white-space:nowrap; color:var(--ink3); width:112px}
+  .audit .ss{white-space:nowrap; color:var(--ink2); width:88px; overflow:hidden; text-overflow:ellipsis}
+  .audit .ty{white-space:nowrap; font-weight:700; width:102px; overflow:hidden; text-overflow:ellipsis; color:var(--green)}
+  .audit .ty.mut{color:var(--ink3)}
+  .audit .dt{white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--ink2)}
+  .auditwrap{max-height:560px; overflow:auto; margin-top:8px}
+  /* ============ guard ============ */
+  .gtable{width:100%; border-collapse:collapse; font-size:13px; margin-top:6px}
+  .gtable td,.gtable th{padding:9px 4px; border-top:1px solid var(--line); text-align:left}
+  .gtable th{font-size:12px; color:var(--ink2); font-weight:650; border-top:none}
+  code.k{font-family:var(--mono); font-size:12px; background:var(--canvas); border-radius:6px; padding:2px 7px}
+  /* ============ toast ============ */
+  #toast{position:fixed; right:22px; bottom:22px; z-index:50; display:flex; flex-direction:column; gap:8px}
+  .note{background:var(--green-dark); color:#e8f3ec; border-radius:12px; padding:11px 16px; font-size:13px; box-shadow:var(--lift); animation:fade .25s ease; max-width:340px}
+  .note.err{background:var(--red)}
+  ::-webkit-scrollbar{width:10px; height:10px}
+  ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:6px; border:2.5px solid transparent; background-clip:padding-box}
+  @media (max-width:880px){
+    .shell{grid-template-columns:1fr}
+    aside{position:fixed; z-index:20; width:240px; transform:translateX(-100%); transition:transform .25s; box-shadow:var(--lift)}
+    aside.open{transform:none}
+    #burger{display:block}
+    .main{padding:0 14px 32px}
   }
-  @media (max-width:1150px){ main{grid-template-columns:1fr} }
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:6px}
-  .panel>h2{
-    font-size:11px; letter-spacing:.22em; color:var(--ink2); font-weight:600;
-    padding:9px 12px; border-bottom:1px solid var(--line);
-    display:flex; align-items:center; gap:8px;
-  }
-  .panel>h2 .tag{margin-left:auto; letter-spacing:0; color:var(--ink3); font-weight:400}
-  .pad{padding:12px}
-  .col{display:flex; flex-direction:column; gap:14px; min-width:0}
-  /* ---------- conductor ring ---------- */
-  .ringwrap{position:relative; width:216px; height:216px; margin:14px auto}
-  .ring{position:absolute; inset:0; border-radius:50%; border:1px solid var(--line)}
-  .sweep{
-    position:absolute; inset:6px; border-radius:50%;
-    background:conic-gradient(from 0deg, rgba(43,163,189,.4), rgba(43,163,189,.06) 70deg, transparent 110deg);
-    opacity:0;
-  }
-  .sweep.fire{animation:sweep 2.2s linear 1}
-  @keyframes sweep{0%{opacity:1; transform:rotate(0)} 90%{opacity:1} 100%{opacity:0; transform:rotate(360deg)}}
-  .ringcore{
-    position:absolute; inset:34px; border-radius:50%;
-    background:var(--panel2); border:1px solid var(--line);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; padding:12px; gap:4px;
-  }
-  .ringcore .who{font-size:10px; letter-spacing:.24em; color:var(--ink3)}
-  .ringcore .goal{font-size:12px; color:var(--ink); line-height:1.35}
-  .ringcore .live{font-size:10px; color:var(--sys); letter-spacing:.1em}
-  .ringlbl{position:absolute; font-size:9px; letter-spacing:.2em; color:var(--ink3)}
-  .ringlbl.n{top:-6px; left:50%; transform:translateX(-50%)}
-  .ringlbl.e{right:-8px; top:50%; transform:translateY(-50%) rotate(90deg)}
-  .ringlbl.s{bottom:-6px; left:50%; transform:translateX(-50%)}
-  .ringlbl.w{left:-8px; top:50%; transform:translateY(-50%) rotate(-90deg)}
-  .loopnote{color:var(--ink3); font-size:11px; text-align:center; padding:0 14px 12px}
-  /* ---------- status readout ---------- */
-  .readout{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-size:12px}
-  .readout dt{color:var(--ink3)} .readout dd{color:var(--ink)}
-  .readout .warn{color:var(--ops)} .readout .good{color:var(--sys)} .readout .bad{color:var(--bad)}
-  /* ---------- sessions ---------- */
-  .sessions{display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); padding:12px}
-  .sess{background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:10px 12px; min-width:0}
-  .sess .top{display:flex; align-items:baseline; gap:10px}
-  .sess .sid{font-weight:700; letter-spacing:.06em}
-  .sess .badge{font-size:10px; padding:1px 7px; border-radius:3px; letter-spacing:.14em}
-  .badge.live{color:var(--sys); border:1px solid var(--sys)}
-  .badge.idle{color:var(--ink3); border:1px solid var(--ink3)}
-  .sess .last{margin-left:auto; color:var(--ink3); font-size:11px; white-space:nowrap}
-  .rail{display:flex; gap:3px; margin:10px 0 4px}
-  .rail span{
-    flex:1; text-align:center; font-size:9px; letter-spacing:.1em; color:var(--ink3);
-    border-top:3px solid var(--line); padding-top:4px; text-transform:uppercase;
-  }
-  .rail span.on{color:var(--ink); border-top-color:var(--eng)}
-  .rail span.cur{color:var(--eng); border-top-color:var(--eng); font-weight:700}
-  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px}
-  .chip{
-    font-size:11px; padding:2px 8px; border-radius:3px;
-    border:1px solid var(--meta); color:var(--ink);
-    background:rgba(194,87,178,.12);
-  }
-  .chip.done{opacity:.38; border-color:var(--ink3); background:transparent; text-decoration:line-through}
-  .chip .r{color:var(--ink3); margin-left:4px; font-size:10px}
-  .sess .lastline{color:var(--ink2); font-size:11px; margin-top:8px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .none{color:var(--ink3); padding:16px; text-align:center}
-  /* ---------- skill tree ---------- */
-  .branch{border-left:3px solid var(--line); margin:10px 12px; padding:2px 0 2px 12px}
-  .branch h3{font-size:10px; letter-spacing:.22em; color:var(--ink2); margin-bottom:8px; text-transform:uppercase}
-  .skill{display:grid; grid-template-columns:150px 140px auto 1fr; gap:4px 12px; align-items:center; padding:5px 0; min-width:0}
-  .skill .nm{font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .skill .nm small{display:block; color:var(--ink3); font-weight:400}
-  .barwrap{display:flex; align-items:center; gap:8px}
-  .bar{height:6px; background:var(--line); border-radius:3px; overflow:hidden; flex:1}
-  .bar i{display:block; height:100%; border-radius:3px}
-  .uses{font-size:10px; color:var(--ink2); white-space:nowrap}
-  .skill .st{font-size:10px; letter-spacing:.12em; padding:1px 7px; border-radius:3px; border:1px solid var(--ink3); color:var(--ink2); white-space:nowrap; justify-self:start}
-  .st.active{border-color:var(--sys); color:var(--sys)}
-  .st.learning{border-color:var(--ops); color:var(--ops)}
-  .st.archived{opacity:.45}
-  .skill .meta2{font-size:11px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  @media (max-width:1400px){ .skill{grid-template-columns:150px 140px auto} .skill .meta2{grid-column:1/-1} }
-  .skill.dim{opacity:.45}
-  .goalchip{color:var(--ink2)}
-  /* ---------- hermes ---------- */
-  .qbox{width:100%; background:var(--bg); color:var(--ink); border:1px solid var(--line);
-    border-radius:4px; padding:7px 10px; font:inherit; outline:none}
-  .qbox:focus{border-color:var(--eng)}
-  .hstats{color:var(--ink3); font-size:11px; margin:8px 0 4px}
-  #hits{max-height:290px; overflow-y:auto}
-  .hit{border-top:1px solid var(--line); padding:8px 2px}
-  .hit .p{color:var(--ink); font-weight:600}
-  .hit .p .sc{color:var(--sys); font-weight:400; margin-right:6px}
-  .hit .s{color:var(--ink2); font-size:12px; margin-top:3px;
-    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden}
-  .hit .s:hover{-webkit-line-clamp:unset}
-  .hit .t{color:var(--ink3); font-size:10px; margin-top:3px; letter-spacing:.06em}
-  .hit.stale{opacity:.5}
-  .hit.stale .p::after{content:" [STALE]"; color:var(--ops)}
-  /* ---------- stream ---------- */
-  #stream{max-height:520px; overflow-y:auto; padding:6px 0}
-  .ev{display:flex; gap:8px; padding:3px 12px; font-size:12px; align-items:baseline}
-  .ev:hover{background:var(--panel2)}
-  .ev .tm{color:var(--ink3); white-space:nowrap}
-  .ev .ss{color:var(--ink2); white-space:nowrap; min-width:66px}
-  .ev .ty{white-space:nowrap; min-width:78px; font-weight:600}
-  .ev .dt{color:var(--ink2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1}
-  footer{color:var(--ink3); text-align:center; padding:6px 0 18px; font-size:11px}
 </style>
 </head>
 <body>
-<header>
-  <span class="brand">AIOS<b>//</b>MISSION CONTROL</span>
-  <span class="stat">SESSIONS <b id="c-sess">–</b></span>
-  <span class="stat">AGENTS <b id="c-agents">–</b></span>
-  <span class="stat">SKILLS <b id="c-skills">–</b></span>
-  <span class="stat">HERMES <b id="c-hermes">–</b></span>
-  <span class="stat">EVENTS <b id="c-events">–</b></span>
-  <span class="spacer"></span>
-  <span id="wire" class="ok-t"><span class="dot ok" id="wiredot"></span>WIRE OK</span>
-  <span id="clock">--:--:--</span>
-</header>
+<div class="shell">
+  <aside id="side">
+    <div class="logo">
+      <div class="mark"></div>
+      <div><b>Maestro</b><small>agent operations</small></div>
+    </div>
+    <div class="navlab">Menu</div>
+    <nav id="nav">
+      <a href="#/overview" data-s="overview"><svg viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Dashboard</a>
+      <a href="#/instances" data-s="instances"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Instances<span class="bub" id="n-inst">0</span></a>
+      <a href="#/skills" data-s="skills"><svg viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>Skill tree<span class="bub" id="n-skill">0</span></a>
+      <a href="#/brain" data-s="brain"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>Brain<span class="bub" id="n-brain">0</span></a>
+      <a href="#/graph" data-s="graph"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>Brain graph</a>
+      <a href="#/integrations" data-s="integrations"><svg viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>Integrations<span class="bub" id="n-int">0</span></a>
+    </nav>
+    <div class="navlab">General</div>
+    <nav id="nav2">
+      <a href="#/audit" data-s="audit"><svg viewBox="0 0 24 24"><path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/></svg>Audit log<span class="bub" id="n-audit">0</span></a>
+      <a href="#/guard" data-s="guard"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Guard</a>
+    </nav>
+    <div class="side-dark">
+      <div class="t">System</div>
+      <div class="row"><span>wire</span><b id="f-wire">–</b></div>
+      <div class="row"><span>guard</span><b id="f-guard">–</b></div>
+      <div class="row"><span>goal</span><b id="f-goal">–</b></div>
+    </div>
+  </aside>
 
-<main>
-  <!-- left: conductor -->
-  <div class="col">
-    <section class="panel">
-      <h2>CONDUCTOR <span class="tag">feedback loop</span></h2>
-      <div class="ringwrap">
-        <div class="ring"></div>
-        <div class="sweep" id="sweep"></div>
-        <span class="ringlbl n">PLAN</span><span class="ringlbl e">DELEGATE</span>
-        <span class="ringlbl s">REVIEW</span><span class="ringlbl w">REFLECT</span>
-        <div class="ringcore">
-          <span class="who">GOAL</span>
-          <span class="goal" id="goal">–</span>
-          <span class="live" id="ringlive"></span>
+  <div class="main">
+    <div class="topbar">
+      <button id="burger" aria-label="menu">☰</button>
+      <div class="search"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+        <input id="topsearch" placeholder="Search the brain…" autocomplete="off"></div>
+      <span class="spacer"></span>
+      <span class="clockchip mono" id="clock">--:--:--</span>
+    </div>
+
+    <!-- ============ OVERVIEW ============ -->
+    <section class="page" id="p-overview">
+      <div class="titlerow">
+        <div><h1>Dashboard</h1><div class="sub" id="subline">Conduct, delegate, and never solve twice.</div></div>
+        <span class="spacer"></span>
+        <button class="btn solid" data-go="#/instances"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Launch instance</button>
+        <button class="btn line" data-go="#/instances">Queue directive</button>
+      </div>
+      <div class="grid cols-4" id="kpis" style="margin-bottom:14px"></div>
+      <div class="grid row-mid" style="margin-bottom:14px">
+        <div class="card">
+          <h3>Session activity <span class="tag" id="actlabel"></span></h3>
+          <div class="caps" id="caps"></div>
+        </div>
+        <div class="card">
+          <h3>Directives <span class="tag">inbox</span></h3>
+          <div id="dirbox"></div>
+        </div>
+        <div class="card">
+          <h3>Latest solutions <span class="tag" id="soltag"></span></h3>
+          <div id="sollist"></div>
         </div>
       </div>
-      <p class="loopnote">sweep fires on every live poll of the wire —<br>a frozen ring means a dead system</p>
-    </section>
-    <section class="panel">
-      <h2>SYSTEM STATUS</h2>
-      <dl class="readout pad" id="readout"></dl>
-    </section>
-  </div>
-
-  <!-- middle: sessions + skills -->
-  <div class="col">
-    <section class="panel">
-      <h2>ACTIVE SESSIONS <span class="tag">one wire, every tab</span></h2>
-      <div class="sessions" id="sessions"></div>
-    </section>
-    <section class="panel">
-      <h2>SKILL TREE <span class="tag">earned after 3 uses · prune decays</span></h2>
-      <div id="skilltree"></div>
-    </section>
-  </div>
-
-  <!-- right: hermes + stream -->
-  <div class="col">
-    <section class="panel">
-      <h2>HERMES FLYWHEEL <span class="tag">never re-solve</span></h2>
-      <div class="pad">
-        <input class="qbox" id="q" type="search" placeholder="query solved problems…" autocomplete="off">
-        <div class="hstats" id="hstats"></div>
-        <div id="hits"></div>
+      <div class="grid row-bot">
+        <div class="card">
+          <h3>Sessions <span class="tag">one wire, every window</span></h3>
+          <div id="sesslist"></div>
+        </div>
+        <div class="card">
+          <h3>Goal progress <span class="tag">skills</span></h3>
+          <div class="gaugewrap"><div id="gauge"></div>
+            <div class="glegend" id="glegend"></div></div>
+        </div>
+        <div class="card wirecard">
+          <h3>Wire</h3>
+          <div class="wireclock" id="wireclock">--:--:--</div>
+          <div class="wiresub" id="wiresub">–</div>
+          <div class="wirebtns">
+            <button class="rbtn" id="pausebtn" title="pause polling"><svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+            <button class="rbtn stop" id="refreshbtn" title="refresh now"><svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 8 8h-3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
       </div>
     </section>
-    <section class="panel">
-      <h2>EVENT STREAM <span class="tag">state/events.jsonl</span></h2>
-      <div id="stream"></div>
+
+    <!-- ============ INSTANCES ============ -->
+    <section class="page" id="p-instances">
+      <div class="titlerow"><div><h1>Instances</h1><div class="sub">Launch and manage every Claude Code window from one place.</div></div></div>
+      <div class="grid cols-2" style="margin-bottom:14px">
+        <div class="card deck">
+          <h3>Launch <span class="tag">runs on this repo with hooks live</span></h3>
+          <div style="padding-top:12px">
+            <textarea id="mission" placeholder="What should this instance work on?"></textarea>
+            <div class="modes" id="modes"></div>
+            <div class="opts">
+              <label>Model
+                <select id="opt-model" title="least-privilege spend: smallest model that can do the job">
+                  <option value="default">Default (inherit)</option>
+                  <option value="haiku">Haiku · cheap/fast</option>
+                  <option value="sonnet">Sonnet · balanced</option>
+                  <option value="opus">Opus · heavy reasoning</option>
+                </select></label>
+              <label>Budget
+                <select id="opt-budget"><option value="15">15 turns</option><option value="40" selected>40 turns</option><option value="80">80 turns</option></select></label>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px">
+              <button class="btn solid" id="go">Launch</button>
+              <span class="hintline" id="hint"></span>
+            </div>
+          </div>
+        </div>
+        <div class="card dirs">
+          <h3>Directive inbox <span class="tag">read at boot & between missions</span></h3>
+          <div id="dirs"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Managed windows <span class="tag">Focus pops the real terminal</span></h3>
+        <div class="icards" id="instances"></div>
+      </div>
+      <div class="card">
+        <h3>Wire sessions <span class="tag">every instance reporting in</span></h3>
+        <div class="icards" id="wire-sessions"></div>
+      </div>
+    </section>
+
+    <!-- ============ SKILLS ============ -->
+    <section class="page" id="p-skills">
+      <div class="titlerow"><div><h1>Skill tree</h1><div class="sub">Earned after 3 real uses · unlinked skills decay at prune.</div></div></div>
+      <div class="card" id="skilltree"></div>
+    </section>
+
+    <!-- ============ BRAIN ============ -->
+    <section class="page" id="p-brain">
+      <div class="titlerow"><div><h1>Brain</h1><div class="sub">Hermes flywheel — solve once, never re-solve.</div></div></div>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Search</h3>
+          <div style="padding-top:12px">
+            <input class="qbox" id="q" type="search" placeholder="e.g. 'hook block tool call'…" autocomplete="off">
+            <div class="hstats" id="hstats"></div><div id="hits"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Obsidian wire</h3>
+          <div id="vaultinfo" style="font-size:12.5px; color:var(--ink2); line-height:1.7; padding-top:10px"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GRAPH ============ -->
+    <section class="page" id="p-graph">
+      <div class="titlerow"><div><h1>Brain graph</h1><div class="sub">Your solved problems as a living network — hover to still it, click to read.</div></div></div>
+      <div class="grid cols-2">
+        <div class="card" style="padding:8px"><svg id="graph" viewBox="0 0 820 470"></svg></div>
+        <div class="card gdetail"><h3>Node</h3><div id="gpanel" style="padding-top:10px"></div></div>
+      </div>
+    </section>
+
+    <!-- ============ INTEGRATIONS ============ -->
+    <section class="page" id="p-integrations">
+      <div class="titlerow"><div><h1>Integrations</h1><div class="sub">MCP servers, hooks, agents, and skills wired into Maestro.</div></div></div>
+      <div class="card"><div class="intgrid" id="intgrid" style="padding-top:0"></div></div>
+    </section>
+
+    <!-- ============ AUDIT ============ -->
+    <section class="page" id="p-audit">
+      <div class="titlerow"><div><h1>Audit log</h1><div class="sub">Everything that happened, verbatim — state/events.jsonl.</div></div></div>
+      <div class="card">
+        <div class="filters"><select id="fl-sess"><option value="">all sessions</option></select><select id="fl-type"><option value="">all events</option></select><input id="fl-text" type="search" placeholder="search detail…"></div>
+        <div class="auditwrap"><table class="audit" id="audit"></table></div>
+      </div>
+    </section>
+
+    <!-- ============ GUARD ============ -->
+    <section class="page" id="p-guard">
+      <div class="titlerow"><div><h1>Guard</h1><div class="sub">Black-and-white rules. Fails closed.</div></div></div>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Gated action classes</h3>
+          <table class="gtable">
+            <tr><th>class</th><th>examples</th></tr>
+            <tr><td><code class="k">destructive-delete</code></td><td>rm -rf, Remove-Item -Recurse, git reset --hard, force push</td></tr>
+            <tr><td><code class="k">deploy</code></td><td>gh release, kubectl/terraform apply, docker push</td></tr>
+            <tr><td><code class="k">external-send</code></td><td>curl/wget POST·PUT·DELETE, sendmail, twilio</td></tr>
+            <tr><td><code class="k">spend</code></td><td>npm publish, twine upload, stripe, aws/gcloud create</td></tr>
+            <tr><td><code class="k">soul-write</code></td><td>any write into soul/ — hand edits only</td></tr>
+          </table>
+          <div style="font-size:12.5px; color:var(--ink2); padding-top:12px">Approve one class for a window: <code class="k">python .claude/hooks/approve.py &lt;class&gt; --minutes 15</code> — the token expires and the guard re-arms.</div>
+        </div>
+        <div class="card dirs"><h3>Open approval tokens</h3><div id="tokens"></div></div>
+      </div>
     </section>
   </div>
-</main>
-<footer>AIOS · substrate for whatever runs on top · MIT</footer>
+</div>
+<div id="toast"></div>
 
 <script>
 "use strict";
-const ACCENT = {meta:"#c257b2", ops:"#c07c20", engineering:"#2ba3bd", misc:"#63a338"};
-const EVCOLOR = {
-  "session-start":"#63a338","session-stop":"#566068","stage":"#2ba3bd","tool":"#8a939e",
-  "spawn":"#c257b2","agent-exit":"#c257b2","loop":"#c07c20","review":"#2ba3bd",
-  "test":"#c07c20","ship":"#63a338","goal":"#63a338","skill":"#c257b2","audit":"#c07c20"
-};
-const STAGES = ["think","plan","build","review","test","ship"];
-const LIVE_MS = 15*60*1000;
-const S = {events:[], skills:null, solved:[], approvals:{tokens:[]}, wire:true};
+const GREEN="#135c38", MID="#1e7c4c", MINT="#a9dcbd", INK="#15211a";
+const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo style)
+const PIE=[GREEN, MID, MINT, "#79b892", "#c9cec5", "#8a958c"]; // pie chart exempt from 3-color cap
+const STAGES=["think","plan","build","review","test","ship"];
+const LIVE_MS=15*60*1000;
+const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",paused:false};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-
-async function jget(path){
-  const r = await fetch(path, {cache:"no-store"});
-  if(!r.ok) throw new Error(path);
-  return r.text();
-}
-const jsonl = t => t.split("\n").filter(l => l.trim()).map(l => { try{return JSON.parse(l)}catch(e){return null} }).filter(Boolean);
-
+/* ---------- data ---------- */
+async function jget(p,opt){const r=await fetch(p,{cache:"no-store"});if(!r.ok){if(opt)return"";throw new Error(p)}return r.text()}
+const jsonl=t=>t.split("\n").filter(l=>l.trim()).map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(Boolean);
 async function poll(){
+  if(S.paused){render();return}
   try{
-    const [ev, reg, sol, app] = await Promise.all([
-      jget("/state/events.jsonl"), jget("/skills/registry.json"),
-      jget("/hermes/solved.jsonl"), jget("/state/approvals.json")
-    ]);
-    S.events = jsonl(ev); S.skills = JSON.parse(reg);
-    S.solved = jsonl(sol); S.approvals = JSON.parse(app);
-    S.wire = true;
-    const sw = $("sweep"); sw.classList.remove("fire"); void sw.offsetWidth; sw.classList.add("fire");
-  }catch(e){ S.wire = false; }
+    const [ev,reg,sol,app,inb,obs,inst,integ]=await Promise.all([
+      jget("/state/events.jsonl"),jget("/skills/registry.json"),jget("/hermes/solved.jsonl"),
+      jget("/state/approvals.json"),jget("/state/inbox.jsonl",1),jget("/memory/OBSIDIAN.md",1),
+      jget("/api/instances",1),jget("/api/integrations",1)]);
+    S.events=jsonl(ev);S.skills=JSON.parse(reg);S.solved=jsonl(sol);
+    S.approvals=JSON.parse(app);S.inbox=jsonl(inb);
+    S.instances=(inst?JSON.parse(inst).windows:[])||[];S.integ=integ?JSON.parse(integ):null;
+    S.vault=(obs.split("\n").find(l=>l.toLowerCase().startsWith("vault:"))||"vault: ?").split(":").slice(1).join(":").trim();
+    S.wire=true;
+  }catch(e){S.wire=false}
   render();
 }
 
+/* ---------- derived ---------- */
 function sessions(){
-  const m = new Map();
+  const m=new Map();
   for(const e of S.events){
-    const id = e.session || "?";
-    if(!m.has(id)) m.set(id, {id, n:0, agents:[], exits:0, stage:null, last:null, lastline:""});
-    const s = m.get(id);
-    s.n++; s.last = e.ts || s.last;
-    if(e.stage && STAGES.includes(e.stage)) s.stage = e.stage;
-    if(e.event === "spawn") s.agents.push({name:e.agent || "agent", detail:e.detail || ""});
-    if(e.event === "agent-exit") s.exits++;
-    if(e.detail) s.lastline = e.detail;
+    const id=e.session||"?";
+    if(id==="operator")continue;
+    if(!m.has(id))m.set(id,{id,agents:[],exits:0,stage:null,last:null,lastline:""});
+    const s=m.get(id);s.last=e.ts||s.last;
+    if(e.stage&&STAGES.includes(e.stage))s.stage=e.stage;
+    if(e.event==="spawn")s.agents.push({name:e.agent||"agent",detail:e.detail||""});
+    if(e.event==="agent-exit")s.exits++;
+    if(e.detail)s.lastline=e.detail;
   }
-  const out = [...m.values()];
-  for(const s of out) s.live = s.last && (Date.now() - Date.parse(s.last)) < LIVE_MS;
-  out.sort((a,b) => (b.last||"").localeCompare(a.last||""));
+  const out=[...m.values()];
+  for(const s of out)s.live=s.last&&(Date.now()-Date.parse(s.last))<LIVE_MS;
+  out.sort((a,b)=>(b.live-a.live)||(b.last||"").localeCompare(a.last||""));
   return out;
 }
+const doneIds=()=>new Set(S.events.filter(e=>e.event==="directive-done").flatMap(e=>(String(e.detail||"").match(/[0-9a-f]{8}/g)||[])));
+function activitySeries(n){
+  const ts=S.events.map(e=>Date.parse(e.ts)).filter(x=>x);
+  if(!ts.length)return{arr:new Array(n).fill(0),labels:new Array(n).fill(""),label:"no events"};
+  const now=Date.now(),span=Math.min(24*3600e3,Math.max(30*60e3,now-Math.min(...ts)));
+  const start=now-span,size=span/n,arr=new Array(n).fill(0);
+  for(const t of ts){if(t>=start)arr[Math.min(n-1,Math.floor((t-start)/size))]++}
+  const labels=arr.map((_,i)=>{const d=new Date(start+i*size+size/2);
+    return span>3*3600e3?String(d.getHours()).padStart(2,"0"):String(d.getHours()).padStart(2,"0")+":"+String(Math.floor(d.getMinutes()/10)*10).padStart(2,"0")});
+  const m=Math.round(span/60000);
+  return{arr,labels,label:m<90?m+" min":(m/60).toFixed(m%60?1:0)+"h"};
+}
 
+/* ---------- svg builders ---------- */
+function sparkline(vals,w,h,color){
+  const max=Math.max(1,...vals),n=vals.length;
+  const pts=vals.map((v,i)=>[i/(n-1||1)*w,h-2-(v/max)*(h-4)]);
+  const d=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function arcPath(cx,cy,R,r,a0,a1){
+  const p=(rad,a)=>[cx+rad*Math.cos(a),cy+rad*Math.sin(a)];
+  const[x0,y0]=p(R,a0),[x1,y1]=p(R,a1),[x2,y2]=p(r,a1),[x3,y3]=p(r,a0);
+  const big=(a1-a0)>Math.PI?1:0;
+  return`M${x0.toFixed(1)} ${y0.toFixed(1)}A${R} ${R} 0 ${big} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}L${x2.toFixed(1)} ${y2.toFixed(1)}A${r} ${r} 0 ${big} 0 ${x3.toFixed(1)} ${y3.toFixed(1)}Z`;
+}
+function gauge(segs,size,center,sub){
+  // 270° gauge, remainder hatched — circular motif per the reference
+  const total=segs.reduce((s,d)=>s+d.v,0)||1,R=size/2-6,r=R*0.68,cx=size/2,cy=size/2;
+  const A0=0.75*Math.PI,SPAN=1.5*Math.PI;let a=A0,out="";
+  out+=`<defs><pattern id="hp" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)"><rect width="6" height="6" fill="#f2f4ee"/><line x1="1" y1="0" x2="1" y2="6" stroke="#dde2d7" stroke-width="2"/></pattern></defs>`;
+  out+=`<path d="${arcPath(cx,cy,R,r,A0,A0+SPAN)}" fill="url(#hp)"/>`;
+  for(const s of segs){const a1=a+(s.v/total)*SPAN;
+    if(s.v>0)out+=`<path d="${arcPath(cx,cy,R,r,a+0.02,Math.max(a+0.02,a1-0.02))}" fill="${s.c}"/>`;a=a1}
+  out+=`<text x="${cx}" y="${cy+2}" text-anchor="middle" font-size="30" font-weight="750" fill="${INK}" font-family="Cascadia Mono,monospace">${center}</text>`;
+  out+=`<text x="${cx}" y="${cy+22}" text-anchor="middle" font-size="11" fill="#98a29a">${sub}</text>`;
+  return`<svg width="${size}" height="${size*0.92}" viewBox="0 0 ${size} ${size*0.92}">${out}</svg>`;
+}
+
+/* ---------- components ---------- */
+const arrowSvg='<svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg>';
+function statCard(dark,label,num,unit,delta,deltaCls,go){
+  return`<div class="card stat ${dark?"dark":""}">
+    <button class="cbtn" data-go="${go}" title="open">${arrowSvg}</button>
+    <div class="lab">${label}</div>
+    <div class="num">${num}${unit?`<em> ${unit}</em>`:""}</div>
+    <span class="deltapill ${deltaCls||""}">${delta}</span></div>`;
+}
+function sessRow(s,i){
+  const initials=s.id.slice(0,2).toUpperCase();
+  const stage=s.stage?`working the ${s.stage} stage`:"no stage reported yet";
+  const agents=s.agents.length?` · ${Math.max(0,s.agents.length-s.exits)} agent(s) in field`:"";
+  return`<div class="lrow"><div class="sq ${i%2?"alt":""}">${esc(initials)}</div>
+    <div class="bd"><div class="t mono">${esc(s.id)}</div><div class="s">${esc(stage+agents)} · ${esc(s.lastline).slice(0,80)}</div></div>
+    <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span></div>`;
+}
+
+/* ---------- render ---------- */
 function render(){
-  const ss = sessions();
-  const liveAgents = ss.reduce((n,s) => n + Math.max(0, s.agents.length - s.exits), 0);
-  const reg = S.skills || {goal:"–", skills:{}};
-  const sk = Object.entries(reg.skills || {});
-  const earned = sk.filter(([,v]) => v.status === "active").length;
-  const staleN = S.solved.filter(r => r.stale).length;
+  const ss=sessions(),live=ss.filter(s=>s.live);
+  const liveAgents=ss.reduce((n,s)=>n+Math.max(0,s.agents.length-s.exits),0);
+  const reg=S.skills||{goal:"–",skills:{}},sk=Object.entries(reg.skills||{});
+  const earned=sk.filter(([,v])=>v.status==="active").length;
+  const learning=sk.filter(([,v])=>v.status==="learning").length;
+  const cand=sk.filter(([,v])=>v.status==="candidate").length;
+  const tokens=(S.approvals.tokens||[]).filter(t=>t.expires*1000>Date.now());
+  const staleN=S.solved.filter(r=>r.stale).length;
+  const aliveInst=S.instances.filter(w=>w.alive);
+  const done=doneIds();
+  const queued=S.inbox.filter(d=>!done.has(d.id));
 
-  // header
-  $("c-sess").textContent = ss.filter(s=>s.live).length + "/" + ss.length;
-  $("c-agents").textContent = liveAgents;
-  $("c-skills").textContent = earned + "/" + sk.length;
-  $("c-hermes").textContent = S.solved.length;
-  $("c-events").textContent = S.events.length;
-  $("wire").className = S.wire ? "ok-t" : "down-t";
-  $("wiredot").className = "dot " + (S.wire ? "ok" : "down");
-  $("wire").childNodes[1].textContent = S.wire ? "WIRE OK" : "WIRE DOWN";
+  // sidebar
+  $("f-wire").textContent=S.paused?"paused":(S.wire?"live":"down");
+  $("f-wire").style.color=S.wire&&!S.paused?"":"#f0b4ac";
+  $("f-guard").textContent=tokens.length?tokens.length+" open":"armed";
+  $("f-goal").textContent=(earned+"/"+sk.length+" earned");
+  $("n-inst").textContent=aliveInst.length;$("n-skill").textContent=earned+"/"+sk.length;
+  $("n-brain").textContent=S.solved.length;$("n-audit").textContent=S.events.length;
+  $("n-int").textContent=S.integ?(S.integ.mcp.length+S.integ.agents.length):0;
+  $("subline").textContent=`${live.length} live session${live.length===1?"":"s"} · ${liveAgents} agent${liveAgents===1?"":"s"} in the field · goal: ${reg.goal||"–"}`;
 
-  // conductor
-  $("goal").textContent = reg.goal || "(no goal set)";
-  $("ringlive").textContent = ss.filter(s=>s.live).length + " LIVE SESSION" + (ss.filter(s=>s.live).length===1?"":"S");
+  // KPIs — first card dark (reference pattern)
+  const spark=activitySeries(20).arr,half=spark.length>>1;
+  const a1=spark.slice(0,half).reduce((a,b)=>a+b,0),a2=spark.slice(half).reduce((a,b)=>a+b,0);
+  const dpct=a1?Math.round((a2-a1)/a1*100):(a2?100:0);
+  $("kpis").innerHTML=
+    statCard(true,"Events on the wire",S.events.length,"",dpct>=0?`↑ ${dpct}% vs earlier`:`↓ ${Math.abs(dpct)}% vs earlier`,dpct>=0?"":"neg","#/audit")+
+    statCard(false,"Live instances",aliveInst.length,"/ "+S.instances.length,live.length+" reporting on wire","mut","#/instances")+
+    statCard(false,"Skills earned",earned,"/ "+sk.length,learning+" learning · "+cand+" candidate","","#/skills")+
+    statCard(false,"Brain size",S.solved.length,"",staleN?staleN+" stale":"all fresh",staleN?"neg":"","#/brain");
 
-  // readout
-  const lastEv = S.events[S.events.length-1];
-  const age = lastEv && lastEv.ts ? Math.round((Date.now()-Date.parse(lastEv.ts))/1000) : null;
-  const tokens = (S.approvals.tokens||[]).filter(t => t.expires*1000 > Date.now());
-  $("readout").innerHTML =
-    `<dt>guard</dt><dd class="${tokens.length ? "warn":"good"}">${tokens.length ? tokens.length+" open token(s): "+tokens.map(t=>esc(t.action)).join(", ") : "ARMED · no open tokens"}</dd>` +
-    `<dt>wire</dt><dd class="${S.wire?"good":"bad"}">${S.wire ? "polling ok" : "UNREACHABLE"}</dd>` +
-    `<dt>last event</dt><dd>${age===null ? "–" : age<120 ? age+"s ago" : Math.round(age/60)+"m ago"}</dd>` +
-    `<dt>hermes</dt><dd>${S.solved.length} solved · ${staleN} stale</dd>` +
-    `<dt>registry</dt><dd>${sk.length} skills · ${earned} earned</dd>`;
+  // capsule chart
+  const act=activitySeries(7);
+  const mx=Math.max(1,...act.arr),peak=act.arr.indexOf(Math.max(...act.arr));
+  $("actlabel").textContent="last "+act.label;
+  $("caps").innerHTML=act.arr.map((v,i)=>{
+    const hpct=Math.round(v/mx*100);
+    return`<div class="capcol">${i===peak&&v>0?`<span class="peakpill">${v}</span>`:""}
+      <div class="captrack"><div class="capfill" style="height:${hpct}%;background:${CAPFILL[i%3]}"></div></div>
+      <span class="capx">${act.labels[i]}</span></div>`;
+  }).join("");
 
-  // sessions
-  $("sessions").innerHTML = ss.length ? ss.map(s => {
-    const cur = STAGES.indexOf(s.stage);
-    const rail = STAGES.map((st,i) =>
-      `<span class="${i<cur?"on":i===cur?"cur":""}">${st}</span>`).join("");
-    const chips = s.agents.map((a,i) =>
-      `<span class="chip ${i < s.exits ? "done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?'<span class="r">✓</span>':""}</span>`).join("");
-    return `<div class="sess">
-      <div class="top"><span class="sid">◈ ${esc(s.id)}</span>
-        <span class="badge ${s.live?"live":"idle"}">${s.live?"LIVE":"IDLE"}</span>
-        <span class="last">${esc((s.last||"").slice(11,19))}</span></div>
-      <div class="rail">${rail}</div>
-      ${s.agents.length ? `<div class="chips">${chips}</div>` : ""}
-      <div class="lastline">▸ ${esc(s.lastline || "no detail")}</div>
-    </div>`;
-  }).join("") : `<div class="none">no sessions on the wire yet</div>`;
+  // directives box (reminder-card style)
+  const d0=queued[queued.length-1];
+  $("dirbox").innerHTML=d0
+    ?`<div style="padding-top:10px"><div style="font-size:11.5px;color:var(--ink3)" class="mono">${esc(d0.id)} · queued</div>
+       <div style="font-weight:650;font-size:15px;line-height:1.4;margin:6px 0 14px">${esc(d0.text)}</div>
+       <button class="btn solid sm" data-go="#/instances">Send an instance</button>
+       ${queued.length>1?`<div style="font-size:12px;color:var(--ink3);margin-top:10px">+ ${queued.length-1} more queued</div>`:""}</div>`
+    :`<div style="padding-top:10px"><div style="font-weight:650;font-size:15px;margin:2px 0 12px">Inbox clear.</div>
+       <div style="font-size:12.5px;color:var(--ink2);margin-bottom:14px">Sessions read directives at boot and between missions.</div>
+       <button class="btn line sm" data-go="#/instances">Queue one</button></div>`;
 
-  // skill tree
-  const branches = {};
-  for(const [name,v] of sk) (branches[v.branch || "misc"] ??= []).push([name,v]);
-  $("skilltree").innerHTML = Object.entries(branches).map(([br,items]) => {
-    const ac = ACCENT[br] || ACCENT.misc;
-    return `<div class="branch" style="border-left-color:${ac}">
-      <h3 style="color:${ac}">${esc(br)}</h3>` +
-      items.map(([name,v]) => {
-        const pct = Math.min(100, (v.uses||0)/3*100);
-        const dim = v.status === "archived" ? "dim" : "";
-        return `<div class="skill ${dim}">
-          <span class="nm">${esc(name)}<small>${esc(v.trigger||"")}</small></span>
-          <span class="barwrap"><span class="bar"><i style="width:${pct}%;background:${ac}"></i></span><span class="uses">${Math.min(v.uses||0,3)}/3</span></span>
-          <span class="st ${esc(v.status)}">${esc(v.status)}</span>
-          <span class="meta2" style="grid-column:auto">${(v.goals&&v.goals.length)?`⛿ <span class="goalchip">${esc(v.goals.join(" · "))}</span>`:"no goal link — decays at prune"}</span>
-        </div>`;
-      }).join("") + `</div>`;
-  }).join("") || `<div class="none">registry empty</div>`;
+  // latest solutions
+  $("soltag").textContent=S.solved.length+" solved";
+  $("sollist").innerHTML=S.solved.slice(-4).reverse().map((r,i)=>
+    `<div class="lrow"><div class="sq ${i%2?"alt":""}">${esc((r.tags&&r.tags[0]||"?").slice(0,2))}</div>
+      <div class="bd"><div class="t">${esc(r.problem)}</div><div class="s mono">${esc(r.id)} · ${esc((r.ts||"").slice(0,10))}${r.stale?" · stale":""}</div></div></div>`
+  ).join("")||`<div class="none">nothing solved yet</div>`;
 
+  // sessions list
+  $("sesslist").innerHTML=ss.slice(0,5).map(sessRow).join("")||`<div class="none">no sessions on the wire</div>`;
+
+  // gauge
+  const gp=sk.length?Math.round(earned/sk.length*100):0;
+  $("gauge").innerHTML=gauge([{v:earned,c:GREEN},{v:learning,c:MINT}],200,gp+"%","toward goal");
+  $("glegend").innerHTML=`<span><i style="background:${GREEN}"></i>Earned ${earned}</span>
+    <span><i style="background:${MINT}"></i>Learning ${learning}</span>
+    <span><i style="background:repeating-linear-gradient(45deg,#f2f4ee 0 3px,#dde2d7 3px 5px)"></i>Candidate ${cand}</span>`;
+
+  // wire card
+  const lastEv=S.events[S.events.length-1];
+  const age=lastEv&&lastEv.ts?Math.round((Date.now()-Date.parse(lastEv.ts))/1000):null;
+  $("wiresub").textContent=(S.paused?"polling paused":"polling live")+" · last event "+(age===null?"–":age<120?age+"s ago":Math.round(age/60)+"m ago");
+
+  // instances page
+  $("hint").textContent=$("hint").textContent||"";
+  $("dirs").innerHTML=S.inbox.slice(-10).reverse().map(d=>
+    `<div class="lrow"><span class="id mono" style="font-size:11px;color:var(--ink3)">${esc(d.id)}</span>
+      <div class="bd"><div class="t" style="white-space:normal">${esc(d.text)}</div></div>
+      <span class="pill ${done.has(d.id)?"live":"idle"}">${done.has(d.id)?"Done":"Queued"}</span></div>`
+  ).join("")||`<div class="none">no directives queued</div>`;
+  $("instances").innerHTML=S.instances.length?S.instances.slice().reverse().map(w=>
+    `<div class="inst"><div class="top"><span class="sid">${esc(w.sid)}</span>
+      <span class="pill idle">${w.mode==="tab"?"Tab":"Background"}</span>
+      <span class="pill ${w.alive?"live":"idle"}">${w.alive?"Running":"Exited"}</span></div>
+      <div class="spend">model <b>${esc(w.model||"default")}</b>${w.budget?" · budget "+w.budget+"t":""}</div>
+      <div class="mi">${esc(w.mission)}</div>
+      <div style="display:flex;gap:8px"><button class="btn line sm" data-focus="${esc(w.sid)}" ${w.alive?"":"disabled"}>Focus</button>
+      <button class="btn line sm danger" data-close="${esc(w.sid)}">Close</button></div></div>`
+  ).join(""):`<div class="none">No windows launched yet — use the launcher above.</div>`;
+  $("wire-sessions").innerHTML=ss.length?ss.map(s=>{
+    const cur=STAGES.indexOf(s.stage);
+    const rail=STAGES.map((st,i)=>`<span class="${i<cur?"on":i===cur?"cur":""}">${st}</span>`).join("");
+    const chips=s.agents.map((a,i)=>`<span class="achip ${i<s.exits?"done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?" ✓":""}</span>`).join("");
+    return`<div class="inst"><div class="top"><span class="sid">${esc(s.id)}</span>
+      <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span>
+      <span style="margin-left:auto;color:var(--ink3);font-size:11px" class="mono">${esc((s.last||"").slice(11,19))}</span></div>
+      <div class="rail">${rail}</div>${s.agents.length?`<div class="achips">${chips}</div>`:""}
+      <div class="mi mono" style="-webkit-line-clamp:1;margin-top:8px">▸ ${esc(s.lastline||"no detail yet")}</div></div>`;
+  }).join(""):`<div class="none">nothing on the wire yet</div>`;
+
+  // skills page
+  const branches={};for(const[n,v]of sk)(branches[v.branch||"misc"]??=[]).push([n,v]);
+  $("skilltree").innerHTML=Object.entries(branches).map(([br,items])=>
+    `<div class="branch"><h4>${esc(br)}</h4>`+items.map(([n,v])=>{
+      const pct=Math.min(100,(v.uses||0)/3*100);
+      return`<div class="skill ${v.status==="archived"?"dim":""}">
+        <span class="nm">${esc(n)}<small>${esc(v.trigger||"")}</small></span>
+        <span class="captiny"><span class="trk"><i style="width:${pct}%"></i></span><span class="n">${Math.min(v.uses||0,3)}/3</span></span>
+        <span class="pill ${v.status==="active"?"live":v.status==="learning"?"idle":"idle"}">${esc(v.status)}</span>
+        <span class="meta2">${(v.goals&&v.goals.length)?esc(v.goals.join(" · ")):"no goal link — decays at prune"}</span></div>`;
+    }).join("")+`</div>`).join("")||`<div class="none">registry empty</div>`;
+
+  // brain
   renderHermes();
-  renderStream();
-  document.title = `AIOS // ${ss.filter(s=>s.live).length} live · ${S.events.length} ev`;
+  const vslug=(S.vault.split("\\").pop()||"");
+  $("vaultinfo").innerHTML=`<div>Brain section: <code class="k">Maestro/Hermes/</code></div>
+    <div>Vault: <span class="mono" style="font-size:11px">${esc(S.vault)}</span></div>
+    <div><a href="obsidian://open?vault=${encodeURIComponent(vslug)}&file=${encodeURIComponent("Maestro/Hermes/_index")}">Open the index in Obsidian ↗</a></div>
+    <div style="margin-top:6px;color:var(--ink3)">Every solved problem lands as a linked card plus a regenerated index. No naked facts — writes carry a source and a freshness stamp.</div>
+    <div style="margin-top:6px"><b>${S.solved.length}</b> cards · <b>${staleN}</b> stale</div>`;
+
+  // integrations
+  if(S.integ)renderInteg();
+  renderAudit();
+  $("tokens").innerHTML=tokens.length?tokens.map(t=>
+    `<div class="lrow"><div class="bd"><div class="t mono">${esc(t.action)}</div></div>
+     <span class="pill warn">expires ${new Date(t.expires*1000).toLocaleTimeString("en-GB")}</span></div>`
+  ).join(""):`<div class="none">none — guard fully armed</div>`;
+
+  Graph.sync();
+  document.title=`Maestro — ${live.length} live · ${S.events.length} ev`;
 }
 
-const tok = t => new Set((t.toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w => w.length > 2));
+/* ---------- hermes search ---------- */
+const tok=t=>new Set((t.toLowerCase().match(/[a-z0-9]+/g)||[]).filter(w=>w.length>2));
 function renderHermes(){
-  const q = $("q").value.trim();
-  let rows;
-  if(q){
-    const qs = tok(q);
-    rows = S.solved.map(r => {
-      const doc = tok(r.problem+" "+r.solution+" "+(r.tags||[]).join(" "));
-      let sc = qs.size ? [...qs].filter(w => doc.has(w)).length/qs.size : 0;
-      if(r.stale) sc *= .5;
-      return [sc, r];
-    }).filter(([sc]) => sc > 0).sort((a,b) => b[0]-a[0]).slice(0,5);
-    $("hstats").textContent = rows.length
-      ? rows.filter(([sc])=>sc>=.34).length + " hit(s) · threshold 0.34"
-      : "MISS — solve it, then feed the flywheel: hermes.py note";
-  }else{
-    rows = S.solved.slice().reverse().slice(0,4).map(r => [null, r]);
-    $("hstats").textContent = S.solved.length + " solved · " +
-      S.solved.filter(r=>r.stale).length + " stale · type to search";
+  const q=$("q").value.trim();let rows;
+  if(q){const qs=tok(q);
+    rows=S.solved.map(r=>{const doc=tok(r.problem+" "+r.solution+" "+(r.tags||[]).join(" "));
+      let sc=qs.size?[...qs].filter(w=>doc.has(w)).length/qs.size:0;if(r.stale)sc*=.5;return[sc,r]})
+      .filter(([s])=>s>0).sort((a,b)=>b[0]-a[0]).slice(0,6);
+    $("hstats").textContent=rows.length?rows.filter(([s])=>s>=.34).length+" hit(s) · threshold 0.34":"Miss — solve it, then feed the flywheel";
+  }else{rows=S.solved.slice().reverse().slice(0,6).map(r=>[null,r]);
+    $("hstats").textContent=S.solved.length+" solved · "+S.solved.filter(r=>r.stale).length+" stale · type to search"}
+  $("hits").innerHTML=rows.map(([sc,r])=>
+    `<div class="hit ${r.stale?"stale":""}"><div class="p">${sc!==null?`<span class="sc">${sc.toFixed(2)}</span>`:""}${esc(r.problem)}</div>
+     <div class="s">${esc(r.solution)}</div>
+     <div class="t">[${esc(r.id)}] ${(r.tags||[]).map(t=>"#"+esc(t)).join(" ")} · ${esc((r.ts||"").slice(0,10))}${r.stale?" · stale":""}</div></div>`).join("");
+}
+$("q").addEventListener("input",renderHermes);
+$("topsearch").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){$("q").value=$("topsearch").value;location.hash="#/brain";renderHermes()}
+});
+
+/* ---------- integrations ---------- */
+const II={
+  server:'<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/>',
+  anchor:'<circle cx="12" cy="5" r="3"/><line x1="12" x2="12" y1="22" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/>',
+  bot:'<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  branch:'<line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/>'
+};
+function renderInteg(){
+  const g=S.integ;
+  const card=(title,icon,items,addHint,statusN)=>`<div class="intcard"><div class="ih"><svg viewBox="0 0 24 24">${II[icon]}</svg>${title}<span class="st">${statusN}</span></div><ul>${items||`<li style="color:var(--ink3)">none</li>`}</ul><div class="add">${addHint}</div></div>`;
+  $("intgrid").innerHTML=
+    card("MCP servers","server",g.mcp.map(m=>`<li>${esc(m.name)}<span class="mono">${esc(m.command)}</span></li>`).join(""),`Add: edit <code>.mcp.json</code>`,g.mcp.length+" wired")+
+    card("Hooks","anchor",g.hooks.map(h=>`<li>${esc(h.event)}<span class="mono">${h.count} hook(s)</span></li>`).join(""),`Add: edit <code>.claude/settings.json</code>`,g.hooks.reduce((s,h)=>s+h.count,0)+" active")+
+    card("Agents","bot",g.agents.map(a=>`<li>${esc(a)}</li>`).join(""),`Add: drop a file in <code>.claude/agents/</code>`,g.agents.length+" on call")+
+    card("Skills","branch",Object.entries(g.skills).map(([k,v])=>`<li>${esc(k)}<span class="mono">${v}</span></li>`).join(""),`Add: <code>python skills/engine.py add …</code>`,(g.skills.active||0)+" earned");
+}
+
+/* ---------- audit ---------- */
+const MUTED=new Set(["tool","session-stop","bootstrap"]);
+function renderAudit(){
+  const selS=$("fl-sess"),selT=$("fl-type");
+  const sessIds=[...new Set(S.events.map(e=>e.session||"?"))],types=[...new Set(S.events.map(e=>e.event||"?"))].sort();
+  const keep=(sel,vals,label)=>{const cur=sel.value;if(sel.dataset.n!==String(vals.length)){
+    sel.innerHTML=`<option value="">${label}</option>`+vals.map(v=>`<option>${esc(v)}</option>`).join("");
+    sel.dataset.n=String(vals.length);sel.value=cur}};
+  keep(selS,sessIds,"all sessions");keep(selT,types,"all events");
+  const ft=$("fl-text").value.toLowerCase();
+  const rows=S.events.filter(e=>(!selS.value||(e.session||"?")===selS.value)&&(!selT.value||(e.event||"?")===selT.value)&&(!ft||JSON.stringify(e).toLowerCase().includes(ft)));
+  $("audit").innerHTML=rows.slice(-500).reverse().map(e=>
+    `<tr><td class="tm">${esc((e.ts||"").slice(5,19).replace("T"," "))}</td><td class="ss">${esc(e.session||"?")}</td>
+     <td class="ty ${MUTED.has(e.event)?"mut":""}">${esc(e.event||"?")}</td>
+     <td class="dt" title="${esc(e.detail||"")}">${esc(e.detail||e.tool||(e.stage?"stage → "+e.stage:"")||e.agent||"")}</td></tr>`
+  ).join("")||`<tr><td class="none">no events match</td></tr>`;
+}
+["fl-sess","fl-type","fl-text"].forEach(id=>$(id).addEventListener("input",renderAudit));
+
+/* ---------- launcher ---------- */
+const MODES=[["tab","New window","opens a real Claude Code terminal on this repo — focus & close it from here"],
+  ["background","Background","headless run; log lands in state/spawn-logs/"],
+  ["directive","Directive","queues a note running sessions pick up at boot / between missions"]];
+$("modes").dataset.mode="tab";
+$("modes").innerHTML=MODES.map(([v,l],i)=>`<button class="mode ${i===0?"on":""}" data-v="${v}">${l}</button>`).join("");
+$("hint").textContent=MODES[0][2];
+$("modes").addEventListener("click",e=>{const b=e.target.closest(".mode");if(!b)return;
+  $("modes").dataset.mode=b.dataset.v;
+  $("modes").querySelectorAll(".mode").forEach(x=>x.classList.toggle("on",x===b));
+  $("hint").textContent=MODES.find(m=>m[0]===b.dataset.v)[2]});
+function toast(msg,err){const n=document.createElement("div");n.className="note"+(err?" err":"");
+  n.textContent=msg;$("toast").appendChild(n);setTimeout(()=>n.remove(),5000)}
+async function post(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
+$("go").addEventListener("click",async()=>{
+  const text=$("mission").value.trim();if(!text)return toast("Write the mission first.",true);
+  const mode=$("modes").dataset.mode,btn=$("go");btn.disabled=true;
+  const model=$("opt-model").value,budget=+$("opt-budget").value;
+  try{const j=mode==="directive"?await post("/api/message",{text}):await post("/api/spawn",{mission:text,mode,model,budget});
+    $("mission").value="";
+    toast(mode==="directive"?`Directive ${j.id} queued.`:mode==="tab"?`Window ${j.id} opening (${j.model}).`:`Background run ${j.id} started (${j.model}, ${budget}t).`);
+    poll();
+  }catch(e){toast("Failed: "+e.message,true)}btn.disabled=false});
+document.addEventListener("click",async e=>{
+  const g=e.target.closest("[data-go]");if(g){location.hash=g.dataset.go;return}
+  const f=e.target.closest("[data-focus]"),c=e.target.closest("[data-close]");
+  if(f){try{await post("/api/focus",{sid:f.dataset.focus});toast("Window brought to front.")}catch(err){toast("Focus failed: "+err.message,true)}}
+  if(c){if(!confirm("Close this Claude Code window?"))return;
+    try{await post("/api/close",{sid:c.dataset.close});toast("Window closed.");poll()}catch(err){toast("Close failed: "+err.message,true)}}
+});
+$("pausebtn").addEventListener("click",()=>{S.paused=!S.paused;
+  toast(S.paused?"Polling paused.":"Polling resumed.");render()});
+$("refreshbtn").addEventListener("click",()=>{S.paused=false;poll();toast("Refreshed.")});
+
+/* ---------- force-directed brain graph (organic, monochrome) ---------- */
+const Graph=(function(){
+  const svg=$("graph"),NS="http://www.w3.org/2000/svg";
+  const W=820,H=470;
+  let nodes=[],links=[],sig="",raf=0,hover=false,selected=null;
+  function build(){
+    nodes=[];links=[];
+    const core={id:"core",type:"root",label:"hermes",r:13,c:"#3c463f",x:W/2,y:H/2,vx:0,vy:0,fixed:false};
+    nodes.push(core);
+    const tags=[...new Set(S.solved.flatMap(r=>r.tags||[]))];
+    const tagIx={};
+    tags.forEach((t,i)=>{const a=i/Math.max(1,tags.length)*2*Math.PI;
+      nodes.push({type:"tag",label:t,r:6.5,c:"#5d675f",data:t,
+        x:W/2+130*Math.cos(a)+Math.random()*30-15,y:H/2+110*Math.sin(a)+Math.random()*30-15,vx:0,vy:0});
+      tagIx[t]=nodes.length-1;links.push([0,tagIx[t]])});
+    S.solved.forEach(rw=>{
+      const prim=(rw.tags||[])[0];const anchor=prim!=null?nodes[tagIx[prim]]:core;
+      nodes.push({type:"card",label:rw.problem,r:4,c:"#b6bfb6",data:rw,
+        x:anchor.x+Math.random()*90-45,y:anchor.y+Math.random()*90-45,vx:0,vy:0});
+      const ci=nodes.length-1;
+      (rw.tags||[]).forEach(t=>{if(tagIx[t]!=null)links.push([tagIx[t],ci])});
+      if(!(rw.tags||[]).length)links.push([0,ci]);
+    });
+    draw();
+    if(!selected&&S.solved.length){ // never open blank — seed with newest card
+      const newest=S.solved[S.solved.length-1];
+      const ix=nodes.findIndex(n=>n.type==="card"&&n.data&&n.data.id===newest.id);
+      if(ix>=0)select(ix);
+    }
   }
-  $("hits").innerHTML = rows.map(([sc,r]) =>
-    `<div class="hit ${r.stale?"stale":""}">
-      <div class="p">${sc!==null?`<span class="sc">${sc.toFixed(2)}</span>`:""}${esc(r.problem)}</div>
-      <div class="s">${esc(r.solution)}</div>
-      <div class="t">[${esc(r.id)}] ${(r.tags||[]).map(esc).join(" · ")} · ${esc((r.ts||"").slice(0,10))}</div>
-    </div>`).join("");
-}
-$("q").addEventListener("input", renderHermes);
+  function draw(){
+    svg.innerHTML="";
+    const gl=document.createElementNS(NS,"g");svg.appendChild(gl);
+    links.forEach(()=>{const l=document.createElementNS(NS,"line");
+      l.setAttribute("stroke","#d4d8cf");l.setAttribute("stroke-width","1");gl.appendChild(l)});
+    const gn=document.createElementNS(NS,"g");svg.appendChild(gn);
+    nodes.forEach((nd,i)=>{
+      const g=document.createElementNS(NS,"g");g.setAttribute("class","gnode");g.dataset.i=i;
+      const c=document.createElementNS(NS,"circle");
+      c.setAttribute("r",nd.r);c.setAttribute("fill",nd.c);
+      g.appendChild(c);
+      if(nd.type!=="card"){const t=document.createElementNS(NS,"text");
+        t.setAttribute("text-anchor","middle");t.setAttribute("dy",-nd.r-5);
+        t.setAttribute("font-size","10.5");t.setAttribute("fill","#7d877f");
+        t.textContent=nd.label;g.appendChild(t)}
+      nd._el=g;nd._c=c;gn.appendChild(g);
+    });
+    links.forEach((lk,k)=>{lk._el=gl.children[k]});
+    position();
+  }
+  function physics(){
+    // simple force layout: pair repulsion + link springs + soft centering
+    for(let i=0;i<nodes.length;i++){
+      const a=nodes[i];
+      for(let j=i+1;j<nodes.length;j++){
+        const b=nodes[j];
+        let dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
+        if(d2<1)d2=1;if(d2>40000)continue;
+        const f=900/d2,d=Math.sqrt(d2);
+        dx/=d;dy/=d;a.vx+=dx*f;a.vy+=dy*f;b.vx-=dx*f;b.vy-=dy*f;
+      }
+      a.vx+=(W/2-a.x)*0.0012;a.vy+=(H/2-a.y)*0.0012; // soft centering
+    }
+    for(const[i,j]of links){
+      const a=nodes[i],b=nodes[j];
+      const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(1,Math.sqrt(dx*dx+dy*dy));
+      const rest=(a.type==="root"||b.type==="root")?120:62;
+      const f=(d-rest)*0.008;
+      a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;
+    }
+    for(const n of nodes){
+      if(!hover&&!reduced){n.vx+=(Math.random()-.5)*0.06;n.vy+=(Math.random()-.5)*0.06} // ambient drift
+      n.vx*=0.86;n.vy*=0.86;
+      n.x=Math.max(24,Math.min(W-24,n.x+n.vx));
+      n.y=Math.max(20,Math.min(H-20,n.y+n.vy));
+    }
+  }
+  function position(){
+    nodes.forEach(nd=>{if(nd._el)nd._el.setAttribute("transform",`translate(${nd.x.toFixed(1)},${nd.y.toFixed(1)})`)});
+    links.forEach(lk=>{const a=nodes[lk[0]],b=nodes[lk[1]];
+      if(lk._el){lk._el.setAttribute("x1",a.x.toFixed(1));lk._el.setAttribute("y1",a.y.toFixed(1));
+        lk._el.setAttribute("x2",b.x.toFixed(1));lk._el.setAttribute("y2",b.y.toFixed(1))}});
+  }
+  function loop(){if(!hover&&!reduced){physics();position()}raf=requestAnimationFrame(loop)}
+  function select(i){
+    const nd=nodes[i];if(!nd)return;
+    selected=i;
+    nodes.forEach(n=>{if(n._c){n._c.setAttribute("stroke",n===nd?GREEN:"none");n._c.setAttribute("stroke-width",n===nd?"2.5":"0")}});
+    if(nd.type==="card"){const r=nd.data;
+      $("gpanel").innerHTML=`<div class="gt">solved problem · ${esc(r.id)}</div><div class="gp">${esc(r.problem)}</div>
+        <div class="gs">${esc(r.solution)}</div>
+        <div style="margin-top:8px">${(r.tags||[]).map(t=>`<span class="gtag">#${esc(t)}</span>`).join("")}</div>
+        <div style="margin-top:8px;color:var(--ink3);font-size:11px" class="mono">${esc((r.ts||"").slice(0,10))} · source ${esc(r.source||"?")}${r.stale?" · stale":""}</div>`;
+    }else if(nd.type==="tag"){const list=S.solved.filter(r=>(r.tags||[]).includes(nd.data));
+      $("gpanel").innerHTML=`<div class="gt">tag cluster</div><div class="gp">#${esc(nd.data)}</div>
+        <div class="gs">${list.length} solved problem(s):</div>
+        <ul style="margin-top:6px;padding-left:16px;font-size:12.5px;color:var(--ink2)">${list.map(r=>`<li style="margin:3px 0">${esc(r.problem)}</li>`).join("")}</ul>`;
+    }else{$("gpanel").innerHTML=`<div class="gt">core</div><div class="gp">Hermes</div>
+      <div class="gs">${S.solved.length} solved problems across ${new Set(S.solved.flatMap(r=>r.tags||[])).size} tags. Solve once, never re-solve.</div>`}
+  }
+  svg.addEventListener("pointerenter",()=>hover=true);
+  svg.addEventListener("pointerleave",()=>hover=false);
+  svg.addEventListener("click",e=>{const g=e.target.closest(".gnode");if(g)select(+g.dataset.i)});
+  return{sync(){const s=S.solved.map(r=>r.id).join(",")+"|"+S.solved.filter(r=>r.stale).length;
+    if(s!==sig){sig=s;selected=null;build()}if(!raf)loop()}};
+})();
 
-function renderStream(){
-  const el = $("stream");
-  const pinned = el.scrollTop < 8; // stay pinned to newest unless user scrolled
-  el.innerHTML = S.events.slice(-80).reverse().map(e =>
-    `<div class="ev">
-      <span class="tm">${esc((e.ts||"").slice(11,19))}</span>
-      <span class="ss">${esc(e.session||"?")}</span>
-      <span class="ty" style="color:${EVCOLOR[e.event]||"#8a939e"}">${esc(e.event||"?")}</span>
-      <span class="dt">${esc(e.detail || e.tool || (e.stage?("stage → "+e.stage):"") || e.agent || "")}</span>
-    </div>`).join("");
-  if(pinned) el.scrollTop = 0;
-}
-
-setInterval(() => { $("clock").textContent = new Date().toLocaleTimeString("en-GB"); }, 1000);
-poll();
-setInterval(poll, 2500);
+/* ---------- routing & clocks ---------- */
+const TITLES={overview:1,instances:1,skills:1,brain:1,graph:1,integrations:1,audit:1,guard:1};
+function route(){const h=location.hash.slice(2)||"overview";const s=TITLES[h]?h:"overview";
+  document.querySelectorAll(".page").forEach(p=>p.classList.toggle("show",p.id==="p-"+s));
+  document.querySelectorAll("#nav a,#nav2 a").forEach(a=>a.classList.toggle("on",a.dataset.s===s));
+  $("side").classList.remove("open")}
+window.addEventListener("hashchange",route);
+$("burger").addEventListener("click",()=>$("side").classList.toggle("open"));
+setInterval(()=>{const t=new Date().toLocaleTimeString("en-GB");
+  $("clock").textContent=t;$("wireclock").textContent=t},1000);
+route();poll();setInterval(poll,2500);
 </script>
 </body>
 </html>

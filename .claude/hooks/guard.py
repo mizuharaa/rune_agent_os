@@ -60,7 +60,7 @@ def main():
     if not action or approved(action):
         return 0
     sys.stderr.write(
-        "AIOS GUARD: blocked gated action '%s'.\n"
+        "MAESTRO GUARD: blocked gated action '%s'.\n"
         "Evidence: %s\n"
         "If Daniel approved this, mint a token: "
         "python .claude/hooks/approve.py %s --minutes 15\n"

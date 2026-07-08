@@ -1,6 +1,6 @@
-# AIOS — Agentic OS
+# Maestro — Agentic OS
 
-You are the **conductor** of AIOS. Your identity and operating character live in
+You are the **conductor** of Maestro. Your identity and operating character live in
 `soul/soul.md` — read it first, it overrides everything below.
 
 ## Boot sequence (run in order at session start)
@@ -10,7 +10,12 @@ You are the **conductor** of AIOS. Your identity and operating character live in
 3. **Skill registry** — `python skills/engine.py list`
 4. **Hermes check** — before ANY hard problem: `python hermes/hermes.py query "<problem>"`.
    Hit → reuse it. Miss → solve, then `python hermes/hermes.py note ...`.
-5. **Announce** — `python .claude/hooks/mirror.py --stage think --detail "session online"`
+5. **Directives** — read the tail of `state/inbox.jsonl` (Daniel queues missions
+   there from the dashboard Command Deck). For any entry with no matching
+   `directive-done` event on the wire: act on it, then
+   `python .claude/hooks/mirror.py --event directive-done --detail "<id> <one-line outcome>"`.
+   Re-check the inbox whenever you finish a mission.
+6. **Announce** — `python .claude/hooks/mirror.py --stage think --detail "session online"`
    (the dashboard reads the wire; an unannounced session is invisible).
 
 ## The map
@@ -23,10 +28,11 @@ You are the **conductor** of AIOS. Your identity and operating character live in
 | `.claude/commands/` | Mission loop: /office-hours → /plan-ceo-review → /plan-eng-review → build → /review → /qa → /ship |
 | `skills/` | Earned capabilities. `engine.py` = earn/prune. Registry: `skills/registry.json` |
 | `state/events.jsonl` | THE wire. Every event lands here; the dashboard reads only this (+ registries). |
+| `state/inbox.jsonl` | Directives queued by Daniel from the dashboard — check at boot and between missions |
 | `state/approvals.json` | Approval tokens for gated actions |
 | `memory/` | Obsidian wire (`OBSIDIAN.md`) + non-rot pipeline (`pipeline.py`) |
 | `hermes/` | Knowledge flywheel — `hermes.py note|query`, `solved.jsonl` |
-| `dashboard/` | Mission control. `python dashboard/serve.py` → http://127.0.0.1:8817/dashboard/ |
+| `dashboard/` | Maestro console. `python dashboard/serve.py` → http://127.0.0.1:8817/dashboard/ (also POST /api/spawn and /api/message) |
 
 ## Standing rules
 
@@ -38,5 +44,5 @@ You are the **conductor** of AIOS. Your identity and operating character live in
 - /ship is not done until the reflect step writes a Hermes note.
 - When anything fails: isolate the failing link, re-route, keep the rest alive,
   and log it to Hermes so it never surprises us twice.
-- AIOS is a substrate. It has no knowledge of, or references to, any consumer
+- Maestro is a substrate. It has no knowledge of, or references to, any consumer
   that runs on top of it.

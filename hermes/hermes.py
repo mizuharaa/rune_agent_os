@@ -46,14 +46,41 @@ def tokens(text):
     return {w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2}
 
 
-def card_path(row):
+def brain_folder():
     vp = vault_path()
     if not vp or not os.path.isdir(vp):
         return None
-    slug = re.sub(r"[^a-z0-9]+", "-", row["problem"].lower()).strip("-")[:60]
-    folder = os.path.join(vp, "AIOS", "Hermes")
+    folder = os.path.join(vp, "Maestro", "Hermes")
     os.makedirs(folder, exist_ok=True)
+    return folder
+
+
+def card_path(row):
+    folder = brain_folder()
+    if not folder:
+        return None
+    slug = re.sub(r"[^a-z0-9]+", "-", row["problem"].lower()).strip("-")[:60]
     return os.path.join(folder, "%s-%s.md" % (row["id"], slug))
+
+
+def write_index(rows):
+    """Regenerate the browsable MOC for the Maestro section of the brain."""
+    folder = brain_folder()
+    if not folder:
+        return
+    stale_n = sum(1 for r in rows if r.get("stale"))
+    lines = [
+        "---", "generated: " + datetime.datetime.now().isoformat(timespec="seconds"), "---", "",
+        "# Maestro · Hermes — solved problems", "",
+        "%d solved · %d stale. One card per problem, solved exactly once." % (len(rows), stale_n), "",
+    ]
+    for r in sorted(rows, key=lambda r: r.get("ts", ""), reverse=True):
+        name = os.path.splitext(os.path.basename(card_path(r)))[0]
+        flag = " ⚠ STALE" if r.get("stale") else ""
+        tags = " ".join("#" + t for t in r.get("tags", []))
+        lines.append("- [[%s|%s]] — %s %s%s" % (name, r["problem"], (r.get("ts") or "")[:10], tags, flag))
+    with open(os.path.join(folder, "_index.md"), "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
 
 
 def write_card(row):
@@ -85,6 +112,7 @@ def cmd_note(problem, solution, tags, source):
     with open(SOLVED, "a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
     path = write_card(row)
+    write_index(load())
     print("noted [%s] %s" % (row["id"], problem[:70]))
     if path:
         print("card: %s" % path)
@@ -124,6 +152,7 @@ def cmd_stale(rid):
             r["stale"] = True
             save(rows)
             write_card(r)
+            write_index(rows)
             print("marked stale: [%s] %s" % (rid, r["problem"][:70]))
             return 0
     print("no such id: " + rid)

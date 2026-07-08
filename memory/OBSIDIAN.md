@@ -2,8 +2,9 @@
 
 vault: C:\Obsidian_Brain\Daniel_Obsidian_Vault
 
-- AIOS **reads** anywhere in the vault, **writes only under `AIOS/`** inside it
-  (Hermes cards land in `AIOS/Hermes/`).
+- Maestro **reads** anywhere in the vault, **writes only under `Maestro/`** inside it
+  (Hermes cards land in `Maestro/Hermes/`, with a browsable MOC at
+  `Maestro/Hermes/_index.md` regenerated on every note).
 - No naked facts: every memory write carries a `source` and a freshness stamp
   (`fresh_until`). The pipeline refuses writes without a source.
 - Anti-rot cadence (part of /skill review week): `python memory/pipeline.py dedup`,

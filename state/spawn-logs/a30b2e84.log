@@ -1,0 +1,24 @@
+Audit ran clean. Here's what the wire shows:
+
+**87 events across 13 sessions.** Breakdown is healthy — `tool` (28), `stage`/`loop` (11 each), the rest tapering off.
+
+**Only one "repeat" flagged, and it's a false positive:**
+```
+cd "/c/Users/user/OneDrive/Desktop/Python   x5
+```
+That's not a repeated *workflow* — it's the working-directory prefix that rides in front of every Bash command. The audit's heuristic (`audit.py:26-28`) takes the first two tokens of each `tool` detail as the "verb," so it's clustering on `cd "/c/...` instead of the actual command (`python`, `git`, etc.). No genuine automatable pattern repeats ≥3×.
+
+So: **nothing real repeated yet** — the wire needs more history before a true automation candidate surfaces. The `cd` cluster is noise from how the detail is tokenized.
+
+One cheap fix if you want this audit to be useful going forward: skip the `cd "…" &&` prefix before extracting the verb, so it keys on the real command.
+
+```python
+# audit.py:26-28 — strip a leading `cd "..." &&` before taking the verb
+def verb(detail):
+    d = str(detail)
+    if d.startswith("cd ") and "&&" in d:
+        d = d.split("&&", 1)[1].strip()
+    return " ".join(d.split()[:2])
+```
+
+Skipped: applying it — you only asked me to audit and note. Add when you want the next audit to catch real repeats instead of the `cd` prefix.

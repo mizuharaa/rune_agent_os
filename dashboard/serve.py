@@ -24,11 +24,15 @@ import os
 import re
 import subprocess
 import sys
+import time
+import urllib.parse
 import uuid
 from ctypes import wintypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "memory"))
+from pipeline import vault_path  # single source of truth for the vault location
 MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 INBOX = os.path.join(ROOT, "state", "inbox.jsonl")
 WINDOWS = os.path.join(ROOT, "state", "windows.json")
@@ -110,6 +114,64 @@ def focus_by(pid, needle):
     return _foreground(hits[0]) if hits else False
 
 
+VCACHE = {"t": 0.0, "data": None}
+
+
+def vault_tree():
+    """The real brain: walk the Obsidian vault, return notes + folders +
+    wikilink edges so the graph shows what Maestro actually knows."""
+    now = time.time()
+    if VCACHE["data"] and now - VCACHE["t"] < 20:
+        return VCACHE["data"]
+    vp = vault_path()
+    notes = []
+    if vp and os.path.isdir(vp):
+        for dirpath, dirs, files in os.walk(vp):
+            dirs[:] = [d for d in dirs if not d.startswith(".")]
+            for fn in files:
+                if fn.endswith(".md"):
+                    full = os.path.join(dirpath, fn)
+                    rel = os.path.relpath(full, vp).replace("\\", "/")
+                    folder = rel.split("/")[0] if "/" in rel else "(root)"
+                    try:
+                        mt = os.path.getmtime(full)
+                    except OSError:
+                        mt = 0
+                    notes.append({"path": rel, "name": fn[:-3], "folder": folder, "mtime": mt})
+    notes.sort(key=lambda n: -n["mtime"])
+    notes = notes[:240]  # ponytail: cap for graph perf; paginate if the vault outgrows it
+    ix = {}
+    for i, n in enumerate(notes):
+        ix.setdefault(n["name"].lower(), i)
+    links = []
+    for i, n in enumerate(notes):
+        try:
+            txt = open(os.path.join(vp, n["path"]), encoding="utf-8", errors="ignore").read(20000)
+        except OSError:
+            continue
+        for m in re.findall(r"\[\[([^\]\|#\n]+)", txt):
+            j = ix.get(m.strip().lower())
+            if j is not None and j != i:
+                links.append([i, j])
+    data = {"vault": vp, "notes": notes, "links": links[:600]}
+    VCACHE.update(t=now, data=data)
+    return data
+
+
+def vault_note(rel):
+    """Safe read of one vault note (preview) — path must stay inside the vault."""
+    vp = vault_path()
+    if not vp:
+        return None
+    full = os.path.realpath(os.path.join(vp, rel))
+    if not full.startswith(os.path.realpath(vp)) or not full.endswith(".md"):
+        return None
+    try:
+        return open(full, encoding="utf-8", errors="ignore").read(2600)
+    except OSError:
+        return None
+
+
 def integrations():
     out = {"mcp": [], "hooks": [], "agents": [], "skills": {}}
     try:
@@ -129,6 +191,10 @@ def integrations():
     adir = os.path.join(ROOT, ".claude", "agents")
     if os.path.isdir(adir):
         out["agents"] = sorted(f[:-3] for f in os.listdir(adir) if f.endswith(".md"))
+    cdir = os.path.join(ROOT, ".claude", "commands")
+    out["commands"] = sorted(
+        "/" + f[:-3] for f in os.listdir(cdir) if f.endswith(".md")
+    ) if os.path.isdir(cdir) else []
     try:
         reg = json.load(open(os.path.join(ROOT, "skills", "registry.json"), encoding="utf-8"))
         out["skills"] = dict(collections.Counter(s["status"] for s in reg["skills"].values()))
@@ -164,6 +230,14 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, doc)
         if self.path == "/api/integrations":
             return self._json(200, integrations())
+        if self.path == "/api/vault":
+            return self._json(200, vault_tree())
+        if self.path.startswith("/api/vault-note"):
+            q = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            body = vault_note((q.get("path") or [""])[0])
+            if body is None:
+                return self._json(404, {"error": "note not found"})
+            return self._json(200, {"content": body})
         return super().do_GET()
 
     def do_POST(self):
@@ -194,6 +268,8 @@ class Handler(SimpleHTTPRequestHandler):
     def api_spawn(self, data):
         mission = (data.get("mission") or "").strip()
         mode = data.get("mode", "tab")
+        ssh = data.get("ssh") if isinstance(data.get("ssh"), dict) else None
+        skip = bool(data.get("skip", True))  # --dangerously-skip-permissions is now a tick
         if not mission:
             return self._json(400, {"error": "empty mission"})
         # conscious spend: least privilege covers the MODEL and the turn budget,
@@ -207,11 +283,38 @@ class Handler(SimpleHTTPRequestHandler):
             budget = 40
         safe = re.sub(r'[&|<>^%"\r\n]', " ", mission).strip()
         sid = uuid.uuid4().hex[:8]
+        # human name so the manager reads like a team, not a hex dump
+        name = (data.get("name") or "").strip()[:40] or re.sub(r"\s+", " ", mission)[:40]
         title = "MAESTRO " + sid
-        if mode == "background":
+        flag = " --dangerously-skip-permissions" if skip else ""
+        mflag = (" --model " + model) if model else ""
+        host_label = None
+        if ssh:
+            # Remote terminal. Password is typed INSIDE the window (ssh prompts);
+            # Maestro never stores or transmits credentials itself.
+            mode = "ssh"
+            host = re.sub(r"[^\w.\-]", "", str(ssh.get("host", "")))
+            user = re.sub(r"[^\w.\-]", "", str(ssh.get("user", "")))
+            try:
+                port = max(1, min(65535, int(ssh.get("port") or 22)))
+            except (TypeError, ValueError):
+                port = 22
+            rdir = re.sub(r"[\"'`$\\]", "", str(ssh.get("dir") or "")).strip()
+            if not host or not user:
+                return self._json(400, {"error": "ssh needs host and user"})
+            host_label = "%s@%s" % (user, host)
+            rsafe = re.sub(r"[&|<>^%\"'`$\\\r\n]", " ", mission).strip()
+            remote = ("cd '%s' && " % rdir) if rdir else ""
+            rcmd = "%sclaude%s%s '%s'" % (remote, flag, mflag, rsafe)
+            cmd = 'conhost.exe cmd /k title %s && ssh -t -p %d %s "%s"' % (title, port, host_label, rcmd)
+            p = subprocess.Popen(cmd, cwd=ROOT,
+                                 creationflags=CREATE_NEW_CONSOLE if IS_WIN else 0)
+        elif mode == "background":
             os.makedirs(LOGS, exist_ok=True)
             log = open(os.path.join(LOGS, sid + ".log"), "w", encoding="utf-8")
-            argv = ["claude", "-p", mission, "--dangerously-skip-permissions", "--max-turns", str(budget)]
+            argv = ["claude", "-p", mission, "--max-turns", str(budget)]
+            if skip:
+                argv.insert(2, "--dangerously-skip-permissions")
             if model:
                 argv += ["--model", model]
             p = subprocess.Popen(argv, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT, shell=IS_WIN)
@@ -220,19 +323,20 @@ class Handler(SimpleHTTPRequestHandler):
             # conhost.exe hosts the window itself, so p.pid owns the HWND (used by
             # /api/focus) and it forces a real console even if Windows Terminal is
             # the default terminal (which would otherwise share one window).
-            mflag = (" --model " + model) if model else ""
-            cmd = 'conhost.exe cmd /k title %s && claude --dangerously-skip-permissions%s "%s"' % (title, mflag, safe)
+            cmd = 'conhost.exe cmd /k title %s && claude%s%s "%s"' % (title, flag, mflag, safe)
             p = subprocess.Popen(cmd, cwd=ROOT,
                                  creationflags=CREATE_NEW_CONSOLE if IS_WIN else 0)
         doc = load_windows()
         doc["windows"].append({
-            "sid": sid, "title": title, "mission": mission[:200], "mode": mode,
+            "sid": sid, "name": name, "title": title, "mission": mission[:200], "mode": mode,
+            "host": host_label, "skip": skip,
             "model": model or "default", "budget": budget if mode == "background" else None,
             "pid": p.pid, "started": datetime.datetime.now().isoformat(timespec="seconds")})
         save_windows(doc)
         emit(session="operator", event="user-spawn", agent=mode,
-             detail=("[%s] model=%s budget=%s · %s"
-                     % (sid, model or "default", budget if mode == "background" else "-", mission))[:200])
+             detail=("[%s] %s%s model=%s skip=%s · %s"
+                     % (sid, name, (" @" + host_label) if host_label else "",
+                        model or "default", skip, mission))[:200])
         return self._json(200, {"ok": True, "id": sid, "mode": mode, "model": model or "default"})
 
     def api_focus(self, data):

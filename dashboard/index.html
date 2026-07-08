@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Maestro</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23135c38'/%3E%3Cpath d='M4.2 11.8L10.5 4.6' stroke='%23fff' stroke-width='1.6' stroke-linecap='round'/%3E%3Ccircle cx='11.6' cy='4.2' r='1.6' fill='%23a9dcbd'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23135c38'/%3E%3Ctext x='8' y='12' text-anchor='middle' font-family='Segoe UI,sans-serif' font-size='11' font-weight='800' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --canvas:#eef0ea; --card:#ffffff; --line:#e5e8df; --line2:#d6dbcf;
@@ -30,14 +30,17 @@
   aside{background:var(--card); border-right:1px solid var(--line);
     padding:22px 14px 16px; display:flex; flex-direction:column; gap:2px;
     position:sticky; top:0; height:100vh; overflow-y:auto}
-  .logo{display:flex; align-items:center; gap:10px; padding:0 8px 20px}
-  .logo .mark{width:34px; height:34px; border-radius:10px; background:var(--green); flex:none; position:relative}
-  .logo .mark::before{content:""; position:absolute; left:8px; bottom:8px; width:15px; height:2.4px;
-    background:#fff; border-radius:2px; transform:rotate(-42deg); transform-origin:left center}
-  .logo .mark::after{content:""; position:absolute; right:7px; top:7px; width:5.5px; height:5.5px;
-    border-radius:50%; background:var(--mint)}
-  .logo b{font-size:17px; font-weight:750; letter-spacing:-.01em}
-  .logo small{display:block; color:var(--ink3); font-size:11px}
+  .logo{display:block; padding:2px 10px 20px}
+  .wordmark{
+    font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif;
+    font-size:24px; font-weight:800; letter-spacing:-.045em; line-height:1; display:inline-block;
+    background:linear-gradient(105deg,var(--green-deep) 0%,var(--green) 32%,#54b381 50%,var(--green) 68%,var(--green-deep) 100%);
+    background-size:240% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:sheen 6s ease-in-out infinite;
+  }
+  @keyframes sheen{0%,100%{background-position:0% 50%} 50%{background-position:100% 50%}}
+  @media (prefers-reduced-motion: reduce){ .wordmark{animation:none} }
+  .logo small{display:block; color:var(--ink3); font-size:11px; margin-top:4px}
   .navlab{font-size:10.5px; color:var(--ink3); font-weight:650; letter-spacing:.04em; padding:12px 10px 5px}
   nav a{display:flex; align-items:center; gap:10px; padding:8.5px 10px; border-radius:10px;
     color:var(--ink2); font-weight:530; position:relative; transition:background .15s,color .15s}
@@ -169,6 +172,13 @@
   .opts select{background:#fbfcf9; border:1.5px solid var(--line2); border-radius:10px; padding:6px 10px; outline:none}
   .opts select:focus{border-color:var(--green)}
   .hintline{font-size:12px; color:var(--ink3)}
+  .opts .chk input{accent-color:var(--green); width:15px; height:15px}
+  .sshf{flex:1; min-width:110px; padding:8px 12px}
+  .cchip{position:relative; display:inline-block}
+  .cchip input{position:absolute; opacity:0; inset:0; cursor:pointer; margin:0}
+  .cchip span{display:inline-block; border:1.5px solid var(--line2); border-radius:99px; padding:3.5px 12px;
+    font-size:12px; font-weight:600; color:var(--ink2); font-family:var(--mono); transition:.15s}
+  .cchip input:checked+span{background:var(--green); border-color:var(--green); color:#fff}
   /* ============ instances ============ */
   .icards{display:grid; gap:12px; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); padding-top:12px}
   .icards>*{min-width:0}
@@ -176,6 +186,7 @@
   .inst:hover{box-shadow:var(--lift); transform:translateY(-2px)}
   .inst .top{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .inst .sid{font-family:var(--mono); font-weight:700; font-size:13px}
+  .inst .iname{font-weight:700; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0}
   .inst .spend{font-size:11px; color:var(--ink3); font-family:var(--mono); margin:4px 0 7px}
   .inst .spend b{color:var(--green); font-weight:650}
   .inst .mi{font-size:12.5px; color:var(--ink2); margin-bottom:10px; line-height:1.45;
@@ -190,21 +201,40 @@
   .achip.done{opacity:.55; background:var(--canvas); color:var(--ink3)}
   .none{color:var(--ink3); padding:18px 4px; text-align:center; font-size:13px}
   .dirs .lrow .id{font-family:var(--mono); font-size:11px; color:var(--ink3)}
-  /* ============ skills ============ */
-  .branch{margin:14px 0; border-left:3px solid var(--line); padding:2px 0 2px 16px}
-  .branch h4{font-size:12.5px; font-weight:700; margin-bottom:8px}
-  .skill{display:grid; grid-template-columns:190px 170px auto 1fr; gap:6px 16px; align-items:center; padding:7px 0}
-  .skill>*{min-width:0}
-  @media (max-width:1240px){ .skill{grid-template-columns:150px 1fr auto} .skill .meta2{grid-column:1/-1} }
-  .skill .nm{font-weight:650; font-size:13px}
-  .skill .nm small{display:block; color:var(--ink3); font-weight:450; font-family:var(--mono); font-size:11px}
+  /* ============ skill tree ============ */
+  .tree{display:flex; flex-direction:column; align-items:center; padding-top:8px}
+  .youpill{border:1.5px solid var(--line2); border-radius:99px; padding:5px 20px; font-weight:650;
+    font-size:12.5px; color:var(--ink2); background:var(--canvas)}
+  .stem{width:2px; height:20px; background:var(--line2)}
+  .cond{background:var(--green-dark); color:#fff; border-radius:14px; padding:10px 28px; text-align:center;
+    box-shadow:0 8px 20px -8px rgba(13,47,30,.45)}
+  .cond b{font-size:14.5px}
+  .cond small{display:block; color:#9dbfa9; font-size:11px}
+  .branchrow{display:grid; grid-template-columns:repeat(auto-fit,minmax(215px,1fr)); gap:14px;
+    width:100%; position:relative; padding-top:24px}
+  .branchrow>*{min-width:0}
+  .branchrow::before{content:""; position:absolute; top:0; left:11%; right:11%; height:2px; background:var(--line2)}
+  .bcol{position:relative}
+  .bcol::before{content:""; position:absolute; top:-24px; left:50%; width:2px; height:24px; background:var(--line2)}
+  .bhead{border:1.5px solid var(--green); color:var(--green); border-radius:12px; text-align:center;
+    padding:7px 10px; font-weight:700; font-size:13px; background:var(--mint-soft)}
+  .bhead small{display:block; font-weight:500; color:var(--ink2); font-size:11px}
+  .snode{border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-top:10px;
+    background:var(--card); box-shadow:var(--shadow); transition:box-shadow .2s, transform .2s}
+  .snode:hover{box-shadow:var(--lift); transform:translateY(-1px)}
+  .snode .sn{display:flex; align-items:center; gap:8px; font-weight:650; font-size:13px; min-width:0}
+  .snode .sn span:first-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .snode .sn .pill{margin-left:auto; flex:none}
+  .snode .tr{font-family:var(--mono); font-size:11px; color:var(--ink3); margin:3px 0 8px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .snode.dim{opacity:.55}
   .captiny{display:flex; align-items:center; gap:8px}
   .captiny .trk{flex:1; height:8px; border-radius:99px; overflow:hidden;
     background:repeating-linear-gradient(45deg,#f2f4ee 0 4px,#e2e6dc 4px 6px)}
   .captiny .trk i{display:block; height:100%; border-radius:99px; background:var(--green); transition:width .5s}
   .captiny .n{font-size:11px; color:var(--ink2); font-family:var(--mono)}
-  .skill.dim{opacity:.5}
-  .skill .meta2{font-size:12px; color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .treelegend{display:flex; gap:16px; justify-content:center; padding-top:20px; font-size:12px;
+    color:var(--ink2); flex-wrap:wrap}
   /* ============ brain ============ */
   .qbox{width:100%; background:#fbfcf9; border:1.5px solid var(--line2); border-radius:12px; padding:10px 14px; outline:none; transition:.15s}
   .qbox:focus{border-color:var(--green); box-shadow:0 0 0 3.5px var(--mint-soft)}
@@ -274,8 +304,8 @@
 <div class="shell">
   <aside id="side">
     <div class="logo">
-      <div class="mark"></div>
-      <div><b>Maestro</b><small>agent operations</small></div>
+      <b class="wordmark">Maestro</b>
+      <small>agent operations</small>
     </div>
     <div class="navlab">Menu</div>
     <nav id="nav">
@@ -293,7 +323,7 @@
     </nav>
     <div class="side-dark">
       <div class="t">System</div>
-      <div class="row"><span>wire</span><b id="f-wire">–</b></div>
+      <div class="row"><span>feed</span><b id="f-wire">–</b></div>
       <div class="row"><span>guard</span><b id="f-guard">–</b></div>
       <div class="row"><span>goal</span><b id="f-goal">–</b></div>
     </div>
@@ -333,7 +363,7 @@
       </div>
       <div class="grid row-bot">
         <div class="card">
-          <h3>Sessions <span class="tag">one wire, every window</span></h3>
+          <h3>Live terminals <span class="tag">every Claude Code session reporting in</span></h3>
           <div id="sesslist"></div>
         </div>
         <div class="card">
@@ -342,7 +372,7 @@
             <div class="glegend" id="glegend"></div></div>
         </div>
         <div class="card wirecard">
-          <h3>Wire</h3>
+          <h3>Heartbeat</h3>
           <div class="wireclock" id="wireclock">--:--:--</div>
           <div class="wiresub" id="wiresub">–</div>
           <div class="wirebtns">
@@ -360,8 +390,16 @@
         <div class="card deck">
           <h3>Launch <span class="tag">runs on this repo with hooks live</span></h3>
           <div style="padding-top:12px">
-            <textarea id="mission" placeholder="What should this instance work on?"></textarea>
+            <input class="qbox" id="iname" placeholder="Terminal name — e.g. 'skill reviewer', 'bug hunt'" style="margin-bottom:10px" maxlength="40">
+            <textarea id="mission" placeholder="What should this terminal work on?"></textarea>
             <div class="modes" id="modes"></div>
+            <div class="opts" id="sshbox" style="display:none">
+              <input class="qbox sshf" id="ssh-host" placeholder="host / ip">
+              <input class="qbox sshf" id="ssh-user" placeholder="user">
+              <input class="qbox sshf" id="ssh-port" placeholder="22" style="max-width:74px">
+              <input class="qbox sshf" id="ssh-dir" placeholder="remote dir (optional)">
+              <span class="hintline" style="flex-basis:100%">Password is asked inside the window — Maestro never stores it. Claude Code must be installed on the remote host.</span>
+            </div>
             <div class="opts">
               <label>Model
                 <select id="opt-model" title="least-privilege spend: smallest model that can do the job">
@@ -372,7 +410,10 @@
                 </select></label>
               <label>Budget
                 <select id="opt-budget"><option value="15">15 turns</option><option value="40" selected>40 turns</option><option value="80">80 turns</option></select></label>
+              <label class="chk"><input type="checkbox" id="opt-skip" checked> Skip permission prompts</label>
             </div>
+            <div class="opts"><span style="font-weight:600">Run with</span>
+              <span id="slashchips" style="display:flex;gap:6px;flex-wrap:wrap"></span></div>
             <div style="display:flex; align-items:center; gap:14px">
               <button class="btn solid" id="go">Launch</button>
               <span class="hintline" id="hint"></span>
@@ -385,19 +426,28 @@
         </div>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <h3>Managed windows <span class="tag">Focus pops the real terminal</span></h3>
+        <h3>Terminals <span class="tag">Focus pops the real window — local or SSH</span></h3>
         <div class="icards" id="instances"></div>
       </div>
       <div class="card">
-        <h3>Wire sessions <span class="tag">every instance reporting in</span></h3>
+        <h3>Session feed <span class="tag">includes sessions started outside Maestro</span></h3>
         <div class="icards" id="wire-sessions"></div>
       </div>
     </section>
 
     <!-- ============ SKILLS ============ -->
     <section class="page" id="p-skills">
-      <div class="titlerow"><div><h1>Skill tree</h1><div class="sub">Earned after 3 real uses · unlinked skills decay at prune.</div></div></div>
-      <div class="card" id="skilltree"></div>
+      <div class="titlerow"><div><h1>Skill tree</h1><div class="sub">You → the conductor → branches. Skills earn after 3 real uses and decay when off-goal.</div></div></div>
+      <div class="card">
+        <div class="tree">
+          <div class="youpill">Daniel</div>
+          <div class="stem"></div>
+          <div class="cond"><b>Claude Code</b><small>the conductor</small></div>
+          <div class="stem"></div>
+          <div class="branchrow" id="branchrow"></div>
+        </div>
+        <div class="treelegend" id="treelegend"></div>
+      </div>
     </section>
 
     <!-- ============ BRAIN ============ -->
@@ -420,10 +470,16 @@
 
     <!-- ============ GRAPH ============ -->
     <section class="page" id="p-graph">
-      <div class="titlerow"><div><h1>Brain graph</h1><div class="sub">Your solved problems as a living network — hover to still it, click to read.</div></div></div>
+      <div class="titlerow"><div><h1>Brain graph</h1><div class="sub" id="graphsub">Your actual Obsidian vault — every note, folder-clustered, wikilinks as edges. Drag to arrange, click to read.</div></div>
+        <span class="spacer"></span>
+        <div class="opts" style="margin:0"><span style="font-weight:600">Show</span>
+          <label class="chk"><input type="radio" name="gsrc" value="vault" checked> Vault notes</label>
+          <label class="chk"><input type="radio" name="gsrc" value="hermes"> Solved problems</label></div>
+      </div>
       <div class="grid cols-2">
-        <div class="card" style="padding:8px"><svg id="graph" viewBox="0 0 820 470"></svg></div>
-        <div class="card gdetail"><h3>Node</h3><div id="gpanel" style="padding-top:10px"></div></div>
+        <div class="card" style="padding:8px"><svg id="graph" viewBox="0 0 820 470"></svg>
+          <div id="glegendbar" style="display:flex;gap:12px;flex-wrap:wrap;padding:4px 8px 2px;font-size:11.5px;color:var(--ink2)"></div></div>
+        <div class="card gdetail"><h3 id="gtitle">Note</h3><div id="gpanel" style="padding-top:10px"></div></div>
       </div>
     </section>
 
@@ -435,7 +491,7 @@
 
     <!-- ============ AUDIT ============ -->
     <section class="page" id="p-audit">
-      <div class="titlerow"><div><h1>Audit log</h1><div class="sub">Everything that happened, verbatim — state/events.jsonl.</div></div></div>
+      <div class="titlerow"><div><h1>Audit log</h1><div class="sub">Every action from every session — the raw feed behind all the numbers (state/events.jsonl).</div></div></div>
       <div class="card">
         <div class="filters"><select id="fl-sess"><option value="">all sessions</option></select><select id="fl-type"><option value="">all events</option></select><input id="fl-text" type="search" placeholder="search detail…"></div>
         <div class="auditwrap"><table class="audit" id="audit"></table></div>
@@ -472,7 +528,7 @@ const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo
 const PIE=[GREEN, MID, MINT, "#79b892", "#c9cec5", "#8a958c"]; // pie chart exempt from 3-color cap
 const STAGES=["think","plan","build","review","test","ship"];
 const LIVE_MS=15*60*1000;
-const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",paused:false};
+const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const reduced=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -483,14 +539,15 @@ const jsonl=t=>t.split("\n").filter(l=>l.trim()).map(l=>{try{return JSON.parse(l
 async function poll(){
   if(S.paused){render();return}
   try{
-    const [ev,reg,sol,app,inb,obs,inst,integ]=await Promise.all([
+    const [ev,reg,sol,app,inb,obs,inst,integ,vlt]=await Promise.all([
       jget("/state/events.jsonl"),jget("/skills/registry.json"),jget("/hermes/solved.jsonl"),
       jget("/state/approvals.json"),jget("/state/inbox.jsonl",1),jget("/memory/OBSIDIAN.md",1),
-      jget("/api/instances",1),jget("/api/integrations",1)]);
+      jget("/api/instances",1),jget("/api/integrations",1),jget("/api/vault",1)]);
     S.events=jsonl(ev);S.skills=JSON.parse(reg);S.solved=jsonl(sol);
     S.approvals=JSON.parse(app);S.inbox=jsonl(inb);
     S.instances=(inst?JSON.parse(inst).windows:[])||[];S.integ=integ?JSON.parse(integ):null;
-    S.vault=(obs.split("\n").find(l=>l.toLowerCase().startsWith("vault:"))||"vault: ?").split(":").slice(1).join(":").trim();
+    if(vlt){try{S.vaultData=JSON.parse(vlt)}catch(e){}}
+    S.vault=(S.vaultData&&S.vaultData.vault)||(obs.split("\n").find(l=>l.toLowerCase().startsWith("vault:"))||"vault: ?").split(":").slice(1).join(":").trim();
     S.wire=true;
   }catch(e){S.wire=false}
   render();
@@ -502,12 +559,14 @@ function sessions(){
   for(const e of S.events){
     const id=e.session||"?";
     if(id==="operator")continue;
-    if(!m.has(id))m.set(id,{id,agents:[],exits:0,stage:null,last:null,lastline:""});
+    if(!m.has(id))m.set(id,{id,agents:[],exits:0,stage:null,last:null,lastline:"",job:""});
     const s=m.get(id);s.last=e.ts||s.last;
     if(e.stage&&STAGES.includes(e.stage))s.stage=e.stage;
     if(e.event==="spawn")s.agents.push({name:e.agent||"agent",detail:e.detail||""});
     if(e.event==="agent-exit")s.exits++;
-    if(e.detail)s.lastline=e.detail;
+    if(e.detail){s.lastline=e.detail;
+      // first meaningful detail = what this session is FOR
+      if(!s.job&&!/^(session online|conductor idle)/i.test(e.detail))s.job=e.detail;}
   }
   const out=[...m.values()];
   for(const s of out)s.live=s.last&&(Date.now()-Date.parse(s.last))<LIVE_MS;
@@ -564,10 +623,11 @@ function statCard(dark,label,num,unit,delta,deltaCls,go){
 }
 function sessRow(s,i){
   const initials=s.id.slice(0,2).toUpperCase();
-  const stage=s.stage?`working the ${s.stage} stage`:"no stage reported yet";
-  const agents=s.agents.length?` · ${Math.max(0,s.agents.length-s.exits)} agent(s) in field`:"";
+  const stage=s.stage?`${s.stage} stage`:"no stage yet";
+  const agents=s.agents.length?` · ${Math.max(0,s.agents.length-s.exits)} agent(s) out`:"";
   return`<div class="lrow"><div class="sq ${i%2?"alt":""}">${esc(initials)}</div>
-    <div class="bd"><div class="t mono">${esc(s.id)}</div><div class="s">${esc(stage+agents)} · ${esc(s.lastline).slice(0,80)}</div></div>
+    <div class="bd"><div class="t" title="${esc(s.job||"")}">${esc((s.job||"idle conductor").slice(0,70))}</div>
+    <div class="s mono">${esc(s.id)} · ${esc(stage+agents)}</div></div>
     <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span></div>`;
 }
 
@@ -600,7 +660,7 @@ function render(){
   const a1=spark.slice(0,half).reduce((a,b)=>a+b,0),a2=spark.slice(half).reduce((a,b)=>a+b,0);
   const dpct=a1?Math.round((a2-a1)/a1*100):(a2?100:0);
   $("kpis").innerHTML=
-    statCard(true,"Events on the wire",S.events.length,"",dpct>=0?`↑ ${dpct}% vs earlier`:`↓ ${Math.abs(dpct)}% vs earlier`,dpct>=0?"":"neg","#/audit")+
+    statCard(true,"Actions logged",S.events.length,"",dpct>=0?`↑ ${dpct}% vs earlier`:`↓ ${Math.abs(dpct)}% vs earlier`,dpct>=0?"":"neg","#/audit")+
     statCard(false,"Live instances",aliveInst.length,"/ "+S.instances.length,live.length+" reporting on wire","mut","#/instances")+
     statCard(false,"Skills earned",earned,"/ "+sk.length,learning+" learning · "+cand+" candidate","","#/skills")+
     statCard(false,"Brain size",S.solved.length,"",staleN?staleN+" stale":"all fresh",staleN?"neg":"","#/brain");
@@ -647,7 +707,7 @@ function render(){
   // wire card
   const lastEv=S.events[S.events.length-1];
   const age=lastEv&&lastEv.ts?Math.round((Date.now()-Date.parse(lastEv.ts))/1000):null;
-  $("wiresub").textContent=(S.paused?"polling paused":"polling live")+" · last event "+(age===null?"–":age<120?age+"s ago":Math.round(age/60)+"m ago");
+  $("wiresub").textContent=(S.paused?"polling paused":"polling live")+" · last action "+(age===null?"–":age<120?age+"s ago":Math.round(age/60)+"m ago");
 
   // instances page
   $("hint").textContent=$("hint").textContent||"";
@@ -657,36 +717,41 @@ function render(){
       <span class="pill ${done.has(d.id)?"live":"idle"}">${done.has(d.id)?"Done":"Queued"}</span></div>`
   ).join("")||`<div class="none">no directives queued</div>`;
   $("instances").innerHTML=S.instances.length?S.instances.slice().reverse().map(w=>
-    `<div class="inst"><div class="top"><span class="sid">${esc(w.sid)}</span>
-      <span class="pill idle">${w.mode==="tab"?"Tab":"Background"}</span>
+    `<div class="inst"><div class="top"><span class="iname">${esc(w.name||w.mission.slice(0,40))}</span>
       <span class="pill ${w.alive?"live":"idle"}">${w.alive?"Running":"Exited"}</span></div>
-      <div class="spend">model <b>${esc(w.model||"default")}</b>${w.budget?" · budget "+w.budget+"t":""}</div>
-      <div class="mi">${esc(w.mission)}</div>
-      <div style="display:flex;gap:8px"><button class="btn line sm" data-focus="${esc(w.sid)}" ${w.alive?"":"disabled"}>Focus</button>
+      <div class="spend">${esc(w.sid)} · ${w.mode==="ssh"?("ssh "+esc(w.host||"")):w.mode==="tab"?"local window":"background run"} · model <b>${esc(w.model||"default")}</b>${w.budget?" · "+w.budget+" turns":""}${w.skip===false?" · asks permissions":""}</div>
+      <div class="mi" title="${esc(w.mission)}">${esc(w.mission)}</div>
+      <div style="display:flex;gap:8px"><button class="btn line sm" data-focus="${esc(w.sid)}" ${w.alive?"":"disabled"}>Focus window</button>
       <button class="btn line sm danger" data-close="${esc(w.sid)}">Close</button></div></div>`
-  ).join(""):`<div class="none">No windows launched yet — use the launcher above.</div>`;
+  ).join(""):`<div class="none">No terminals launched yet — use the launcher above.</div>`;
   $("wire-sessions").innerHTML=ss.length?ss.map(s=>{
     const cur=STAGES.indexOf(s.stage);
     const rail=STAGES.map((st,i)=>`<span class="${i<cur?"on":i===cur?"cur":""}">${st}</span>`).join("");
     const chips=s.agents.map((a,i)=>`<span class="achip ${i<s.exits?"done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?" ✓":""}</span>`).join("");
-    return`<div class="inst"><div class="top"><span class="sid">${esc(s.id)}</span>
-      <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span>
-      <span style="margin-left:auto;color:var(--ink3);font-size:11px" class="mono">${esc((s.last||"").slice(11,19))}</span></div>
+    return`<div class="inst"><div class="top"><span class="iname" title="${esc(s.job||"")}">${esc((s.job||"idle conductor").slice(0,48))}</span>
+      <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span></div>
+      <div class="spend">${esc(s.id)} · last seen ${esc((s.last||"").slice(11,19))}</div>
       <div class="rail">${rail}</div>${s.agents.length?`<div class="achips">${chips}</div>`:""}
       <div class="mi mono" style="-webkit-line-clamp:1;margin-top:8px">▸ ${esc(s.lastline||"no detail yet")}</div></div>`;
-  }).join(""):`<div class="none">nothing on the wire yet</div>`;
+  }).join(""):`<div class="none">nothing reporting yet</div>`;
 
-  // skills page
+  // skill tree — conductor on top, branch columns below
   const branches={};for(const[n,v]of sk)(branches[v.branch||"misc"]??=[]).push([n,v]);
-  $("skilltree").innerHTML=Object.entries(branches).map(([br,items])=>
-    `<div class="branch"><h4>${esc(br)}</h4>`+items.map(([n,v])=>{
-      const pct=Math.min(100,(v.uses||0)/3*100);
-      return`<div class="skill ${v.status==="archived"?"dim":""}">
-        <span class="nm">${esc(n)}<small>${esc(v.trigger||"")}</small></span>
-        <span class="captiny"><span class="trk"><i style="width:${pct}%"></i></span><span class="n">${Math.min(v.uses||0,3)}/3</span></span>
-        <span class="pill ${v.status==="active"?"live":v.status==="learning"?"idle":"idle"}">${esc(v.status)}</span>
-        <span class="meta2">${(v.goals&&v.goals.length)?esc(v.goals.join(" · ")):"no goal link — decays at prune"}</span></div>`;
-    }).join("")+`</div>`).join("")||`<div class="none">registry empty</div>`;
+  $("branchrow").innerHTML=Object.entries(branches).map(([br,items])=>{
+    const earnedN=items.filter(([,v])=>v.status==="active").length;
+    return`<div class="bcol"><div class="bhead">${esc(br)}<small>${items.length} skill${items.length===1?"":"s"} · ${earnedN} earned</small></div>`+
+      items.map(([n,v])=>{
+        const pct=Math.min(100,(v.uses||0)/3*100);
+        return`<div class="snode ${v.status==="archived"?"dim":""}">
+          <div class="sn"><span>${esc(n)}</span><span class="pill ${v.status==="active"?"live":"idle"}">${esc(v.status)}</span></div>
+          <div class="tr">${esc(v.trigger||"")} · ${(v.goals&&v.goals.length)?"on goal":"off goal — decays"}</div>
+          <span class="captiny"><span class="trk"><i style="width:${pct}%"></i></span><span class="n">${Math.min(v.uses||0,3)}/3</span></span>
+        </div>`;
+      }).join("")+`</div>`;
+  }).join("")||`<div class="none">registry empty</div>`;
+  $("treelegend").innerHTML=`<span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${GREEN};margin-right:5px"></i>Earned (3+ uses)</span>
+    <span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${MINT};margin-right:5px"></i>Learning</span>
+    <span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:repeating-linear-gradient(45deg,#f2f4ee 0 3px,#dde2d7 3px 5px);margin-right:5px"></i>Candidate / archived</span>`;
 
   // brain
   renderHermes();
@@ -694,8 +759,8 @@ function render(){
   $("vaultinfo").innerHTML=`<div>Brain section: <code class="k">Maestro/Hermes/</code></div>
     <div>Vault: <span class="mono" style="font-size:11px">${esc(S.vault)}</span></div>
     <div><a href="obsidian://open?vault=${encodeURIComponent(vslug)}&file=${encodeURIComponent("Maestro/Hermes/_index")}">Open the index in Obsidian ↗</a></div>
-    <div style="margin-top:6px;color:var(--ink3)">Every solved problem lands as a linked card plus a regenerated index. No naked facts — writes carry a source and a freshness stamp.</div>
-    <div style="margin-top:6px"><b>${S.solved.length}</b> cards · <b>${staleN}</b> stale</div>`;
+    <div style="margin-top:6px;color:var(--ink3)">Maestro reads your whole vault and writes solved problems back as linked cards. No naked facts — writes carry a source and a freshness stamp.</div>
+    <div style="margin-top:6px"><b>${S.vaultData?S.vaultData.notes.length:0}</b> vault notes indexed · <b>${S.solved.length}</b> Hermes cards · <b>${staleN}</b> stale</div>`;
 
   // integrations
   if(S.integ)renderInteg();
@@ -739,6 +804,11 @@ const II={
 };
 function renderInteg(){
   const g=S.integ;
+  if(g.commands&&g.commands.length&&!$("slashchips").dataset.done){
+    $("slashchips").innerHTML=g.commands.map(c=>
+      `<label class="cchip"><input type="checkbox" value="${esc(c)}"><span>${esc(c)}</span></label>`).join("");
+    $("slashchips").dataset.done="1";
+  }
   const card=(title,icon,items,addHint,statusN)=>`<div class="intcard"><div class="ih"><svg viewBox="0 0 24 24">${II[icon]}</svg>${title}<span class="st">${statusN}</span></div><ul>${items||`<li style="color:var(--ink3)">none</li>`}</ul><div class="add">${addHint}</div></div>`;
   $("intgrid").innerHTML=
     card("MCP servers","server",g.mcp.map(m=>`<li>${esc(m.name)}<span class="mono">${esc(m.command)}</span></li>`).join(""),`Add: edit <code>.mcp.json</code>`,g.mcp.length+" wired")+
@@ -768,6 +838,7 @@ function renderAudit(){
 
 /* ---------- launcher ---------- */
 const MODES=[["tab","New window","opens a real Claude Code terminal on this repo — focus & close it from here"],
+  ["ssh","Remote SSH","opens an SSH terminal to your host and starts Claude Code there; you type the password in the window"],
   ["background","Background","headless run; log lands in state/spawn-logs/"],
   ["directive","Directive","queues a note running sessions pick up at boot / between missions"]];
 $("modes").dataset.mode="tab";
@@ -776,18 +847,33 @@ $("hint").textContent=MODES[0][2];
 $("modes").addEventListener("click",e=>{const b=e.target.closest(".mode");if(!b)return;
   $("modes").dataset.mode=b.dataset.v;
   $("modes").querySelectorAll(".mode").forEach(x=>x.classList.toggle("on",x===b));
-  $("hint").textContent=MODES.find(m=>m[0]===b.dataset.v)[2]});
+  $("hint").textContent=MODES.find(m=>m[0]===b.dataset.v)[2];
+  $("sshbox").style.display=b.dataset.v==="ssh"?"flex":"none"});
 function toast(msg,err){const n=document.createElement("div");n.className="note"+(err?" err":"");
   n.textContent=msg;$("toast").appendChild(n);setTimeout(()=>n.remove(),5000)}
 async function post(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.status);return j}
 $("go").addEventListener("click",async()=>{
-  const text=$("mission").value.trim();if(!text)return toast("Write the mission first.",true);
+  const base=$("mission").value.trim();
+  const cmds=[...document.querySelectorAll("#slashchips input:checked")].map(c=>c.value);
+  // ticked slash commands compose into the prompt; one becomes a real /command message
+  let text=base;
+  if(cmds.length===1)text=(cmds[0]+" "+base).trim();
+  else if(cmds.length>1)text=(cmds[0]+" "+base).trim()+"\nWhen that completes, run in order: "+cmds.slice(1).join(", ");
+  if(!text)return toast("Write a mission or tick a command first.",true);
   const mode=$("modes").dataset.mode,btn=$("go");btn.disabled=true;
   const model=$("opt-model").value,budget=+$("opt-budget").value;
-  try{const j=mode==="directive"?await post("/api/message",{text}):await post("/api/spawn",{mission:text,mode,model,budget});
-    $("mission").value="";
-    toast(mode==="directive"?`Directive ${j.id} queued.`:mode==="tab"?`Window ${j.id} opening (${j.model}).`:`Background run ${j.id} started (${j.model}, ${budget}t).`);
+  const iname=$("iname").value.trim(),skip=$("opt-skip").checked;
+  const body={mission:text,mode:mode==="ssh"?"tab":mode,model,budget,name:iname,skip};
+  if(mode==="ssh")body.ssh={host:$("ssh-host").value.trim(),user:$("ssh-user").value.trim(),
+    port:$("ssh-port").value.trim(),dir:$("ssh-dir").value.trim()};
+  try{const j=mode==="directive"?await post("/api/message",{text}):await post("/api/spawn",body);
+    $("mission").value="";$("iname").value="";
+    document.querySelectorAll("#slashchips input:checked").forEach(c=>c.checked=false);
+    toast(mode==="directive"?`Directive ${j.id} queued.`
+      :mode==="ssh"?`SSH terminal "${iname||j.id}" opening — type the password in the window.`
+      :mode==="tab"?`Terminal "${iname||j.id}" opening (${j.model}).`
+      :`Background run "${iname||j.id}" started (${j.model}, ${budget}t).`);
     poll();
   }catch(e){toast("Failed: "+e.message,true)}btn.disabled=false});
 document.addEventListener("click",async e=>{
@@ -801,82 +887,102 @@ $("pausebtn").addEventListener("click",()=>{S.paused=!S.paused;
   toast(S.paused?"Polling paused.":"Polling resumed.");render()});
 $("refreshbtn").addEventListener("click",()=>{S.paused=false;poll();toast("Refreshed.")});
 
-/* ---------- force-directed brain graph (organic, monochrome) ---------- */
+/* ---------- force-directed brain graph (real Obsidian vault) ---------- */
 const Graph=(function(){
   const svg=$("graph"),NS="http://www.w3.org/2000/svg";
   const W=820,H=470;
-  let nodes=[],links=[],sig="",raf=0,hover=false,selected=null;
-  function build(){
-    nodes=[];links=[];
-    const core={id:"core",type:"root",label:"hermes",r:13,c:"#3c463f",x:W/2,y:H/2,vx:0,vy:0,fixed:false};
-    nodes.push(core);
-    const tags=[...new Set(S.solved.flatMap(r=>r.tags||[]))];
-    const tagIx={};
-    tags.forEach((t,i)=>{const a=i/Math.max(1,tags.length)*2*Math.PI;
-      nodes.push({type:"tag",label:t,r:6.5,c:"#5d675f",data:t,
-        x:W/2+130*Math.cos(a)+Math.random()*30-15,y:H/2+110*Math.sin(a)+Math.random()*30-15,vx:0,vy:0});
-      tagIx[t]=nodes.length-1;links.push([0,tagIx[t]])});
-    S.solved.forEach(rw=>{
-      const prim=(rw.tags||[])[0];const anchor=prim!=null?nodes[tagIx[prim]]:core;
-      nodes.push({type:"card",label:rw.problem,r:4,c:"#b6bfb6",data:rw,
-        x:anchor.x+Math.random()*90-45,y:anchor.y+Math.random()*90-45,vx:0,vy:0});
-      const ci=nodes.length-1;
-      (rw.tags||[]).forEach(t=>{if(tagIx[t]!=null)links.push([tagIx[t],ci])});
-      if(!(rw.tags||[]).length)links.push([0,ci]);
-    });
-    draw();
-    if(!selected&&S.solved.length){ // never open blank — seed with newest card
-      const newest=S.solved[S.solved.length-1];
-      const ix=nodes.findIndex(n=>n.type==="card"&&n.data&&n.data.id===newest.id);
-      if(ix>=0)select(ix);
-    }
+  // deterministic per-folder color so clusters read as folders (max palette reused, Obsidian-like)
+  const FOLDCOL=["#135c38","#1e7c4c","#3f7c9a","#9a6a3f","#7d5c9a","#b6bfb6","#5d675f","#c48a3f"];
+  let nodes=[],links=[],sig="",raf=0,hover=false,selected=null,drag=null,src="vault",folders={};
+  function colorFor(folder){
+    if(!(folder in folders)){const keys=Object.keys(folders);folders[folder]=FOLDCOL[keys.length%FOLDCOL.length]}
+    return folders[folder];
   }
+  function build(){
+    nodes=[];links=[];folders={};
+    if(src==="vault"&&S.vaultData&&S.vaultData.notes&&S.vaultData.notes.length){
+      const notes=S.vaultData.notes;
+      // folder hub nodes so notes cluster like Obsidian's graph
+      const folderList=[...new Set(notes.map(n=>n.folder))];
+      const hubIx={};
+      folderList.forEach((f,i)=>{const a=i/Math.max(1,folderList.length)*2*Math.PI;
+        nodes.push({type:"folder",label:f,r:8,c:colorFor(f),data:f,
+          x:W/2+150*Math.cos(a)+rnd(30),y:H/2+120*Math.sin(a)+rnd(30),vx:0,vy:0});
+        hubIx[f]=nodes.length-1});
+      const noteIx={};
+      notes.forEach(nt=>{const hub=nodes[hubIx[nt.folder]];
+        nodes.push({type:"note",label:nt.name,r:3.6,c:colorFor(nt.folder),data:nt,
+          x:hub.x+rnd(70),y:hub.y+rnd(70),vx:0,vy:0});
+        const ni=nodes.length-1;noteIx[nt.path]=ni;links.push([hubIx[nt.folder],ni,1])});
+      // wikilink edges (server already resolved to note indices)
+      (S.vaultData.links||[]).forEach(([i,j])=>{
+        const a=noteIx[notes[i]&&notes[i].path],b=noteIx[notes[j]&&notes[j].path];
+        if(a!=null&&b!=null)links.push([a,b,0]);
+      });
+      seedNewest("note");
+    }else{
+      // hermes fallback
+      const core={type:"root",label:"hermes",r:12,c:"#3c463f",x:W/2,y:H/2,vx:0,vy:0};nodes.push(core);
+      const tags=[...new Set(S.solved.flatMap(r=>r.tags||[]))],tagIx={};
+      tags.forEach((t,i)=>{const a=i/Math.max(1,tags.length)*2*Math.PI;
+        nodes.push({type:"tag",label:t,r:6,c:"#5d675f",data:t,x:W/2+130*Math.cos(a)+rnd(30),y:H/2+110*Math.sin(a)+rnd(30),vx:0,vy:0});
+        tagIx[t]=nodes.length-1;links.push([0,tagIx[t],1])});
+      S.solved.forEach(rw=>{const prim=(rw.tags||[])[0],anc=prim!=null?nodes[tagIx[prim]]:core;
+        nodes.push({type:"card",label:rw.problem,r:4,c:"#b6bfb6",data:rw,x:anc.x+rnd(80),y:anc.y+rnd(80),vx:0,vy:0});
+        const ci=nodes.length-1;(rw.tags||[]).forEach(t=>{if(tagIx[t]!=null)links.push([tagIx[t],ci,1])});
+        if(!(rw.tags||[]).length)links.push([0,ci,1])});
+      seedNewest("card");
+    }
+    draw();renderLegend();
+  }
+  const rnd=m=>Math.random()*m-m/2;
+  function seedNewest(kind){
+    if(selected!=null)return;
+    const ix=nodes.map((n,i)=>[n,i]).filter(([n])=>n.type===kind).map(([,i])=>i);
+    if(ix.length)pending=ix[0]; // first = most recent (server sorts desc)
+  }
+  let pending=null;
   function draw(){
     svg.innerHTML="";
     const gl=document.createElementNS(NS,"g");svg.appendChild(gl);
-    links.forEach(()=>{const l=document.createElementNS(NS,"line");
-      l.setAttribute("stroke","#d4d8cf");l.setAttribute("stroke-width","1");gl.appendChild(l)});
+    links.forEach(lk=>{const l=document.createElementNS(NS,"line");
+      l.setAttribute("stroke",lk[2]?"#d4d8cf":"#b9c6bd");l.setAttribute("stroke-width",lk[2]?"1":"1.3");gl.appendChild(l);lk._el=l});
     const gn=document.createElementNS(NS,"g");svg.appendChild(gn);
     nodes.forEach((nd,i)=>{
       const g=document.createElementNS(NS,"g");g.setAttribute("class","gnode");g.dataset.i=i;
-      const c=document.createElementNS(NS,"circle");
-      c.setAttribute("r",nd.r);c.setAttribute("fill",nd.c);
-      g.appendChild(c);
-      if(nd.type!=="card"){const t=document.createElementNS(NS,"text");
+      // invisible fat hit target so small dots are easy to grab/click
+      const hit=document.createElementNS(NS,"circle");hit.setAttribute("r",Math.max(11,nd.r+7));
+      hit.setAttribute("fill","transparent");g.appendChild(hit);
+      const c=document.createElementNS(NS,"circle");c.setAttribute("r",nd.r);c.setAttribute("fill",nd.c);g.appendChild(c);
+      if(nd.type==="folder"||nd.type==="root"||nd.type==="tag"){const t=document.createElementNS(NS,"text");
         t.setAttribute("text-anchor","middle");t.setAttribute("dy",-nd.r-5);
-        t.setAttribute("font-size","10.5");t.setAttribute("fill","#7d877f");
-        t.textContent=nd.label;g.appendChild(t)}
+        t.setAttribute("font-size",nd.type==="folder"?"11":"10.5");t.setAttribute("font-weight",nd.type==="folder"?"600":"400");
+        t.setAttribute("fill","#5c6a60");t.textContent=nd.label;g.appendChild(t)}
       nd._el=g;nd._c=c;gn.appendChild(g);
     });
-    links.forEach((lk,k)=>{lk._el=gl.children[k]});
     position();
+    if(pending!=null){select(pending);pending=null}
+  }
+  function renderLegend(){
+    const fs=Object.entries(folders).slice(0,8);
+    $("glegendbar").innerHTML=src==="vault"
+      ? fs.map(([f,c])=>`<span><i style="display:inline-block;width:9px;height:9px;border-radius:3px;background:${c};margin-right:5px"></i>${esc(f)}</span>`).join("")
+      : `<span>Hermes core · tag clusters · solved-problem cards</span>`;
   }
   function physics(){
-    // simple force layout: pair repulsion + link springs + soft centering
-    for(let i=0;i<nodes.length;i++){
-      const a=nodes[i];
-      for(let j=i+1;j<nodes.length;j++){
-        const b=nodes[j];
-        let dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;
-        if(d2<1)d2=1;if(d2>40000)continue;
-        const f=900/d2,d=Math.sqrt(d2);
-        dx/=d;dy/=d;a.vx+=dx*f;a.vy+=dy*f;b.vx-=dx*f;b.vy-=dy*f;
-      }
-      a.vx+=(W/2-a.x)*0.0012;a.vy+=(H/2-a.y)*0.0012; // soft centering
-    }
-    for(const[i,j]of links){
-      const a=nodes[i],b=nodes[j];
+    for(let i=0;i<nodes.length;i++){const a=nodes[i];if(a===drag)continue;
+      for(let j=i+1;j<nodes.length;j++){const b=nodes[j];
+        let dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy;if(d2<1)d2=1;if(d2>36000)continue;
+        const f=680/d2,d=Math.sqrt(d2);dx/=d;dy/=d;a.vx+=dx*f;a.vy+=dy*f;b.vx-=dx*f;b.vy-=dy*f}
+      a.vx+=(W/2-a.x)*0.0013;a.vy+=(H/2-a.y)*0.0013}
+    for(const[i,j,hub]of links){const a=nodes[i],b=nodes[j];
       const dx=b.x-a.x,dy=b.y-a.y,d=Math.max(1,Math.sqrt(dx*dx+dy*dy));
-      const rest=(a.type==="root"||b.type==="root")?120:62;
-      const f=(d-rest)*0.008;
-      a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;
-    }
-    for(const n of nodes){
-      if(!hover&&!reduced){n.vx+=(Math.random()-.5)*0.06;n.vy+=(Math.random()-.5)*0.06} // ambient drift
-      n.vx*=0.86;n.vy*=0.86;
-      n.x=Math.max(24,Math.min(W-24,n.x+n.vx));
-      n.y=Math.max(20,Math.min(H-20,n.y+n.vy));
-    }
+      const rest=hub?54:40,f=(d-rest)*0.01;
+      a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f}
+    for(const n of nodes){if(n===drag)continue;
+      if(!hover&&!reduced){n.vx+=rnd(.08);n.vy+=rnd(.08)}
+      n.vx*=0.85;n.vy*=0.85;
+      n.x=Math.max(20,Math.min(W-20,n.x+n.vx));n.y=Math.max(18,Math.min(H-18,n.y+n.vy))}
   }
   function position(){
     nodes.forEach(nd=>{if(nd._el)nd._el.setAttribute("transform",`translate(${nd.x.toFixed(1)},${nd.y.toFixed(1)})`)});
@@ -884,27 +990,48 @@ const Graph=(function(){
       if(lk._el){lk._el.setAttribute("x1",a.x.toFixed(1));lk._el.setAttribute("y1",a.y.toFixed(1));
         lk._el.setAttribute("x2",b.x.toFixed(1));lk._el.setAttribute("y2",b.y.toFixed(1))}});
   }
-  function loop(){if(!hover&&!reduced){physics();position()}raf=requestAnimationFrame(loop)}
-  function select(i){
-    const nd=nodes[i];if(!nd)return;
-    selected=i;
-    nodes.forEach(n=>{if(n._c){n._c.setAttribute("stroke",n===nd?GREEN:"none");n._c.setAttribute("stroke-width",n===nd?"2.5":"0")}});
-    if(nd.type==="card"){const r=nd.data;
-      $("gpanel").innerHTML=`<div class="gt">solved problem · ${esc(r.id)}</div><div class="gp">${esc(r.problem)}</div>
-        <div class="gs">${esc(r.solution)}</div>
-        <div style="margin-top:8px">${(r.tags||[]).map(t=>`<span class="gtag">#${esc(t)}</span>`).join("")}</div>
-        <div style="margin-top:8px;color:var(--ink3);font-size:11px" class="mono">${esc((r.ts||"").slice(0,10))} · source ${esc(r.source||"?")}${r.stale?" · stale":""}</div>`;
+  function loop(){if((!hover||drag)&&!reduced){physics()}position();raf=requestAnimationFrame(loop)}
+  function highlight(nd){nodes.forEach(n=>{if(n._c){const on=n===nd;n._c.setAttribute("stroke",on?GREEN:"none");n._c.setAttribute("stroke-width",on?"2.5":"0")}})}
+  async function select(i){
+    const nd=nodes[i];if(!nd)return;selected=i;highlight(nd);
+    $("gtitle").textContent=nd.type==="note"?"Note":nd.type==="folder"?"Folder":nd.type==="card"?"Solved problem":nd.type==="tag"?"Tag":"Core";
+    if(nd.type==="note"){const nt=nd.data;
+      $("gpanel").innerHTML=`<div class="gt">${esc(nt.folder)} · ${esc(nt.path)}</div><div class="gp">${esc(nt.name)}</div>
+        <div class="gs" id="gprev">loading note…</div>`;
+      try{const r=await fetch("/api/vault-note?path="+encodeURIComponent(nt.path),{cache:"no-store"});
+        const j=await r.json();const body=(j.content||"").replace(/^---[\s\S]*?---\s*/,"").trim().slice(0,900);
+        const vslug=(S.vault.split("\\").pop()||"");
+        $("gprev").innerHTML=esc(body).replace(/\n/g,"<br>")+
+          `<div style="margin-top:10px"><a href="obsidian://open?vault=${encodeURIComponent(vslug)}&file=${encodeURIComponent(nt.path.replace(/\.md$/,""))}">Open in Obsidian ↗</a></div>`;
+      }catch(e){$("gprev").textContent="(could not read note)"}
+    }else if(nd.type==="folder"){const list=(S.vaultData.notes||[]).filter(n=>n.folder===nd.data);
+      $("gpanel").innerHTML=`<div class="gt">folder</div><div class="gp">${esc(nd.data)}</div>
+        <div class="gs">${list.length} note(s):</div>
+        <ul style="margin-top:6px;padding-left:16px;font-size:12.5px;color:var(--ink2);max-height:340px;overflow:auto">${list.slice(0,60).map(n=>`<li style="margin:3px 0">${esc(n.name)}</li>`).join("")}</ul>`;
+    }else if(nd.type==="card"){const r=nd.data;
+      $("gpanel").innerHTML=`<div class="gt">solved · ${esc(r.id)}</div><div class="gp">${esc(r.problem)}</div>
+        <div class="gs">${esc(r.solution)}</div><div style="margin-top:8px">${(r.tags||[]).map(t=>`<span class="gtag">#${esc(t)}</span>`).join("")}</div>`;
     }else if(nd.type==="tag"){const list=S.solved.filter(r=>(r.tags||[]).includes(nd.data));
-      $("gpanel").innerHTML=`<div class="gt">tag cluster</div><div class="gp">#${esc(nd.data)}</div>
-        <div class="gs">${list.length} solved problem(s):</div>
+      $("gpanel").innerHTML=`<div class="gt">tag</div><div class="gp">#${esc(nd.data)}</div>
         <ul style="margin-top:6px;padding-left:16px;font-size:12.5px;color:var(--ink2)">${list.map(r=>`<li style="margin:3px 0">${esc(r.problem)}</li>`).join("")}</ul>`;
-    }else{$("gpanel").innerHTML=`<div class="gt">core</div><div class="gp">Hermes</div>
-      <div class="gs">${S.solved.length} solved problems across ${new Set(S.solved.flatMap(r=>r.tags||[])).size} tags. Solve once, never re-solve.</div>`}
+    }else{$("gpanel").innerHTML=`<div class="gt">core</div><div class="gp">Hermes</div><div class="gs">${S.solved.length} solved problems.</div>`}
   }
+  // pointer: click selects, drag moves (bigger hit targets make both easy)
+  function toSvg(e){const r=svg.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H]}
   svg.addEventListener("pointerenter",()=>hover=true);
-  svg.addEventListener("pointerleave",()=>hover=false);
-  svg.addEventListener("click",e=>{const g=e.target.closest(".gnode");if(g)select(+g.dataset.i)});
-  return{sync(){const s=S.solved.map(r=>r.id).join(",")+"|"+S.solved.filter(r=>r.stale).length;
+  svg.addEventListener("pointerleave",()=>{hover=false;drag=null});
+  svg.addEventListener("pointerdown",e=>{const g=e.target.closest(".gnode");if(!g)return;
+    const i=+g.dataset.i;drag=nodes[i];drag._down=[...toSvg(e)];drag._moved=false;
+    try{svg.setPointerCapture(e.pointerId)}catch(_){}});
+  svg.addEventListener("pointermove",e=>{if(!drag)return;const[x,y]=toSvg(e);
+    if(Math.abs(x-drag._down[0])+Math.abs(y-drag._down[1])>3)drag._moved=true;
+    drag.x=x;drag.y=y;drag.vx=drag.vy=0;position()});
+  svg.addEventListener("pointerup",e=>{if(drag){if(!drag._moved)select(nodes.indexOf(drag));drag=null;
+    try{svg.releasePointerCapture(e.pointerId)}catch(_){}}});
+  document.querySelectorAll('input[name="gsrc"]').forEach(r=>r.addEventListener("change",()=>{
+    src=document.querySelector('input[name="gsrc"]:checked').value;selected=null;sig="";Graph.sync()}));
+  return{sync(){const vn=S.vaultData?S.vaultData.notes.length:0;
+    const s=src+"|"+vn+"|"+S.solved.length;
     if(s!==sig){sig=s;selected=null;build()}if(!raf)loop()}};
 })();
 

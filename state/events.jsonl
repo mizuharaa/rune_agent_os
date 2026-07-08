@@ -114,3 +114,16 @@
 {"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-08T09:53:31"}
 {"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-08T09:53:31"}
 {"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-08T09:53:31"}
+{"session": "7a8aeb72", "event": "session-start", "detail": "session online", "ts": "2026-07-08T10:04:57"}
+{"session": "7a8aeb72", "event": "tool", "tool": "Glob", "ts": "2026-07-08T10:05:01"}
+{"session": "7a8aeb72", "event": "tool", "tool": "Bash", "detail": "ls -la", "ts": "2026-07-08T10:05:12"}
+{"session": "7a8aeb72", "event": "session-stop", "detail": "conductor idle", "ts": "2026-07-08T10:05:15"}
+{"session": "7a8aeb72", "event": "agent-exit", "detail": "subagent reported and exited", "ts": "2026-07-08T10:05:20"}
+{"session": "7a8aeb72", "event": "agent-exit", "detail": "subagent reported and exited", "ts": "2026-07-08T10:08:23"}
+{"session": "operator", "event": "user-spawn", "agent": "tab", "detail": "[a0484d6b] skill reviewer model=haiku skip=False · /skill review - report which learning skills are close to earned", "ts": "2026-07-08T10:23:16"}
+{"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-08T10:23:31"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-08T10:23:31"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-08T10:23:31"}
+{"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-08T10:23:49"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-08T10:23:50"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-08T10:23:50"}

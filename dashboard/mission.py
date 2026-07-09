@@ -6,12 +6,31 @@ to the orchestrator loop (worker -> opus critic -> accept/revise), which now
 writes a Hermes note to the brain on acceptance. Stdlib only, like the rest.
 """
 import json
+import os
+import subprocess
+import sys
 import urllib.request
 
 import chat  # API key resolution + the Maestro context snapshot
 
 API = "https://api.anthropic.com/v1/messages"
 MODEL = "claude-sonnet-5"  # conscious spend: intake needs judgment, not opus
+HERMES = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                      "hermes", "hermes.py")
+
+
+def _recall(text):
+    """Brain-first intake: prior solutions matching the goal, or ''."""
+    try:
+        r = subprocess.run([sys.executable, HERMES, "query", text[:300]],
+                           capture_output=True, text=True, timeout=10)
+        if r.returncode == 0 and r.stdout.strip():
+            return ("\n\n## Brain recall — this was solved before. Fold these "
+                    "into the mission so the worker reuses, not re-solves:\n"
+                    + r.stdout.strip()[:1200])
+    except Exception:
+        pass
+    return ""
 
 SCHEMA = {
     "type": "object",
@@ -22,7 +41,7 @@ SCHEMA = {
         "name": {"type": "string"},       # 2-4 word mission name
         "turns": {"type": "integer"},     # worker turn budget 10-80
         "rounds": {"type": "integer"},    # critic rounds 1-5
-        "model": {"type": "string", "enum": ["default", "haiku", "sonnet", "opus"]},
+        "model": {"type": "string", "enum": ["default", "haiku", "sonnet", "opus", "fable"]},
         "dir": {"type": "string"},        # absolute workdir if the goal names one
     },
     "required": ["action", "question", "mission", "name", "turns", "rounds",
@@ -47,8 +66,9 @@ learned: python hermes/hermes.py note "<problem>" "<solution>" --tags mission'.
 
 Also set: name (2-4 words), turns (10-80: small for lookups, big for builds), \
 rounds (1-5 critic iterations), model (haiku=mechanical, sonnet=most work, \
-opus=hard reasoning only), dir (absolute path ONLY if the operator names a \
-specific project outside this repo, else empty string).
+opus=hard reasoning, fable=frontier — only for the very hardest missions), \
+dir (absolute path ONLY if the operator names a specific project outside this \
+repo, else empty string).
 
 For clarify: fill mission/name/dir with empty strings, turns/rounds with 0, model "default".
 """
@@ -68,7 +88,7 @@ def intake(text, history=None):
     body = json.dumps({
         # max_tokens covers adaptive THINKING + the JSON; 1200 truncated mid-brief
         "model": MODEL, "max_tokens": 3500,
-        "system": SYSTEM + "\n\n## System snapshot\n" + chat._context(),
+        "system": SYSTEM + "\n\n## System snapshot\n" + chat._context() + _recall(text),
         "messages": msgs,
         "output_config": {"format": {"type": "json_schema", "schema": SCHEMA}},
     }).encode("utf-8")

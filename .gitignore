@@ -7,3 +7,5 @@ state/orchestrations/
 state/pulse.json
 .env
 state/claude-seen.json
+state/learn-seen.json
+state/serve.log

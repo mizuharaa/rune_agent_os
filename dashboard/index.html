@@ -628,13 +628,13 @@
           <div class="cmdpop" id="cmdpop">
             <div class="phead">Mission options · auto = intake decides</div>
             <div class="prow"><label>Worker model</label>
-              <select id="cmd-model"><option value="auto" selected>Auto</option><option value="haiku">Haiku · cheap</option><option value="sonnet">Sonnet · balanced</option><option value="opus">Opus · heavy</option><option value="default">Default (inherit)</option></select></div>
+              <select id="cmd-model"><option value="auto" selected>Auto</option><option value="haiku">Haiku · cheap</option><option value="sonnet">Sonnet · balanced</option><option value="opus">Opus · heavy</option><option value="fable">Fable · frontier</option><option value="default">Default (inherit)</option></select></div>
             <div class="prow"><label>Effort</label>
               <select id="cmd-turns"><option value="auto" selected>Auto</option><option value="15">Quick · 15 turns</option><option value="40">Standard · 40</option><option value="80">Deep · 80</option></select></div>
             <div class="prow"><label>Critic rounds</label>
               <select id="cmd-rounds"><option value="auto" selected>Auto</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></div>
             <div class="prow"><label>Critic</label>
-              <select id="cmd-critic"><option value="opus" selected>Opus · the core</option><option value="sonnet">Sonnet</option></select></div>
+              <select id="cmd-critic"><option value="opus" selected>Opus · the core</option><option value="fable">Fable · frontier</option><option value="sonnet">Sonnet</option></select></div>
             <div class="prow"><label>Account</label>
               <select id="cmd-account"><option value="auto" selected>Auto · most headroom</option></select></div>
             <label class="chk"><input type="checkbox" id="cmd-gate"> Gate verdicts on me (no auto-accept)</label>
@@ -705,7 +705,7 @@
               <label>Rounds
                 <select id="opt-rounds"><option value="1">1 round</option><option value="2">2 rounds</option><option value="3" selected>3 rounds</option><option value="5">5 rounds</option></select></label>
               <label>Critic
-                <select id="opt-critic" title="the critic is the core's judgment — big model, one report per round"><option value="opus" selected>Opus · the core</option><option value="sonnet">Sonnet</option></select></label>
+                <select id="opt-critic" title="the critic is the core's judgment — big model, one report per round"><option value="opus" selected>Opus · the core</option><option value="fable">Fable · frontier</option><option value="sonnet">Sonnet</option></select></label>
               <label class="chk"><input type="checkbox" id="opt-auto" checked> Auto-accept verdicts</label>
               <label>Account
                 <select id="opt-orch-account" title="which account the loop delegates to — Auto picks the one with the most headroom"><option value="auto">Auto · least used</option></select></label>
@@ -718,6 +718,7 @@
                   <option value="haiku">Haiku · cheap/fast</option>
                   <option value="sonnet">Sonnet · balanced</option>
                   <option value="opus">Opus · heavy reasoning</option>
+                  <option value="fable">Fable · frontier</option>
                 </select></label>
               <label>Budget
                 <select id="opt-budget"><option value="15">15 turns</option><option value="40" selected>40 turns</option><option value="80">80 turns</option></select></label>

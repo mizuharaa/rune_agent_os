@@ -289,3 +289,10 @@
 {"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-09T11:43:57"}
 {"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-09T11:43:57"}
 {"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-09T11:43:58"}
+{"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-09T14:53:16"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-09T14:53:16"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-09T14:53:16"}
+{"session": "conductor", "event": "learn", "detail": "brain: Seek bar jumps backwards during playback due to stale server progress timestamps", "ts": "2026-07-09T14:58:24"}
+{"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-09T14:59:05"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-09T14:59:06"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-09T14:59:06"}

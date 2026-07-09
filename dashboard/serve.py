@@ -359,9 +359,9 @@ class Handler(SimpleHTTPRequestHandler):
                     rounds = max(1, min(5, int(opts["rounds"])))  # explicit 1 respected
             except (TypeError, ValueError):
                 pass
-            model = opts.get("model") if opts.get("model") in ("haiku", "sonnet", "opus", "default") \
+            model = opts.get("model") if opts.get("model") in ("haiku", "sonnet", "opus", "fable", "default") \
                 else str(out.get("model") or "default")
-            critic = "sonnet" if opts.get("critic") == "sonnet" else "opus"
+            critic = opts.get("critic") if opts.get("critic") in ("sonnet", "fable") else "opus"
             account = str(opts.get("account") or "auto")
             auto = not bool(opts.get("gate"))  # gate=True -> verdicts wait on Daniel
             oid, err = orchestrator.start(

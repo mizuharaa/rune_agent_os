@@ -823,6 +823,8 @@
             <div class="phead">CEO overrides · auto = the CEO decides per prompt</div>
             <div class="prow"><label>Mode</label>
               <select id="cmd-mode"><option value="auto" selected>Auto · decide per prompt</option><option value="direct">Direct answer · no agents</option><option value="delegate">Delegate · always staff roles</option></select></div>
+            <div class="prow"><label>Refine</label>
+              <select id="cmd-refine"><option value="auto" selected>Auto · only short prompts</option><option value="off">Off · use my words as-is</option></select></div>
             <div class="prow"><label>Model</label>
               <select id="cmd-model"><option value="auto" selected>Auto · per role</option><option value="haiku">Haiku · all roles</option><option value="sonnet">Sonnet · all roles</option><option value="opus">Opus · all roles</option><option value="fable">Fable · all roles</option></select></div>
             <div class="prow"><label>Effort</label>
@@ -1192,10 +1194,10 @@ function cmdType(){
 function cmdMsg(role,html){const d=document.createElement("div");d.className="cmdmsg "+role;
   d.innerHTML=html;$("cmdflow").appendChild(d);return d}
 // Run-it dropdown overrides — "auto" everywhere means the CEO decides per prompt
-function cmdOpts(){return{mode:$("cmd-mode").value,model:$("cmd-model").value,effort:$("cmd-effort").value,
-  account:$("cmd-account").value,gate:$("cmd-gate").checked}}
+function cmdOpts(){return{mode:$("cmd-mode").value,refine:$("cmd-refine").value,model:$("cmd-model").value,
+  effort:$("cmd-effort").value,account:$("cmd-account").value,gate:$("cmd-gate").checked}}
 function cmdTuned(){const o=cmdOpts();
-  return o.mode!=="auto"||o.model!=="auto"||o.effort!=="auto"||o.account!=="auto"||o.gate}
+  return o.mode!=="auto"||o.refine!=="auto"||o.model!=="auto"||o.effort!=="auto"||o.account!=="auto"||o.gate}
 async function cmdSend(){
   const inp=$("cmdinput"),text=inp.value.trim();
   if(!text||CMD.busy)return;
@@ -1209,10 +1211,10 @@ async function cmdSend(){
       // simple prompt: a direct cheap reply, no agents staffed
       th.innerHTML=`${esc(j.reply)}<div class="brief">answered directly · ${esc(j.model||"cheap model")} · no agents</div>`;
     }else{
-      th.innerHTML=`<b>${esc(j.name||"Mission")}</b> staffed — ${j.roles.length} role${j.roles.length===1?"":"s"}${j.recall?" · brain recall folded in":""}.
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${j.roles.map(r=>
-          `<span class="achip" title="${esc(r.mission.slice(0,180))}">${esc(r.title)} · ${esc(r.model)} · ${r.turns}t${r.review?" · gated":""}</span>`).join("")}</div>
-        <div class="brief">${esc((j.summary||j.refined||"").slice(0,240))}</div>`;
+      // staffing runs on the server; the mission card below fills in as it plans
+      th.innerHTML=`<b>${esc(j.name||"Mission")}</b> — the CEO is staffing the roles.
+        <a href="#/instances">watch it →</a>
+        <div class="brief">${esc((j.refined||j.goal||"").slice(0,240))}</div>`;
     }
     poll();
   }catch(e){th.innerHTML="⚠ "+esc(e.message)}
@@ -1223,8 +1225,10 @@ async function cmdSend(){
 const MOPEN=new Set();                      // expanded runs survive re-renders
 const RSTAT_ORDER={working:0,review:1,pending:2,blocked:3,failed:3,done:4,skipped:4};
 function ceoCard(o,full){
-  const segs=o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}"></i>`).join("");
-  const statPill=`<span class="pill ${o.status==="running"?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
+  const planning=o.status==="planning";
+  const segs=planning?`<i class="working" title="the CEO is staffing the roles"></i>`
+    :o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}"></i>`).join("");
+  const statPill=`<span class="pill ${["running","planning"].includes(o.status)?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
   const roles=o.roles.map(r=>{
     const label=r.status==="failed"&&r.limit?"limit":r.status;
     const acts=(r.status==="review"&&o.live)?`<div class="racts">
@@ -1236,6 +1240,11 @@ function ceoCard(o,full){
       <div class="rbd"><div class="rt">${esc(r.title)}<small>${esc(r.model)} · ${r.turns}t${r.secs?" · "+r.secs+"s":""}${r.cost?" · $"+r.cost:""}${r.review?" · gated":""}${r.limit?" · session limit — Continue when ready":""}${r.depends_on.length?" · after "+r.depends_on.join(","):""}</small></div>
       ${full?`<div class="rm">${esc(r.mission.slice(0,300))}</div>`:""}${out}${acts}</div></div>`;
   }).join("");
+  const roleRows=planning
+    ?`<div class="rrow"><span class="rstat working">planning</span>
+        <div class="rbd"><div class="rt">The CEO is staffing the roles…</div>
+        <div class="rm">Reading the brain and deciding the roster, models and effort. This takes a few seconds — the roles appear here as soon as they're set.</div></div></div>`
+    :roles;
   const doneN=o.roles.filter(r=>["done","skipped"].includes(r.status)).length;
   const resumable=!o.live&&(o.roles.some(r=>["failed","blocked"].includes(r.status))
     ||["failed","error","stalled","stopped","exhausted"].includes(o.status));
@@ -1250,9 +1259,9 @@ function ceoCard(o,full){
     <summary><span class="chev"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
       <span class="mname" title="${esc(o.goal)}">${esc(o.name)}</span>
       <span class="mbar">${segs}</span>
-      <span class="mmeta">${doneN}/${o.roles.length} · $${(o.cost||0).toFixed(2)}${o.resumes?" · resumed "+o.resumes+"×":""}${o.account?" · "+esc(o.account):""}</span>
+      <span class="mmeta">${planning?"staffing…":`${doneN}/${o.roles.length}`} · $${(o.cost||0).toFixed(2)}${o.resumes?" · resumed "+o.resumes+"×":""}${o.account?" · "+esc(o.account):""}</span>
       ${statPill}</summary>
-    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${roles}${ctl}</div></details>`;
+    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${roleRows}${ctl}</div></details>`;
 }
 function renderCeo(){
   const runs=S.ceo.slice(0,8);

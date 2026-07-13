@@ -270,8 +270,8 @@ def list_all():
                 continue
             with LOCK:
                 o["live"] = o["cid"] in LIVE and LIVE[o["cid"]]["thread"].is_alive()
-            if o.get("status") in ("running", "review") and not o["live"]:
-                o["status"] = "stalled"  # server restarted mid-run
+            if o.get("status") in ("running", "review", "planning") and not o["live"]:
+                o["status"] = "stalled"  # server restarted mid-plan/run
             # auto-archive: finished, not live, and past the window -> move it out
             # so the active list stays short. Runs the sweep for free on the poll.
             if (not o["live"] and o.get("status") in TERMINAL
@@ -286,91 +286,149 @@ def list_all():
 EFFORT_TURNS = {"quick": 15, "standard": 40, "deep": 80}
 
 
-def plan_and_start(text, opts=None):
-    """The whole intake: refine -> recall -> CEO plan -> launch. Synchronous
-    (the command bar shows a spinner); execution then runs on a thread.
+# Not every prompt needs a Haiku rewrite. A long, detailed prompt is already
+# specific — re-writing it burns a call and can dilute the operator's wording.
+# Only short/terse prompts get refined; the rest go to the CEO verbatim.
+REFINE_MAX_CHARS = 180
+WORK_RE = re.compile(
+    r"\b(fix|build|creat|add|implement|refactor|writ|run|test|deploy|audit|"
+    r"migrat|updat|remov|delet|revamp|orchestrat|automat|debug|investigat|"
+    r"scan|generat|set ?up|install|configur|clean|optimi[sz]|rename|wire)\w*\b", re.I)
+ASK_RE = re.compile(
+    r"^\s*(what|who|whom|whose|when|where|why|how|which|is|are|was|were|does|do|did|"
+    r"can|could|should|would|explain|describe|summar|define|tell me|list|show me)\b", re.I)
 
-    opts (from the Run-it dropdown) override the CEO's per-role choices:
+
+def _classify(text):
+    """Free, local triage — no API call. Returns (needs_refine, simple_guess).
+
+    needs_refine: only short/terse prompts benefit from the Haiku rewrite.
+    simple_guess: a question with no work verbs is answerable directly. Used
+    as-is when we skip the refiner; otherwise Haiku's judgment wins."""
+    long_prompt = len(text) >= REFINE_MAX_CHARS
+    work = bool(WORK_RE.search(text))
+    ask = bool(ASK_RE.match(text))
+    return (not long_prompt), (ask and not work and not long_prompt)
+
+
+def plan_and_start(text, opts=None):
+    """Intake. Returns fast — the CEO's planning call (which can take minutes)
+    runs on a thread, so the HTTP request never hangs (a long synchronous plan
+    was what produced "Failed to fetch" in the browser).
+
+    opts (from the Run-it dropdown):
       mode    "auto" (decide per prompt) | direct (answer, no agents) | delegate
+      refine  "auto" (only short/vague prompts) | off (never rewrite my prompt)
       model   "auto" (CEO decides) | haiku|sonnet|opus|fable (force all roles)
       effort  "auto" | quick|standard|deep (force every role's turn budget)
       account "auto" (least used) | an account display-name
       gate    True -> operator reviews every role before it runs
     Returns (result, None) or (None, error). result["kind"] is "answer" (a
-    direct cheap reply, no mission) or "mission" (the CEO staffed roles)."""
+    direct cheap reply, no mission) or "mission" (staffing started)."""
     opts = opts if isinstance(opts, dict) else {}
     mode = opts.get("mode") if opts.get("mode") in ("auto", "direct", "delegate") else "auto"
+    refine_off = str(opts.get("refine") or "auto") == "off"
     force_model = opts.get("model") if opts.get("model") in ROLE_MODELS else None
-    force_turns = EFFORT_TURNS.get(opts.get("effort"))
-    gate_all = bool(opts.get("gate"))
-    account_pref = str(opts.get("account") or "auto")
     text = (text or "").strip()
     if not text:
         return None, "empty goal"
-    # 1. Haiku prompt smith — degrade gracefully to the raw prompt. Also judges
-    # whether this is a simple ask (answer directly) vs work worth staffing.
-    r = _api(REFINER, REFINE_SYSTEM, text, REFINE_SCHEMA, max_tokens=1500, timeout=45)
-    refined = r.get("prompt") if isinstance(r.get("prompt"), str) and r.get("prompt") else text
-    keywords = r.get("keywords") or text
-    simple = bool(r.get("simple"))
-    # Not every prompt needs the full CEO+agents machinery. Simple asks get a
-    # direct, cheap answer (no delegation, no high effort). "delegate" forces
-    # the CEO; "direct" always answers; "auto" delegates only when non-trivial.
+    needs_refine, simple = _classify(text)
+    refined, keywords = text, text
+    # 1. Haiku prompt smith — ONLY for short/vague prompts, and never in direct
+    # mode (nothing to plan) or when the operator turned refinement off.
+    if needs_refine and not refine_off and mode != "direct":
+        r = _api(REFINER, REFINE_SYSTEM, text, REFINE_SCHEMA, max_tokens=1500, timeout=45)
+        if not r.get("error"):
+            refined = r.get("prompt") or text
+            keywords = r.get("keywords") or text
+            simple = bool(r.get("simple"))   # the model's judgment beats the heuristic
+    # 2. Simple asks get a direct, cheap answer — no agents, no high effort.
     if mode == "direct" or (mode == "auto" and simple):
         ans = chat.ask(refined, model=DIRECT_MODELS.get(force_model))
         if ans.get("error"):
             return None, ans["error"]
         return {"kind": "answer", "reply": ans.get("reply") or "(no reply)",
                 "model": ans.get("model"), "goal": text[:1000]}, None
-    # 2. Brain recall — requery learnt knowledge before planning
-    recall = _recall(keywords)
-    # 3. CEO plan (Opus, structured output)
-    brief = "MISSION (refined by intake):\n" + refined
-    if recall:
-        brief += "\n\n## Brain recall — solved before, reuse don't re-solve:\n" + recall
-    p = _api(PLANNER, PLAN_SYSTEM, brief, PLAN_SCHEMA, max_tokens=8000, timeout=180)
-    if p.get("error"):
-        return None, p["error"]
-    roles = p.get("roles") or []
-    if not roles:
-        return None, "CEO returned no roles"
-    seen = set()
-    for i, role in enumerate(roles[:6]):
-        rid = re.sub(r"[^a-z0-9\-]", "", str(role.get("id") or "").lower()) or "r%d" % i
-        while rid in seen:
-            rid += "x"
-        seen.add(rid)
-        role["id"] = rid
-        role["model"] = role.get("model") if role.get("model") in ROLE_MODELS else "opus"
-        try:
-            role["turns"] = max(5, min(80, int(role.get("turns") or 30)))
-        except (TypeError, ValueError):
-            role["turns"] = 30
-        # operator overrides from the Run-it dropdown win over the CEO's choices
-        if force_model:
-            role["model"] = force_model
-        if force_turns:
-            role["turns"] = force_turns
-        if gate_all:
-            role["review"] = True
-        role["depends_on"] = [d for d in (role.get("depends_on") or []) if d in seen and d != rid]
-        role.update(status="pending", result="", secs=0, cost=0)
+    # 3. Real work: create the mission NOW (status "planning") and hand the slow
+    # recall+CEO plan to a thread. The UI shows the card immediately.
     os.makedirs(CDIR, exist_ok=True)
     cid = uuid.uuid4().hex[:8]
-    o = {"cid": cid, "name": (p.get("name") or text[:40])[:40],
-         "summary": (p.get("summary") or "")[:300],
-         "goal": text[:1000], "refined": refined[:4000],
-         "recall": bool(recall), "roles": roles[:6],
-         "account_pref": account_pref, "status": "running", "cost": 0,
+    o = {"cid": cid, "name": text[:40], "summary": "", "goal": text[:1000],
+         "refined": refined[:4000], "keywords": keywords[:300], "recall": False,
+         "roles": [], "opts": {"model": force_model,
+                               "turns": EFFORT_TURNS.get(opts.get("effort")),
+                               "gate": bool(opts.get("gate"))},
+         "account_pref": str(opts.get("account") or "auto"),
+         "status": "planning", "cost": 0,
          "started": datetime.datetime.now().isoformat(timespec="seconds")}
     _save(o)
-    t = threading.Thread(target=_run, args=(cid,), daemon=True)
+    t = threading.Thread(target=_plan_then_run, args=(cid,), daemon=True)
     with LOCK:
         LIVE[cid] = {"thread": t, "proc": None, "stop": False, "gate": {}}
     t.start()
-    emit(cid, "CEO staffed '%s': %s" % (o["name"], ", ".join(
-        "%s(%s/%dt)" % (r["id"], r["model"], r["turns"]) for r in o["roles"])))
+    emit(cid, "CEO planning: " + text[:120])
     return dict(o, kind="mission"), None
+
+
+def _plan_then_run(cid):
+    """Thread: brain recall -> CEO staffs the roles -> run them. Slow work that
+    used to block the HTTP request now lives here."""
+    try:
+        o = json.load(open(_path(cid), encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    ov = o.get("opts") or {}
+    force_model, force_turns, gate_all = ov.get("model"), ov.get("turns"), ov.get("gate")
+    try:
+        recall = _recall(o.get("keywords") or o["goal"])
+        brief = "MISSION:\n" + o["refined"]
+        if recall:
+            brief += "\n\n## Brain recall — solved before, reuse don't re-solve:\n" + recall
+        p = _api(PLANNER, PLAN_SYSTEM, brief, PLAN_SCHEMA, max_tokens=8000, timeout=180)
+        roles = [] if p.get("error") else (p.get("roles") or [])
+        if not roles:
+            o["status"] = "error"
+            o["detail"] = (p.get("error") or "CEO returned no roles")[:300]
+            _save(o)
+            emit(cid, "CEO planning failed: " + o["detail"][:120])
+            return
+        seen = set()
+        for i, role in enumerate(roles[:6]):
+            rid = re.sub(r"[^a-z0-9\-]", "", str(role.get("id") or "").lower()) or "r%d" % i
+            while rid in seen:
+                rid += "x"
+            seen.add(rid)
+            role["id"] = rid
+            role["model"] = role.get("model") if role.get("model") in ROLE_MODELS else "opus"
+            try:
+                role["turns"] = max(5, min(80, int(role.get("turns") or 30)))
+            except (TypeError, ValueError):
+                role["turns"] = 30
+            # operator overrides from the Run-it dropdown beat the CEO's choices
+            if force_model:
+                role["model"] = force_model
+            if force_turns:
+                role["turns"] = force_turns
+            if gate_all:
+                role["review"] = True
+            role["depends_on"] = [d for d in (role.get("depends_on") or [])
+                                  if d in seen and d != rid]
+            role.update(status="pending", result="", secs=0, cost=0)
+        o.update(name=(p.get("name") or o["goal"][:40])[:40],
+                 summary=(p.get("summary") or "")[:300],
+                 recall=bool(recall), roles=roles[:6], status="running")
+        _save(o)
+        emit(cid, "CEO staffed '%s': %s" % (o["name"], ", ".join(
+            "%s(%s/%dt)" % (r["id"], r["model"], r["turns"]) for r in o["roles"])))
+    except Exception as e:
+        o["status"] = "error"
+        o["detail"] = repr(e)[:300]
+        _save(o)
+        emit(cid, "CEO planning crashed: " + repr(e)[:120])
+        with LOCK:
+            LIVE.pop(cid, None)
+        return
+    _run(cid)   # same thread: staffing flows straight into execution
 
 
 def _worker(cid, role, context, cfg_dir):

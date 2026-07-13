@@ -337,3 +337,7 @@
 {"session": "855c8e79", "event": "session-stop", "detail": "conductor idle", "ts": "2026-07-13T10:36:47"}
 {"session": "855c8e79", "event": "ceo", "detail": "role writer done ($0.0498, 28s)", "ts": "2026-07-13T10:36:49"}
 {"session": "855c8e79", "event": "ceo", "detail": "mission done: CEO Selftest File Creation ($0.0498)", "ts": "2026-07-13T10:36:49"}
+{"session": "conductor", "event": "learn", "detail": "brain: Skill tree UI with horizontal scrolling is hard to navigate; needs clearer hierarchy, dark mode, and concise descriptions", "ts": "2026-07-13T10:59:34"}
+{"session": "conductor", "event": "bootstrap", "detail": "verify wire", "ts": "2026-07-13T14:04:57"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop iter 1/2: doer exit=0, goal MET", "ts": "2026-07-13T14:04:58"}
+{"session": "conductor", "event": "loop", "detail": "bootstrap-loop PASS in 1 iteration(s)", "ts": "2026-07-13T14:04:58"}

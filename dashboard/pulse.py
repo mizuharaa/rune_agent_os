@@ -278,29 +278,83 @@ def _claude(cfg):
 
 
 # ---------------------------------------------------------------- github
+# The public events API now returns TRIMMED PushEvent payloads (SHAs only, no
+# commits[]/size), so counting commits from events yields 0. Source of truth is
+# the GraphQL contribution calendar (accurate daily counts + a year of graph
+# data); recent commit messages come from the REST commits endpoint of the
+# most-recently-pushed repo. Needs a token with read:user scope.
+_GQL_CAL = """query($l:String!){user(login:$l){contributionsCollection{
+  contributionCalendar{totalContributions weeks{contributionDays{date contributionCount}}}}}}"""
+
+
+def _github_calendar(user, hdr):
+    """Year of daily contribution counts via GraphQL. Returns (days, total) where
+    days is a flat [{date, count}] list, or ([], 0) if unavailable (no token)."""
+    if "Authorization" not in hdr:
+        return [], 0  # GraphQL requires auth; skip cleanly on public-only config
+    body = json.dumps({"query": _GQL_CAL, "variables": {"l": user}}).encode()
+    try:
+        d = _http("https://api.github.com/graphql",
+                  dict(hdr, **{"Content-Type": "application/json"}), body)
+    except Exception:
+        return [], 0
+    if d.get("errors"):
+        return [], 0
+    cal = (((d.get("data") or {}).get("user") or {}).get("contributionsCollection")
+           or {}).get("contributionCalendar") or {}
+    days = [{"date": dd["date"], "count": dd["contributionCount"]}
+            for w in cal.get("weeks", []) for dd in w.get("contributionDays", [])]
+    return days, cal.get("totalContributions", 0)
+
+
 def _github(cfg):
     g = cfg.get("github") or {}
     user, token = g.get("user"), g.get("token")
     if not user:
         return {"error": "not connected"}
-    hdr = {"User-Agent": "maestro-pulse", "Accept": "application/vnd.github+json"}
+    hdr = {"User-Agent": "rune-pulse", "Accept": "application/vnd.github+json"}
     if token:
         hdr["Authorization"] = "Bearer " + token
-    evs = _http("https://api.github.com/users/%s/events?per_page=30" % user, hdr)
-    commits, today = [], 0
-    day = datetime.date.today().isoformat()
-    for e in evs:
-        if e.get("type") != "PushEvent":
+    days, total_year = _github_calendar(user, hdr)
+    today_key = datetime.date.today().isoformat()
+    today = next((d["count"] for d in reversed(days) if d["date"] == today_key), 0)
+    # streak: consecutive days up to and including today with >0 contributions
+    streak = 0
+    for d in reversed(days):
+        if d["date"] > today_key:
             continue
-        repo = (e.get("repo") or {}).get("name", "").split("/")[-1]
-        ts = e.get("created_at", "")
-        for c in (e.get("payload") or {}).get("commits") or []:
-            if len(commits) < 8:
-                commits.append({"repo": repo, "msg": c.get("message", "").split("\n")[0][:80],
-                                "ts": ts})
-            if ts[:10] == day:
-                today += 1
-    return {"user": user, "today": today, "commits": commits}
+        if d["count"] > 0:
+            streak += 1
+        elif d["date"] != today_key:  # today at 0 doesn't break a prior streak
+            break
+    # recent commit messages from the most-recently-pushed repo (events still
+    # carry repo + timestamp reliably, just not the commit bodies)
+    commits, repos = [], []
+    try:
+        evs = _http("https://api.github.com/users/%s/events?per_page=30" % user, hdr)
+        for e in evs:
+            if e.get("type") == "PushEvent":
+                r = (e.get("repo") or {}).get("name")
+                if r and r not in repos:
+                    repos.append(r)
+    except Exception:
+        pass
+    for full in repos[:2]:
+        try:
+            cs = _http("https://api.github.com/repos/%s/commits?per_page=6" % full, hdr)
+        except Exception:
+            continue
+        repo = full.split("/")[-1]
+        for c in cs:
+            cm = c.get("commit") or {}
+            commits.append({"repo": repo,
+                            "msg": (cm.get("message") or "").split("\n")[0][:80],
+                            "ts": (cm.get("author") or {}).get("date", "")})
+        if len(commits) >= 8:
+            break
+    commits.sort(key=lambda c: c["ts"], reverse=True)
+    return {"user": user, "today": today, "year": total_year,
+            "streak": streak, "days": days, "commits": commits[:8]}
 
 
 # ---------------------------------------------------------------- gmail

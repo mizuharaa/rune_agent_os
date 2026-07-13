@@ -37,7 +37,8 @@
      palette locally so their text keeps light-theme inks and stays readable */
   html[data-theme="dark"] .ccard{
     --ink:#21151d; --ink2:#6a5c66; --ink3:#a2989f; --canvas:#f5f0ed; --field:#fcf9fb;
-    --green:#5c1346; --green-mid:#7c1e60; --mint-soft:#efddea; --line:#e8dfe5; --line2:#dbcfd7}
+    --green:#5c1346; --green-mid:#7c1e60; --mint-soft:#efddea; --line:#e8dfe5; --line2:#dbcfd7;
+    --gh0:#ece3e9; --gh1:#e6b9d6; --gh2:#c96faa; --gh3:#8f2f70; --gh4:#5c1346}  /* white card → light heatmap ramp */
   html[data-theme="dark"] .pill.warn,html[data-theme="dark"] .deltapill.neg,
   html[data-theme="dark"] .rstat.failed,html[data-theme="dark"] .rstat.blocked{background:#46201c; color:#f2a99e}
   html[data-theme="dark"] .rstat.review{background:#413015; color:#e8b568}
@@ -359,6 +360,23 @@
   /* pulse cards stay white; brand color lives in the logo/status only */
   .ccard.claude .clogo{stroke:var(--claude)}
   .ccard.github .clogo{stroke:#24292e}
+  html[data-theme="dark"] .ccard.github .clogo{stroke:#0d0d0d}
+  /* contribution heatmap — plum ramp, column-major weeks, scales to card width */
+  :root{--gh0:#ece3e9; --gh1:#e6b9d6; --gh2:#c96faa; --gh3:#8f2f70; --gh4:#5c1346}
+  html[data-theme="dark"]{--gh0:#2a2030; --gh1:#4a2340; --gh2:#7c3564; --gh3:#ad5090; --gh4:#e08cc4}
+  .ghg{display:grid; grid-template-rows:repeat(7,1fr); grid-auto-flow:column; grid-auto-columns:minmax(0,1fr);
+    gap:2px; margin-top:13px; position:relative; z-index:1; min-width:0; overflow:hidden}
+  .ghg i{aspect-ratio:1; border-radius:2px; background:var(--gh0); transition:transform .1s}
+  .ghg i.l1{background:var(--gh1)} .ghg i.l2{background:var(--gh2)}
+  .ghg i.l3{background:var(--gh3)} .ghg i.l4{background:var(--gh4)}
+  .ghg i.hot{box-shadow:0 0 0 1.5px var(--card), 0 0 0 3px var(--green)}
+  .ghlegend{display:flex; align-items:center; gap:5px; justify-content:flex-end; margin-top:8px;
+    font-size:10px; color:var(--ink3); position:relative; z-index:1}
+  .ghlegend i{width:9px; height:9px; border-radius:2px; display:inline-block}
+  .ghstat{display:flex; align-items:center; gap:12px; margin-top:11px; position:relative; z-index:1;
+    font-size:11.5px; color:var(--ink2)}
+  .ghstat b{color:var(--green); font-weight:700; font-family:var(--mono)}
+  .ghstat .fire{filter:saturate(1.1)}
   .ccard.tool .clogo{stroke:var(--green)}
   .gmail-logo,.figma-logo{stroke:none; fill:none}
   .ccard.dim{opacity:.94}
@@ -1310,8 +1328,29 @@ function serviceCards2(){
       <div><div class="cname">GitHub</div><div class="csub">${esc(gh.user||"")}</div></div>
       <span class="clive">${gh.today||0} today</span></div>
       <div class="cbig">${gh.today||0}<em>commit${gh.today===1?"":"s"} today</em></div>
-      <div class="cline" title="${esc(c0?c0.repo+": "+c0.msg:"")}">${c0?`<b>${esc(c0.repo)}</b> - ${esc(c0.msg)}`:"no recent pushes"}</div></div>`;
+      ${ghGraph(gh)}
+      <div class="cline" title="${esc(c0?c0.repo+": "+c0.msg:"")}" style="margin-top:11px">${c0?`<b>${esc(c0.repo)}</b> — ${esc(c0.msg)}`:"no recent pushes"}</div></div>`;
   return gmail+github;
+}
+// GitHub contribution heatmap: column-major weeks (Sun→Sat), plum intensity ramp.
+// The first cell is offset by the first day's weekday so columns align like GitHub.
+function ghGraph(gh){
+  const days=gh.days||[];
+  if(!days.length)return`<div class="cline" style="margin-top:11px;color:var(--ink3)">token needs read:user scope for the graph</div>`;
+  const max=Math.max(1,...days.map(d=>d.count));
+  const lvl=c=>c<=0?0:Math.min(4,Math.ceil(c/max*4));
+  const today=dayKey(new Date());
+  const cells=days.map((d,i)=>{
+    const off=i===0?` style="grid-row:${new Date(d.date+"T00:00Z").getUTCDay()+1}"`:"";
+    const hot=d.date===today&&d.count>0?" hot":"";
+    return`<i class="l${lvl(d.count)}${hot}"${off} title="${d.date}: ${d.count} contribution${d.count===1?"":"s"}"></i>`;
+  }).join("");
+  return`<div class="ghg" title="${gh.year||0} contributions in the last year">${cells}</div>
+    <div class="ghstat">
+      ${gh.streak?`<span class="fire" title="consecutive days with commits">🔥 <b>${gh.streak}</b>-day streak</span>`:""}
+      <span><b>${gh.year||0}</b> this year</span>
+      <span class="ghlegend" style="margin:0 0 0 auto">less <i style="background:var(--gh0)"></i><i style="background:var(--gh1)"></i><i style="background:var(--gh2)"></i><i style="background:var(--gh3)"></i><i style="background:var(--gh4)"></i> more</span>
+    </div>`;
 }
 // sidebar turntable — lofi backdrop, the record IS the album cover (smooth),
 // interactive seek bar + prev/play/next controls. Built once; only data swaps.

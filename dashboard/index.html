@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rune</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%235c1346'/%3E%3Ctext x='8' y='12' text-anchor='middle' font-family='Segoe UI,sans-serif' font-size='11' font-weight='800' fill='%23fff'%3ER%3C/text%3E%3C/svg%3E">
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("rune-theme")||"light"}catch(e){}</script>
 <style>
   :root{
     --canvas:#f5f0ed; --card:#ffffff; --paper:#fffdf9; --line:#e8dfe5; --line2:#dbcfd7;
@@ -13,19 +14,43 @@
     --mint:#dca9cd; --mint-soft:#efddea; --green-mid:#7c1e60;
     --red:#d05043;
     --claude:#d97757;
+    --field:var(--field); --aside:rgba(255,255,255,.9);
+    --grid:rgba(92,19,70,.025); --grid2:rgba(92,19,70,.018);
     --mono:"Cascadia Mono",Consolas,monospace;
     --shadow:0 1px 2px rgba(33,21,29,.04), 0 6px 18px -8px rgba(33,21,29,.10);
     --lift:0 2px 4px rgba(33,21,29,.06), 0 16px 34px -12px rgba(33,21,29,.18);
     --r:18px; --route-x:24px;
   }
+  /* dark theme — same plum family, accents lifted for contrast on dark canvas */
+  html[data-theme="dark"]{
+    --canvas:#151016; --card:#1f1722; --paper:#1b141e; --line:#2f2434; --line2:#3d2e43;
+    --ink:#f1e9ef; --ink2:#b7a8b4; --ink3:#80707d;
+    --green:#c25d9e; --green-deep:#8e3a72; --green-dark:#231120;
+    --mint:#e2a9cf; --mint-soft:#3a1c30; --green-mid:#d67fbb;
+    --red:#e0685b;
+    --field:#251b29; --aside:rgba(24,17,26,.92);
+    --grid:rgba(214,127,187,.03); --grid2:rgba(214,127,187,.02);
+    --shadow:0 1px 2px rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.5);
+    --lift:0 2px 4px rgba(0,0,0,.3), 0 16px 34px -12px rgba(0,0,0,.65);
+  }
+  /* account cards stay white in dark mode (they're brand cards) — re-scope the
+     palette locally so their text keeps light-theme inks and stays readable */
+  html[data-theme="dark"] .ccard{
+    --ink:#21151d; --ink2:#6a5c66; --ink3:#a2989f; --canvas:#f5f0ed; --field:#fcf9fb;
+    --green:#5c1346; --green-mid:#7c1e60; --mint-soft:#efddea; --line:#e8dfe5; --line2:#dbcfd7}
+  html[data-theme="dark"] .pill.warn,html[data-theme="dark"] .deltapill.neg,
+  html[data-theme="dark"] .rstat.failed,html[data-theme="dark"] .rstat.blocked{background:#46201c; color:#f2a99e}
+  html[data-theme="dark"] .rstat.review{background:#413015; color:#e8b568}
+  html[data-theme="dark"] .captrack{background:repeating-linear-gradient(45deg,#241a29 0 4px,#31243a 4px 6px)}
   *{box-sizing:border-box; margin:0; padding:0}
   html{scroll-behavior:smooth}
   body{background:var(--canvas); color:var(--ink); min-height:100vh;
     background-image:
-      linear-gradient(rgba(92,19,70,.025) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(92,19,70,.018) 1px,transparent 1px);
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid2) 1px,transparent 1px);
     background-size:28px 28px,28px 28px;
-    font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif}
+    font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+    transition:background-color .25s ease, color .25s ease}
   button{font:inherit; cursor:pointer; border:none; background:none; color:inherit}
   input,textarea,select{font:inherit; color:var(--ink)}
   .mono{font-family:var(--mono)}
@@ -37,7 +62,7 @@
   .shell.navhidden aside{opacity:0; pointer-events:none; border-right-color:transparent}
   aside{z-index:16}
   #navhover{position:fixed; left:0; top:0; width:16px; height:100vh; z-index:15}
-  aside{background:rgba(255,255,255,.9); border-right:1px solid var(--line);
+  aside{background:var(--aside); border-right:1px solid var(--line);
     padding:22px 14px 16px; display:flex; flex-direction:column; gap:2px;
     position:sticky; top:0; height:100vh; overflow-y:auto; overflow-x:hidden; white-space:nowrap; min-width:0;
     backdrop-filter:blur(18px); transition:opacity .28s ease, transform .34s cubic-bezier(.2,.8,.2,1)}
@@ -62,7 +87,7 @@
     border-radius:0 3px 3px 0; background:var(--green)}
   nav a .bub{margin-left:auto; font-size:10.5px; font-family:var(--mono); background:var(--canvas);
     border-radius:99px; padding:1px 7px; min-width:22px; text-align:center; color:var(--ink2)}
-  nav a.on .bub{background:#fff}
+  nav a.on .bub{background:var(--card)}
   .sidebottom{margin-top:8px; display:flex; flex-direction:column; gap:10px; flex:none}
   /* ---- vinyl mini-player: lofi backdrop, album-cover record, controls ---- */
   .vinyl{background:linear-gradient(rgba(16,10,26,.45),rgba(13,8,22,.86)),url("lofi.jpg") center/cover;
@@ -257,7 +282,7 @@
   .capfill{position:absolute; left:0; right:0; bottom:0; border-radius:99px; transition:height .5s ease}
   .capx{font-size:11px; color:var(--ink3); font-family:var(--mono)}
   .peakpill{position:absolute; top:-4px; left:50%; transform:translateX(-50%); background:var(--ink);
-    color:#fff; font-size:10.5px; font-family:var(--mono); border-radius:99px; padding:2px 8px; white-space:nowrap; z-index:2}
+    color:var(--canvas); font-size:10.5px; font-family:var(--mono); border-radius:99px; padding:2px 8px; white-space:nowrap; z-index:2}
   /* ============ gauge ============ */
   .gaugewrap{display:flex; flex-direction:column; align-items:center; padding:6px 0 2px}
   .glegend{display:flex; gap:14px; flex-wrap:wrap; justify-content:center; font-size:12px; color:var(--ink2); padding-top:10px}
@@ -276,7 +301,7 @@
   .pill.idle{background:var(--canvas); color:var(--ink2)}
   .pill.warn{background:#f7e4e2; color:var(--red)}
   /* ============ launcher ============ */
-  .deck textarea{width:100%; min-height:84px; resize:vertical; background:#fcf9fb;
+  .deck textarea{width:100%; min-height:84px; resize:vertical; background:var(--field);
     border:1.5px solid var(--line2); border-radius:14px; padding:12px 14px; outline:none; transition:.15s}
   .deck textarea:focus{border-color:var(--green); box-shadow:0 0 0 3.5px var(--mint-soft)}
   .modes{display:flex; gap:8px; margin:12px 0 10px; flex-wrap:wrap}
@@ -284,7 +309,7 @@
   .mode.on{background:var(--green); border-color:var(--green); color:#fff}
   .opts{display:flex; gap:14px; margin-bottom:13px; flex-wrap:wrap; font-size:12.5px; color:var(--ink2); align-items:center}
   .opts label{display:inline-flex; align-items:center; gap:7px; font-weight:600}
-  .opts select{background:#fcf9fb; border:1.5px solid var(--line2); border-radius:10px; padding:6px 10px; outline:none}
+  .opts select{background:var(--field); border:1.5px solid var(--line2); border-radius:10px; padding:6px 10px; outline:none}
   .opts select:focus{border-color:var(--green)}
   .hintline{font-size:12px; color:var(--ink3)}
   .opts .chk input{accent-color:var(--green); width:15px; height:15px}
@@ -377,7 +402,7 @@
   .mrun{border:1px solid var(--line); border-radius:14px; background:var(--card); margin-bottom:10px; overflow:hidden}
   .mrun summary{list-style:none; cursor:pointer; padding:12px 14px; display:flex; align-items:center; gap:10px; min-width:0}
   .mrun summary::-webkit-details-marker{display:none}
-  .mrun summary:hover{background:#fdfafc}
+  .mrun summary:hover{background:var(--canvas)}
   .mrun .chev{flex:none; width:14px; height:14px; color:var(--ink3); transition:transform .18s}
   .mrun[open] .chev{transform:rotate(90deg)}
   .mrun .chev svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
@@ -419,52 +444,58 @@
   .skstat .sub{font-size:11.5px; color:var(--ink3)}
   .skstat .goalchip{display:inline-block; font-size:10.5px; font-family:var(--mono); font-weight:600; color:#fff;
     background:var(--green); border-radius:99px; padding:4px 11px; margin-top:8px}
-  /* an ACTUAL tree: root → genre branches → skill leaves, connector lines */
-  .sktree{overflow-x:auto; padding:18px 22px 22px}
-  .stree,.stree ul{list-style:none; margin:0; padding:0}
-  .stree{width:fit-content; min-width:100%}
-  .stree ul{display:flex; justify-content:center; padding-top:26px; position:relative}
-  .stree li{position:relative; display:flex; flex-direction:column; align-items:center; padding:26px 9px 0}
-  /* dendrogram connectors (each li draws its half of the fork) */
-  .stree li::before,.stree li::after{content:""; position:absolute; top:0; right:50%; width:50%; height:26px; border-top:2px solid var(--line2)}
-  .stree li::after{right:auto; left:50%; border-left:2px solid var(--line2)}
-  .stree li:only-child{padding-top:0}
-  .stree li:only-child::before,.stree li:only-child::after{border:0}
-  .stree li:first-child::before,.stree li:last-child::after{border:0}
-  .stree li:last-child::before{border-right:2px solid var(--line2); border-radius:0 7px 0 0}
-  .stree li:first-child::after{border-radius:7px 0 0 0}
-  .stree ul ul::before{content:""; position:absolute; top:0; left:50%; height:26px; border-left:2px solid var(--line2)}
-  .stree>li{padding-top:0}
-  .stree>li::before,.stree>li::after{display:none}
-  /* nodes */
-  .tnode{position:relative; z-index:1}
-  .tnode.root{background:linear-gradient(140deg,var(--green-deep),var(--green) 60%,var(--green-mid));
-    color:#fff; border-radius:15px; padding:13px 22px; text-align:center; box-shadow:var(--lift)}
-  .tnode.root b{font-size:16px; font-weight:800; letter-spacing:-.02em; display:block}
-  .tnode.root small{font-size:10.5px; font-family:var(--mono); color:rgba(255,255,255,.72); margin-top:2px; display:block}
-  .tnode.genre{display:inline-flex; align-items:center; gap:8px; background:var(--card); border:1.5px solid var(--line2);
-    border-radius:12px; padding:9px 15px; font-size:14px; font-weight:800; color:var(--ink); text-transform:capitalize; white-space:nowrap}
-  .tnode.genre .c{font-size:10px; font-weight:750; font-family:var(--mono); color:var(--green); background:var(--mint-soft); border-radius:99px; padding:2px 8px; text-transform:none}
-  .tnode.genre.locked{border-style:dashed; color:var(--ink3)} .tnode.genre.locked .c{color:var(--ink3); background:var(--canvas)}
-  .tnode.skill{display:flex; align-items:center; gap:11px; cursor:pointer; background:var(--card); border:1px solid var(--line);
-    border-radius:13px; padding:10px 15px 10px 11px; min-width:150px; transition:border-color .16s,box-shadow .16s,transform .16s}
+  /* vertical spine: root at top, one punched-out section per genre, skills
+     wrap in a grid — no horizontal scrolling, reads top to bottom */
+  .sktree{padding:20px 24px 26px}
+  .gtree{position:relative}
+  .gtree::before{content:""; position:absolute; left:17px; top:30px; bottom:26px; width:2px;
+    background:linear-gradient(var(--green) 0%, var(--line2) 120px)}
+  .groot{position:relative; z-index:1; display:inline-flex; align-items:baseline; gap:10px;
+    background:linear-gradient(140deg,var(--green-deep),var(--green) 60%,var(--green-mid));
+    color:#fff; border-radius:14px; padding:11px 20px; box-shadow:var(--lift); margin-bottom:4px}
+  .groot b{font-size:16px; font-weight:800; letter-spacing:-.02em}
+  .groot small{font-size:10.5px; font-family:var(--mono); color:rgba(255,255,255,.75)}
+  .gsec{position:relative; padding:18px 0 4px 44px}
+  .gsec::before{content:""; position:absolute; left:9px; top:24px; width:14px; height:14px; border-radius:50%;
+    background:var(--card); border:3px solid var(--green); z-index:1}
+  .gsec.locked::before{border-color:var(--line2)}
+  .ghead{display:flex; align-items:center; gap:10px; margin-bottom:11px; flex-wrap:wrap}
+  .ghead svg{width:17px; height:17px; stroke:var(--green); fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; flex:none}
+  .gsec.locked .ghead svg{stroke:var(--ink3)}
+  .gname{font-size:15px; font-weight:800; letter-spacing:-.01em; text-transform:capitalize}
+  .gsec.locked .gname{color:var(--ink3)}
+  .gbar{width:110px; height:5px; border-radius:99px; background:var(--canvas); overflow:hidden; border:1px solid var(--line)}
+  .gbar i{display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,var(--green),var(--green-mid))}
+  .gcount{font:700 10.5px/1 var(--mono); color:var(--green); background:var(--mint-soft); border-radius:99px; padding:4px 9px}
+  .gsec.locked .gcount{color:var(--ink3); background:var(--canvas)}
+  .ggrid{display:grid; gap:10px; grid-template-columns:repeat(auto-fill,minmax(235px,1fr))}
+  /* skill nodes: bigger, status-coloured left edge, one-line description */
+  .tnode.skill{position:relative; display:flex; align-items:flex-start; gap:11px; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--line2);
+    border-radius:13px; padding:12px 14px 11px 12px; min-width:0;
+    transition:border-color .16s, box-shadow .16s, transform .16s}
   .tnode.skill:hover{border-color:var(--green); box-shadow:var(--shadow); transform:translateY(-2px)}
   .tnode.skill.sel{border-color:var(--green); box-shadow:0 0 0 3px var(--mint-soft)}
-  .tnode.skill.locked{cursor:default; border-style:dashed}
+  .tnode.skill.earned{border-left-color:var(--green)}
+  .tnode.skill.learning{border-left-color:var(--mint)}
+  .tnode.skill.locked{cursor:default; border-style:dashed; border-left-width:1px}
   .tnode.skill.archived{opacity:.5}
-  .tring{width:34px; height:34px; border-radius:50%; flex:none; position:relative; display:grid; place-items:center;
+  .tring{width:36px; height:36px; border-radius:50%; flex:none; position:relative; display:grid; place-items:center;
     background:conic-gradient(var(--green) var(--p,0%), var(--line2) 0)}
   .tring::after{content:""; position:absolute; inset:3px; border-radius:50%; background:var(--card)}
-  .tring span{position:relative; z-index:1; font:800 12px/1 var(--mono); color:var(--green)}
+  .tring span{position:relative; z-index:1; font:800 12.5px/1 var(--mono); color:var(--green)}
   .tnode.skill.earned .tring{background:var(--green)} .tnode.skill.earned .tring::after{background:var(--green)}
   .tnode.skill.earned .tring span{color:#fff; font-size:15px}
   .tnode.skill.locked .tring{background:var(--line2)} .tnode.skill.locked .tring span{color:var(--ink3); font-size:13px}
-  .tmeta{min-width:0}
-  .tmeta .tt{font-size:13.5px; font-weight:750; color:var(--ink); letter-spacing:-.01em; white-space:nowrap}
+  .tmeta{min-width:0; flex:1}
+  .tmeta .tt{font-size:13.5px; font-weight:750; color:var(--ink); letter-spacing:-.01em;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .tnode.skill.archived .tt{text-decoration:line-through}
   .tnode.skill.locked .tt{color:var(--ink3)}
   .tmeta .ts{font-size:9.5px; font-weight:750; letter-spacing:.06em; text-transform:uppercase; font-family:var(--mono); color:var(--ink3); margin-top:2px}
   .tnode.skill.earned .ts{color:var(--green)}
+  .tmeta .td{font-size:11.5px; color:var(--ink3); margin-top:5px; line-height:1.45;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
   /* detail panel below the tree */
   .sdetail{border-top:1px solid var(--line); padding:16px 22px; min-height:64px}
   .sdetail .h{display:flex; align-items:center; gap:10px; margin-bottom:7px}
@@ -482,9 +513,9 @@
   .skpill.locked,.skpill.archived{background:var(--canvas); color:var(--ink3)}
   /* fade the tree in on first open */
   @keyframes skfade{from{opacity:0; transform:translateY(14px)} to{opacity:1; transform:none}}
-  .sktree.grow .stree{animation:skfade .5s cubic-bezier(.2,.75,.25,1) both}
+  .sktree.grow .gtree{animation:skfade .5s cubic-bezier(.2,.75,.25,1) both}
   /* ============ brain ============ */
-  .qbox{width:100%; background:#fcf9fb; border:1.5px solid var(--line2); border-radius:12px; padding:10px 14px; outline:none; transition:.15s}
+  .qbox{width:100%; background:var(--field); border:1.5px solid var(--line2); border-radius:12px; padding:10px 14px; outline:none; transition:.15s}
   .qbox:focus{border-color:var(--green); box-shadow:0 0 0 3.5px var(--mint-soft)}
   .hstats{color:var(--ink3); font-size:12px; margin:10px 2px 2px}
   .hit{border-top:1px solid var(--line); padding:11px 2px}
@@ -518,11 +549,11 @@
   .intcard .add code{font-family:var(--mono); background:var(--canvas); border-radius:6px; padding:1px 6px}
   /* ============ audit ============ */
   .filters{display:flex; gap:10px; padding:12px 0 0; flex-wrap:wrap}
-  .filters select,.filters input{background:#fcf9fb; border:1.5px solid var(--line2); border-radius:10px; padding:7px 11px; outline:none; font-size:13px}
+  .filters select,.filters input{background:var(--field); border:1.5px solid var(--line2); border-radius:10px; padding:7px 11px; outline:none; font-size:13px}
   .filters input{flex:1; min-width:150px}
   .audit{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px; table-layout:fixed}
   .audit td{padding:6px 8px; border-top:1px solid var(--line); vertical-align:top}
-  .audit tr:hover td{background:#f9f4f8}
+  .audit tr:hover td{background:var(--canvas)}
   .audit .tm{white-space:nowrap; color:var(--ink3); width:112px}
   .audit .ss{white-space:nowrap; color:var(--ink2); width:88px; overflow:hidden; text-overflow:ellipsis}
   .audit .ty{white-space:nowrap; font-weight:700; width:102px; overflow:hidden; text-overflow:ellipsis; color:var(--green)}
@@ -665,6 +696,7 @@
       <button class="topstat" id="topstatus" data-go="#/instances"><span class="dot"></span>—</button>
       <span class="clockchip mono" id="datechip"></span>
       <span class="clockchip mono" id="clock">--:--:--</span>
+      <button class="tbtn" id="themebtn" title="toggle dark mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="themeicon"></svg></button>
       <button class="tbtn" id="pausebtn" title="pause polling"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="7" y="5" width="3.5" height="14" rx="1"/><rect x="13.5" y="5" width="3.5" height="14" rx="1"/></svg></button>
       <button class="tbtn" id="refreshbtn" title="refresh now"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4a8 8 0 1 0 8 8h-3"/><path d="M20 4v5h-5" stroke-linejoin="round"/></svg></button>
     </div>
@@ -1409,27 +1441,41 @@ const SK_ST={active:{cls:"earned",word:"earned"},learning:{cls:"learning",word:"
   candidate:{cls:"candidate",word:"new"},archived:{cls:"archived",word:"archived"}};
 function growTree(){
   if(treeGrown)return;
-  const w=$("sktree");if(!w||!w.querySelector(".stree"))return;
+  const w=$("sktree");if(!w||!w.querySelector(".gtree"))return;
   treeGrown=true;w.classList.add("grow");setTimeout(()=>w.classList.remove("grow"),1200);
 }
-// a skill = a leaf node (progress ring + name + status word)
+// one concise line: first sentence of the SKILL.md description, hard-capped
+function shortDesc(v){
+  const d=(v.desc||"").trim();if(!d)return"";
+  const first=d.split(/(?<=[.!?])\s/)[0];
+  return first.length>110?first.slice(0,107)+"…":first;
+}
+// a skill = a card node: progress ring + name + status + one-line description
 function treeSkill(n,v){
   const st=SK_ST[v.status]||SK_ST.learning;
   const uses=Math.min(v.uses||0,3),pct=Math.round(uses/3*100);
   const glyph=st.cls==="earned"?"✓":String(uses);
-  return`<li><div class="tnode skill ${st.cls}" data-skill="${esc(n)}">
+  const d=shortDesc(v);
+  return`<div class="tnode skill ${st.cls}" data-skill="${esc(n)}">
     <div class="tring" style="--p:${pct}%"><span>${glyph}</span></div>
-    <div class="tmeta"><div class="tt">${esc(n)}</div><div class="ts">${st.word}</div></div></div></li>`;
+    <div class="tmeta"><div class="tt">${esc(n)}</div>
+      <div class="ts">${st.word}${st.cls==="earned"?"":` · ${uses}/3 uses`}</div>
+      ${d?`<div class="td">${esc(d)}</div>`:""}</div></div>`;
 }
-const treeLock=()=>`<li><div class="tnode skill locked" data-locked="1">
+const treeLock=()=>`<div class="tnode skill locked" data-locked="1">
   <div class="tring"><span>🔒</span></div>
-  <div class="tmeta"><div class="tt">locked</div><div class="ts">future slot</div></div></div></li>`;
+  <div class="tmeta"><div class="tt">locked</div><div class="ts">future slot</div></div></div>`;
+// a genre = one spine section: icon + name + progress bar + skill grid
 function treeGenre(br,items,locked){
   const gE=items.filter(([,v])=>v.status==="active").length;
-  const leaves=locked?treeLock():items.map(([n,v])=>treeSkill(n,v)).join("");
-  const count=locked?"soon":`${gE}/${items.length}`;
-  return`<li><div class="tnode genre ${locked?"locked":""}"><span>${esc(br)}</span><span class="c">${count}</span></div>
-    <ul>${leaves}</ul></li>`;
+  const cards=locked?treeLock():items.map(([n,v])=>treeSkill(n,v)).join("");
+  const pct=items.length?Math.round(gE/items.length*100):0;
+  return`<div class="gsec ${locked?"locked":""}">
+    <div class="ghead"><svg viewBox="0 0 24 24">${BR_ICON[br]||BR_ICON.ops}</svg>
+      <span class="gname">${esc(br)}</span>
+      ${locked?"":`<span class="gbar"><i style="width:${pct}%"></i></span>`}
+      <span class="gcount">${locked?"unlocks with a mission":`${gE}/${items.length} earned`}</span></div>
+    <div class="ggrid">${cards}</div></div>`;
 }
 function renderSkills(){
   const reg=S.skills||{goal:"–",skills:{}},sk=Object.entries(reg.skills||{});
@@ -1454,17 +1500,17 @@ function renderSkills(){
     || (b[1].length-a[1].length) || a[0].localeCompare(b[0]));
   let genres=order.map(([br,items])=>treeGenre(br,items,false)).join("");
   genres+=LOCKED_GENRES.filter(g=>!branches[g]).map(g=>treeGenre(g,[],true)).join("");
-  // root → genre branches → skill leaves, one connected dendrogram
-  $("sktree").innerHTML=`<ul class="stree"><li>
-    <div class="tnode root"><b>Rune</b><small>${esc(reg.goal||"–")}</small></div>
-    <ul>${genres}</ul></li></ul>`;
+  // root on top, genres stacked down a spine — reads vertically, never scrolls sideways
+  $("sktree").innerHTML=`<div class="gtree">
+    <div class="groot"><b>Rune</b><small>${esc(reg.goal||"–")}</small></div>
+    ${genres}</div>`;
   if(!$("sdetail").dataset.sel)skDetailHint();
   if($("p-skills").classList.contains("show"))requestAnimationFrame(growTree);
 }
 function skDetailHint(){
-  $("sdetail").innerHTML=`<div class="hint">Click a skill node to see what it does — earned nodes are filled, learning nodes show their progress, locked slots open when a mission earns them.</div>`;
+  $("sdetail").innerHTML=`<div class="hint">Click a skill for its full description. Filled ring = earned; the ring shows progress toward 3 uses.</div>`;
 }
-// click a skill node -> show its concise description in the detail panel
+// click a skill node -> concise detail (two sentences max, facts as chips)
 $("sktree").addEventListener("click",e=>{
   const node=e.target.closest(".tnode.skill");if(!node)return;
   $("sktree").querySelectorAll(".tnode.skill.sel").forEach(x=>x.classList.remove("sel"));
@@ -1472,14 +1518,17 @@ $("sktree").addEventListener("click",e=>{
   const d=$("sdetail");
   if(node.dataset.locked){d.dataset.sel="locked";
     d.innerHTML=`<div class="h"><span class="dn">Locked slot</span><span class="skpill locked">locked</span></div>
-      <p>A future skill in this genre. It opens once a mission earns it here — or seed one with <code>skills/engine.py add</code> (or the admin panel below).</p>`;return;}
+      <p>Opens when a mission earns a skill here — or seed one with the panel below.</p>`;return;}
   const n=node.dataset.skill,v=((S.skills||{}).skills||{})[n]||{},st=SK_ST[v.status]||SK_ST.learning;
   const uses=Math.min(v.uses||0,3);
-  const desc=(v.desc&&v.desc.trim())||"Newly seeded skill — earns after 3 real uses. Open its SKILL.md to flesh out the process.";
+  let desc=(v.desc&&v.desc.trim())||"Newly seeded — earns after 3 real uses.";
+  // concise: at most two sentences, hard cap so the panel never becomes an essay
+  desc=desc.split(/(?<=[.!?])\s/).slice(0,2).join(" ");
+  if(desc.length>220)desc=desc.slice(0,217)+"…";
   d.dataset.sel=n;
   d.innerHTML=`<div class="h"><span class="dn">${esc(n)}</span><span class="skpill ${st.cls}">${st.word}</span></div>
     <p>${esc(desc)}</p>
-    <div class="facts"><span>${uses}/3 uses</span><span>${esc(v.trigger||"no trigger")}</span><span>${(v.goals&&v.goals.length)?"on goal":"off goal"}</span></div>`;
+    <div class="facts"><span>${uses}/3 uses</span><span>${esc(v.trigger||"no trigger")}</span><span>${esc(v.branch||"misc")}</span><span>${(v.goals&&v.goals.length)?"on goal":"off goal"}</span></div>`;
 });
 
 /* ---------- render ---------- */
@@ -1883,6 +1932,18 @@ document.addEventListener("click",async e=>{
   if(mx&&mx.dataset.k){mx.classList.toggle("open");
     mx.classList.contains("open")?OPEN.add(mx.dataset.k):OPEN.delete(mx.dataset.k)}
 });
+/* ---------- dark mode ---------- */
+const MOON='<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+const SUN='<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
+function syncTheme(){const dark=document.documentElement.dataset.theme==="dark";
+  $("themeicon").innerHTML=dark?SUN:MOON;
+  $("themebtn").title=dark?"switch to light mode":"switch to dark mode";}
+$("themebtn").addEventListener("click",()=>{
+  const next=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem("rune-theme",next)}catch(_){}
+  syncTheme()});
+syncTheme();
 $("pausebtn").addEventListener("click",()=>{S.paused=!S.paused;
   $("pausebtn").classList.toggle("paused",S.paused);
   toast(S.paused?"Polling paused.":"Polling resumed.");render()});

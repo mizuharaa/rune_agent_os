@@ -238,7 +238,7 @@
     display:grid; place-items:center; color:var(--ink2); background:var(--card); transition:all .15s}
   .cnavb:hover{background:var(--green); border-color:var(--green); color:#fff}
   .cnavb svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
-  .ctrack{display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; padding-bottom:2px}
+  .ctrack{display:flex; align-items:flex-start; gap:14px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; padding-bottom:2px}
   .ctrack::-webkit-scrollbar{display:none}
   /* account/service cards: white, brand logo carries the color, hover lifts */
   .ccard{scroll-snap-align:start; flex:0 0 300px; min-width:300px; border-radius:var(--r);
@@ -246,13 +246,7 @@
     background:#fff;
     border:1px solid var(--line);
     transition:border-color .18s, box-shadow .22s, transform .22s}
-  .ccard:hover{border-color:rgba(124,30,96,.4); box-shadow:var(--lift); transform:translateY(-3px)}
-  .ccard::before{content:""; position:absolute; right:-54px; top:-58px; width:150px; height:150px;
-    border:18px solid rgba(124,30,96,.06); border-radius:50%; transition:border-color .18s}
-  .ccard::after{content:""; position:absolute; right:-10px; top:27px; width:72px; height:72px;
-    border:12px solid rgba(220,169,205,.13); border-radius:50%; transition:border-color .18s}
-  .ccard:hover::before{border-color:rgba(124,30,96,.12)}
-  .ccard:hover::after{border-color:rgba(220,169,205,.28)}
+  .ccard:hover{border-color:rgba(124,30,96,.32); box-shadow:var(--lift); transform:translateY(-2px)}
   .ctop{display:flex; align-items:center; gap:11px; position:relative; z-index:1}
   .clogo{width:30px; height:30px; flex:none; stroke:var(--green); fill:none; stroke-width:1.7; stroke-linecap:round}
   .cname{font-size:16px; font-weight:800; letter-spacing:-.01em}
@@ -659,11 +653,11 @@
   .navtask.queued .tmark{background:var(--card); border-color:var(--line2); color:var(--ink2)}
   .navtask .tt{font-size:12px; font-weight:720; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   .navtask .tm{font:600 10.5px/1.35 var(--mono); color:var(--ink3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-  .fxcard{transform-style:preserve-3d; will-change:transform;
-    transform:perspective(900px) translateY(var(--reveal-y,0)) translateY(var(--ty,0)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
-    transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, border-color .18s ease, opacity .28s ease}
-  .fxcard:hover{--ty:-4px; box-shadow:var(--lift); border-color:rgba(92,19,70,.24)}
-  .motion-ready .reveal{opacity:0; --reveal-y:18px}
+  /* calm motion: a one-time rise-in on scroll, no cursor tilt (no per-card lean) */
+  .fxcard{transform:translateY(var(--reveal-y,0));
+    transition:transform .2s ease, box-shadow .2s ease, border-color .18s ease, opacity .3s ease}
+  .fxcard:hover{box-shadow:var(--lift)}
+  .motion-ready .reveal{opacity:0; --reveal-y:10px}
   .motion-ready .reveal.inview{opacity:1; --reveal-y:0px}
   @media (prefers-reduced-motion: reduce){
     .fxcard{transform:none!important}
@@ -1234,7 +1228,7 @@ function renderOpsSurface(ctx){
     <div class="taskbar"><i style="width:${pct}%"></i></div>${taskMarkup(tasks.slice(0,4),true)}`;
 }
 
-let revealObserver=null, motionBound=false;
+let revealObserver=null;
 function syncMotion(){
   if(reduced)return;
   document.body.classList.add("motion-ready");
@@ -1247,23 +1241,11 @@ function syncMotion(){
     if(!el.classList.contains("fxcard"))el.classList.add("fxcard");
     if(!el.classList.contains("reveal")){
       el.classList.add("reveal");
-      el.style.transitionDelay=Math.min(120,(i%8)*18)+"ms";
+      el.style.transitionDelay=Math.min(90,(i%8)*14)+"ms";
       const r=el.getBoundingClientRect();
       if(r.top<innerHeight&&r.bottom>0)el.classList.add("inview");
       revealObserver.observe(el);
     }
-  });
-  if(motionBound)return;
-  motionBound=true;
-  document.addEventListener("pointermove",e=>{
-    const el=e.target.closest(".fxcard");if(!el)return;
-    const r=el.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;
-    el.style.setProperty("--rx",(-y*5).toFixed(2)+"deg");
-    el.style.setProperty("--ry",(x*5).toFixed(2)+"deg");
-  });
-  document.addEventListener("pointerout",e=>{
-    const el=e.target.closest(".fxcard");if(!el||el.contains(e.relatedTarget))return;
-    el.style.setProperty("--rx","0deg");el.style.setProperty("--ry","0deg");
   });
 }
 /* ---------- pulse widgets (topbar) ---------- */

@@ -293,6 +293,14 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"keys": askpass.keys()})  # names only, never secrets
         if self.path == "/api/pulse":
             return self._json(200, pulse.get())
+        if self.path == "/api/version":
+            # index.html mtime — an open window polls this to notice when Rune
+            # has rewritten its own UI and offer a reload instead of going stale.
+            try:
+                mt = int(os.path.getmtime(os.path.join(ROOT, "dashboard", "index.html")))
+            except OSError:
+                mt = 0
+            return self._json(200, {"v": mt})
         return super().do_GET()
 
     def do_POST(self):

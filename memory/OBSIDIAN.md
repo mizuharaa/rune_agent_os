@@ -2,7 +2,7 @@
 
 vault: C:\Obsidian_Brain\Daniel_Obsidian_Vault
 
-- Maestro **reads** anywhere in the vault, **writes only under `Maestro/`** inside it
+- Rune **reads** anywhere in the vault, **writes only under `Rune/`** inside it
   (Hermes cards land in `Maestro/Hermes/`, with a browsable MOC at
   `Maestro/Hermes/_index.md` regenerated on every note).
 - No naked facts: every memory write carries a `source` and a freshness stamp

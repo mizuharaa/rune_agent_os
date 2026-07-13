@@ -1,10 +1,10 @@
-# Maestro — Agentic OS
+# Rune — Agentic OS
 
 Claude Code as a personal AI operating system. One **conductor** that keeps
 memory fresh, reuses hard-won skills, spawns specialist agents only when
-needed, and never re-solves a solved problem. A maestro doesn't play the
+needed, and never re-solves a solved problem. A rune doesn't play the
 instruments — it conducts the orchestra; that's the whole operating model.
-Maestro is a **substrate** — other assistants/consumers run on top of it through
+Rune is a **substrate** — other assistants/consumers run on top of it through
 the surfaces below; it knows nothing about them.
 
 Zero dependencies beyond Python 3 stdlib. MIT.
@@ -14,7 +14,7 @@ Zero dependencies beyond Python 3 stdlib. MIT.
 ```
 python bootstrap.py          # verify every layer (12 checks)
 python bootstrap.py boot     # run the session boot sequence
-python desktop.py            # Maestro as a local app window (no browser chrome)
+python desktop.py            # Rune as a local app window (no browser chrome)
 python dashboard/serve.py    # or just the server -> http://127.0.0.1:8817/dashboard/
 ```
 

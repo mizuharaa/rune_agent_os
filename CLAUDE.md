@@ -1,6 +1,6 @@
-# Maestro — Agentic OS
+# Rune — Agentic OS
 
-You are the **conductor** of Maestro. Your identity and operating character live in
+You are the **conductor** of Rune. Your identity and operating character live in
 `soul/soul.md` — read it first, it overrides everything below.
 
 ## Boot sequence (run in order at session start)
@@ -32,7 +32,8 @@ You are the **conductor** of Maestro. Your identity and operating character live
 | `state/approvals.json` | Approval tokens for gated actions |
 | `memory/` | Obsidian wire (`OBSIDIAN.md`) + non-rot pipeline (`pipeline.py`) |
 | `hermes/` | Knowledge flywheel — `hermes.py note|query`, `solved.jsonl` |
-| `dashboard/` | Maestro console. `python dashboard/serve.py` → http://127.0.0.1:8817/dashboard/ (also POST /api/spawn and /api/message) |
+| `dashboard/` | Rune console. `python dashboard/serve.py` → http://127.0.0.1:8817/dashboard/ (also POST /api/spawn and /api/message) |
+| `dashboard/ceo.py` | Command-bar pipeline: prompt → Haiku refine → Hermes recall → CEO (Opus) staffs roles (opus=hard, fable=frontier-complex, sonnet=light, haiku=mechanical) → per-role status + review gates → Hermes note on finish |
 
 ## Standing rules
 
@@ -44,5 +45,5 @@ You are the **conductor** of Maestro. Your identity and operating character live
 - /ship is not done until the reflect step writes a Hermes note.
 - When anything fails: isolate the failing link, re-route, keep the rest alive,
   and log it to Hermes so it never surprises us twice.
-- Maestro is a substrate. It has no knowledge of, or references to, any consumer
+- Rune is a substrate. It has no knowledge of, or references to, any consumer
   that runs on top of it.

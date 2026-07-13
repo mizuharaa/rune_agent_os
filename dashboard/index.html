@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Maestro</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%23135c38'/%3E%3Ctext x='8' y='12' text-anchor='middle' font-family='Segoe UI,sans-serif' font-size='11' font-weight='800' fill='%23fff'%3EM%3C/text%3E%3C/svg%3E">
+<title>Rune</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%235c1346'/%3E%3Ctext x='8' y='12' text-anchor='middle' font-family='Segoe UI,sans-serif' font-size='11' font-weight='800' fill='%23fff'%3ER%3C/text%3E%3C/svg%3E">
 <style>
   :root{
     --canvas:#f5f0ed; --card:#ffffff; --paper:#fffdf9; --line:#e8dfe5; --line2:#dbcfd7;
@@ -119,6 +119,14 @@
     color:#0b0b0d; background:#1db954; padding:5px 13px; border-radius:99px; text-shadow:none}
   .vcta svg{width:13px; height:13px; stroke:#0b0b0d; fill:none; stroke-width:2; stroke-linecap:round}
   @media (prefers-reduced-motion: reduce){ .record,.vinyl.playing .tonearm,.vinyl.playing .vlab .eq i{animation:none} }
+  /* minimize toggle: collapsed = one slim now-playing line */
+  .vmin{margin-left:auto; width:20px; height:20px; border-radius:6px; display:grid; place-items:center;
+    color:rgba(242,235,250,.75); transition:.15s}
+  .vmin:hover{background:rgba(255,255,255,.15); color:#fff}
+  .vmin svg{width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+  .vinyl.min{padding:9px 12px}
+  .vinyl.min .vlab{margin-bottom:0}
+  .vinyl.min .vdeck,.vinyl.min .vmeta,.vinyl.min #vplayer{display:none}
   .side-dark{background:var(--green-dark); border-radius:14px; padding:13px 14px; color:#eedfea; position:relative; overflow:hidden}
   .side-dark::before{content:""; position:absolute; inset:-40% -20% auto auto; width:120px; height:120px;
     border:14px solid rgba(220,169,205,.10); border-radius:50%}
@@ -206,14 +214,13 @@
   .cnavb svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
   .ctrack{display:flex; gap:14px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; padding-bottom:2px}
   .ctrack::-webkit-scrollbar{display:none}
+  /* account/service cards: white, brand logo carries the color, hover lifts */
   .ccard{scroll-snap-align:start; flex:0 0 300px; min-width:300px; border-radius:var(--r);
     padding:18px 20px 16px; color:var(--ink); position:relative; overflow:hidden; box-shadow:var(--shadow);
-    background:linear-gradient(180deg,#fffaf2 0%,#fbf2e8 100%);
-    border:1.5px solid rgba(124,30,96,.24);
-    outline:1px solid rgba(255,255,255,.78);
-    outline-offset:-3px;
-    transition:border-color .18s, box-shadow .2s, transform .22s}
-  .ccard:hover{border-color:rgba(124,30,96,.56); box-shadow:0 0 0 3px rgba(220,169,205,.42), var(--lift)}
+    background:#fff;
+    border:1px solid var(--line);
+    transition:border-color .18s, box-shadow .22s, transform .22s}
+  .ccard:hover{border-color:rgba(124,30,96,.4); box-shadow:var(--lift); transform:translateY(-3px)}
   .ccard::before{content:""; position:absolute; right:-54px; top:-58px; width:150px; height:150px;
     border:18px solid rgba(124,30,96,.06); border-radius:50%; transition:border-color .18s}
   .ccard::after{content:""; position:absolute; right:-10px; top:27px; width:72px; height:72px;
@@ -346,7 +353,7 @@
   .topstat.attn{color:#fff; background:var(--claude); border-color:var(--claude); cursor:pointer}
   .topstat.attn .dot{background:#fff; animation:pulse 1.4s ease-in-out infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  /* ============ command bar — tell Maestro what to do ============ */
+  /* ============ command bar — tell the CEO what to do ============ */
   .cmdwrap{max-width:780px; margin:4px auto 18px}
   .cmdbar{display:flex; align-items:center; gap:12px; background:var(--card); border:1.5px solid var(--line2);
     border-radius:18px; padding:9px 10px 9px 19px; box-shadow:var(--lift); transition:border-color .15s, box-shadow .15s}
@@ -356,36 +363,6 @@
   .cmdbar input::placeholder{color:var(--ink3)}
   .cmdbar{position:relative}
   .cmdbar input{min-width:0}
-  .cmdsplit{display:flex; flex:none}
-  .cmdgo{display:inline-flex; align-items:center; gap:7px; background:var(--green); color:#fff;
-    font-weight:750; font-size:13.5px; border-radius:13px 0 0 13px; padding:10px 16px 10px 19px; transition:.15s}
-  .cmdgo:hover{background:var(--green-mid)} .cmdgo:disabled{opacity:.5; cursor:default}
-  .cmddrop{width:36px; border-radius:0 13px 13px 0; background:var(--green); color:#fff; display:grid;
-    place-items:center; border-left:1px solid rgba(255,255,255,.28); transition:.15s; position:relative}
-  .cmddrop:hover{background:var(--green-mid)}
-  .cmddrop svg{width:13px; height:13px; stroke:#fff; fill:none; stroke-width:2.4; stroke-linecap:round;
-    stroke-linejoin:round; transition:transform .2s}
-  .cmdbar.optsopen .cmddrop svg{transform:rotate(180deg)}
-  .cmddrop .dot{position:absolute; top:5px; right:5px; width:7px; height:7px; border-radius:50%;
-    background:#fff; box-shadow:0 0 0 2px var(--green); opacity:0; transition:opacity .15s}
-  .cmddrop.tuned .dot{opacity:1}
-  /* options popover — anchored bottom-right of the bar, shrinks on small screens */
-  .cmdpop{position:absolute; right:0; top:calc(100% + 10px); width:330px; max-width:calc(100vw - 40px);
-    background:var(--card); border:1px solid var(--line2); border-radius:16px; padding:14px 16px;
-    box-shadow:var(--lift); z-index:30; display:none}
-  .cmdpop.open{display:block; animation:popin .18s cubic-bezier(.2,.7,.2,1)}
-  @keyframes popin{from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none}}
-  .cmdpop .phead{font-size:10.5px; font-weight:750; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--ink3); padding:0 0 7px}
-  .cmdpop .prow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 0}
-  .cmdpop .prow label{font-size:12.5px; font-weight:650; color:var(--ink2); flex:none}
-  .cmdpop .prow select{flex:1; min-width:0; max-width:180px; border:1px solid var(--line2); border-radius:9px;
-    padding:5.5px 9px; font:inherit; font-size:12.5px; background:var(--card); color:var(--ink)}
-  .cmdpop .chk{display:flex; align-items:center; gap:9px; font-size:12.5px; font-weight:650;
-    color:var(--ink2); padding:8px 0 2px; cursor:pointer}
-  .cmdpop .chk input{accent-color:var(--green); width:15px; height:15px}
-  .cmdpop .pnote{font-size:11px; color:var(--ink3); border-top:1px solid var(--line); margin-top:9px;
-    padding-top:9px; line-height:1.5}
   .cmdflow{display:flex; flex-direction:column; gap:8px; margin-top:10px}
   .cmdmsg{font-size:13.5px; line-height:1.55; border-radius:13px; padding:10px 15px; overflow-wrap:anywhere}
   .cmdmsg.u{background:var(--green); color:#fff; align-self:flex-end; max-width:78%; border-bottom-right-radius:5px}
@@ -396,6 +373,39 @@
   .cmdmsg .dots i{display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--green);
     margin-right:3px; animation:pulse 1s ease-in-out infinite}
   .cmdmsg .dots i:nth-child(2){animation-delay:.2s} .cmdmsg .dots i:nth-child(3){animation-delay:.4s}
+  /* ============ CEO missions — running tasks, expandable per-role status ============ */
+  .mrun{border:1px solid var(--line); border-radius:14px; background:var(--card); margin-bottom:10px; overflow:hidden}
+  .mrun summary{list-style:none; cursor:pointer; padding:12px 14px; display:flex; align-items:center; gap:10px; min-width:0}
+  .mrun summary::-webkit-details-marker{display:none}
+  .mrun summary:hover{background:#fdfafc}
+  .mrun .chev{flex:none; width:14px; height:14px; color:var(--ink3); transition:transform .18s}
+  .mrun[open] .chev{transform:rotate(90deg)}
+  .mrun .chev svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
+  .mrun .mname{font-weight:750; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0}
+  .mrun .mmeta{font-family:var(--mono); font-size:10.5px; color:var(--ink3); flex:none; white-space:nowrap}
+  .mbar{display:flex; gap:3px; flex:none; width:88px}
+  .mbar i{flex:1; height:5px; border-radius:99px; background:var(--canvas)}
+  .mbar i.done{background:var(--green)} .mbar i.working{background:var(--green-mid); animation:pulse 1.2s ease-in-out infinite}
+  .mbar i.review{background:#d9902a} .mbar i.bad{background:var(--red)}
+  .mbody{border-top:1px solid var(--line); padding:4px 14px 12px}
+  .rrow{display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-top:1px dashed var(--line); min-width:0}
+  .rrow:first-child{border-top:none}
+  .rstat{flex:none; width:74px; text-align:center; font-size:9.5px; font-weight:800; letter-spacing:.06em;
+    text-transform:uppercase; font-family:var(--mono); border-radius:99px; padding:4px 0; margin-top:1px}
+  .rstat.pending{background:var(--canvas); color:var(--ink3)}
+  .rstat.working{background:var(--mint-soft); color:var(--green); animation:pulse 1.4s ease-in-out infinite}
+  .rstat.review{background:#fbeed8; color:#a86a12}
+  .rstat.done{background:var(--green); color:#fff}
+  .rstat.failed,.rstat.blocked{background:#f7e4e2; color:var(--red)}
+  .rstat.skipped{background:var(--canvas); color:var(--ink3); text-decoration:line-through}
+  .rrow .rbd{flex:1; min-width:0}
+  .rrow .rt{font-size:13px; font-weight:700}
+  .rrow .rt small{font-family:var(--mono); font-weight:600; color:var(--ink3); margin-left:7px; font-size:10.5px}
+  .rrow .rm{font-size:12px; color:var(--ink2); margin-top:2px; line-height:1.45}
+  .rrow .rout{font-family:var(--mono); font-size:11px; color:var(--ink2); background:var(--canvas);
+    border-radius:9px; padding:7px 10px; margin-top:6px; white-space:pre-wrap; overflow-wrap:anywhere;
+    max-height:150px; overflow-y:auto}
+  .rrow .racts{display:flex; gap:6px; margin-top:7px}
   /* ============ skill tree — sleek, ink + one plum accent, progress rings ============ */
   .treecard{background:var(--card); border:1px solid var(--line); color:var(--ink); padding:0; overflow:hidden; position:relative}
   /* stat tiles */
@@ -616,13 +626,13 @@
 <div class="shell">
   <aside id="side">
     <div class="logo">
-      <b class="wordmark">Maestro</b>
+      <b class="wordmark">Rune</b>
       <small>agent operations</small>
     </div>
     <div class="navlab">Menu</div>
     <nav id="nav">
       <a href="#/overview" data-s="overview"><svg viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Dashboard</a>
-      <a href="#/instances" data-s="instances"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Instances<span class="bub" id="n-inst">0</span></a>
+      <a href="#/instances" data-s="instances"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Agent console<span class="bub" id="n-inst">0</span></a>
       <a href="#/skills" data-s="skills"><svg viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>Skill tree<span class="bub" id="n-skill">0</span></a>
       <a href="#/brain" data-s="brain"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>Brain<span class="bub" id="n-brain">0</span></a>
       <a href="#/graph" data-s="graph"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></svg>Brain graph</a>
@@ -664,38 +674,23 @@
       <div class="titlerow">
         <div><h1>Dashboard</h1><div class="sub" id="subline">Conduct, delegate, and never solve twice.</div></div>
         <span class="spacer"></span>
-        <button class="btn solid" data-go="#/instances"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Launch instance</button>
-        <button class="btn line" data-go="#/instances">Queue directive</button>
+        <button class="btn solid" data-go="#/instances"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Agent console</button>
       </div>
       <div class="cmdwrap">
         <div class="cmdbar" id="cmdbarbox">
           <svg class="spark" viewBox="0 0 24 24" id="cmdspark"></svg>
-          <input id="cmdinput" autocomplete="off" spellcheck="false" placeholder="Tell Maestro what to do…">
-          <div class="cmdsplit">
-            <button class="cmdgo" id="cmdgo">Run it</button>
-            <button class="cmddrop" id="cmddrop" title="mission options"><span class="dot"></span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
-          </div>
-          <div class="cmdpop" id="cmdpop">
-            <div class="phead">Mission options · auto = intake decides</div>
-            <div class="prow"><label>Worker model</label>
-              <select id="cmd-model"><option value="auto" selected>Auto</option><option value="haiku">Haiku · cheap</option><option value="sonnet">Sonnet · balanced</option><option value="opus">Opus · heavy</option><option value="fable">Fable · frontier</option><option value="default">Default (inherit)</option></select></div>
-            <div class="prow"><label>Effort</label>
-              <select id="cmd-turns"><option value="auto" selected>Auto</option><option value="15">Quick · 15 turns</option><option value="40">Standard · 40</option><option value="80">Deep · 80</option></select></div>
-            <div class="prow"><label>Critic rounds</label>
-              <select id="cmd-rounds"><option value="auto" selected>Auto</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="5">5</option></select></div>
-            <div class="prow"><label>Critic</label>
-              <select id="cmd-critic"><option value="opus" selected>Opus · the core</option><option value="fable">Fable · frontier</option><option value="sonnet">Sonnet</option></select></div>
-            <div class="prow"><label>Account</label>
-              <select id="cmd-account"><option value="auto" selected>Auto · most headroom</option></select></div>
-            <label class="chk"><input type="checkbox" id="cmd-gate"> Gate verdicts on me (no auto-accept)</label>
-            <div class="pnote">Anything on Auto is chosen by the intake per mission — conscious spend: it picks the smallest model and budget that fit the goal.</div>
-          </div>
+          <input id="cmdinput" autocomplete="off" spellcheck="false" placeholder="Tell the CEO what to do…">
+          <button class="cmdgo" id="cmdgo" style="border-radius:13px">Run it</button>
         </div>
         <div class="cmdflow" id="cmdflow"></div>
       </div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>Running tasks <span class="tag">prompt → Haiku refine → brain recall → CEO staffs the roles</span></h3>
+        <div id="ceoruns" style="padding-top:12px"></div>
+      </div>
       <div class="grid cols-4" id="kpis" style="margin-bottom:14px"></div>
       <div class="ccarousel" style="margin-bottom:14px">
-        <div class="chead"><h3>Pulse <span class="tag">accounts · mail · code · MCP tools</span></h3>
+        <div class="chead"><h3>Accounts <span class="tag">Claude · Codex · mail · code</span></h3>
           <div class="cnav" id="cnav" style="display:none">
             <button class="cnavb" data-cscroll="-1" title="previous"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
             <button class="cnavb" data-cscroll="1" title="next"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
@@ -731,9 +726,13 @@
       </div>
     </section>
 
-    <!-- ============ INSTANCES ============ -->
+    <!-- ============ AGENT CONSOLE ============ -->
     <section class="page" id="p-instances">
-      <div class="titlerow"><div><h1>Instances</h1><div class="sub">Launch and manage every Claude Code window from one place.</div></div></div>
+      <div class="titlerow"><div><h1>Agent console</h1><div class="sub">Every agent — CEO missions, loops, terminals — launched and monitored from one place.</div></div></div>
+      <div class="card" style="margin-bottom:14px">
+        <h3>CEO missions <span class="tag">expand a task to see each role · approve, redo or skip gated output</span></h3>
+        <div id="ceoruns2" style="padding-top:12px"></div>
+      </div>
       <div class="grid cols-2" style="margin-bottom:14px">
         <div class="card deck">
           <h3>Launch <span class="tag">runs on this repo with hooks live</span></h3>
@@ -799,7 +798,7 @@
         <div class="icards" id="instances"></div>
       </div>
       <div class="card">
-        <h3>Session feed <span class="tag">includes sessions started outside Maestro</span></h3>
+        <h3>Outside sessions <span class="tag">wire telemetry from sessions Rune didn't launch</span></h3>
         <div class="icards" id="wire-sessions"></div>
       </div>
     </section>
@@ -868,7 +867,7 @@
 
     <!-- ============ INTEGRATIONS ============ -->
     <section class="page" id="p-integrations">
-      <div class="titlerow"><div><h1>Integrations</h1><div class="sub">MCP servers, hooks, agents, and skills wired into Maestro.</div></div></div>
+      <div class="titlerow"><div><h1>Integrations</h1><div class="sub">MCP servers, hooks, agents, and skills wired into Rune.</div></div></div>
       <div class="card"><div class="intgrid" id="intgrid" style="padding-top:0"></div></div>
     </section>
 
@@ -911,16 +910,16 @@
 </div>
 <div id="toast"></div>
 
-<button id="chatfab" title="Ask Maestro"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h8M8 9h5"/></svg></button>
+<button id="chatfab" title="Ask Rune"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h8M8 9h5"/></svg></button>
 <div id="chatpanel">
   <div class="chathead">
     <div class="av"><svg viewBox="0 0 24 24" id="chatspark"></svg></div>
-    <div><b>Ask Maestro</b><small>the software · the brain · anything</small></div>
+    <div><b>Ask Rune</b><small>the software · the brain · anything</small></div>
     <button class="x" id="chatclose" aria-label="close">×</button>
   </div>
   <div class="chatlog" id="chatlog"></div>
   <div class="chatin">
-    <textarea id="chatinput" rows="1" placeholder="Ask about Maestro, the brain, or anything…"></textarea>
+    <textarea id="chatinput" rows="1" placeholder="Ask about Rune, the brain, or anything…"></textarea>
     <button class="chatsend" id="chatsendbtn" title="send"><svg viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z"/></svg></button>
   </div>
 </div>
@@ -932,7 +931,7 @@ const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo
 const PIE=[GREEN, MID, MINT, "#b879a5", "#cec5cb", "#958a92"]; // pie chart exempt from 3-color cap
 const STAGES=["think","plan","build","review","test","ship"];
 const LIVE_MS=15*60*1000;
-const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],sshKeys:[],pulse:{}};
+const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],sshKeys:[],pulse:{}};
 const CHG=new Set(["Edit","Write","MultiEdit","NotebookEdit","Bash"]);
 const dayKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const fmtTok=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":String(n||0);
@@ -955,17 +954,10 @@ const GMAIL_LOGO=`<svg class="clogo gmail-logo" viewBox="0 0 24 24" aria-hidden=
   <path fill="#FBBC04" d="M17.3 19.5h3.2V7.3l-3.2 2.4v9.8Z"/>
   <path fill="#EA4335" d="M3.5 7.3 12 13.7l8.5-6.4V6.1c0-.9-1-1.4-1.7-.9L12 10.3 5.2 5.2c-.7-.5-1.7 0-1.7.9v1.2Z"/>
 </svg>`;
-const FIGMA_LOGO=`<svg class="clogo figma-logo" viewBox="0 0 24 24" aria-hidden="true">
-  <circle cx="9" cy="5" r="3" fill="#F24E1E"/><circle cx="15" cy="5" r="3" fill="#FF7262"/>
-  <circle cx="9" cy="12" r="3" fill="#A259FF"/><circle cx="15" cy="12" r="3" fill="#1ABCFE"/>
-  <circle cx="9" cy="19" r="3" fill="#0ACF83"/>
+// OpenAI blossom mark (official path), ink-black like the Codex brand
+const OPENAI_LOGO=`<svg class="clogo" viewBox="0 0 24 24" style="stroke:none" aria-hidden="true">
+  <path fill="#0d0d0d" d="M22.282 9.821a5.985 5.985 0 0 0-.516-4.911 6.046 6.046 0 0 0-6.51-2.9A6.065 6.065 0 0 0 4.981 4.18a5.985 5.985 0 0 0-3.998 2.9 6.046 6.046 0 0 0 .743 7.097 5.98 5.98 0 0 0 .51 4.911 6.051 6.051 0 0 0 6.515 2.9A5.985 5.985 0 0 0 13.26 24a6.056 6.056 0 0 0 5.772-4.206 5.99 5.99 0 0 0 3.997-2.9 6.056 6.056 0 0 0-.747-7.073zM13.26 22.43a4.476 4.476 0 0 1-2.876-1.04l.141-.081 4.779-2.758a.795.795 0 0 0 .392-.681v-6.737l2.02 1.168a.071.071 0 0 1 .038.052v5.583a4.504 4.504 0 0 1-4.494 4.494zM3.6 18.304a4.47 4.47 0 0 1-.535-3.014l.142.085 4.783 2.759a.771.771 0 0 0 .78 0l5.843-3.369v2.332a.08.08 0 0 1-.033.062L9.74 19.95a4.5 4.5 0 0 1-6.14-1.646zM2.34 7.896a4.485 4.485 0 0 1 2.366-1.973V11.6a.766.766 0 0 0 .388.676l5.815 3.355-2.02 1.168a.076.076 0 0 1-.071 0l-4.83-2.786A4.504 4.504 0 0 1 2.34 7.872zm16.597 3.855-5.833-3.387L15.119 7.2a.076.076 0 0 1 .071 0l4.83 2.791a4.494 4.494 0 0 1-.676 8.105v-5.678a.79.79 0 0 0-.407-.667zm2.01-3.023-.141-.085-4.774-2.782a.776.776 0 0 0-.785 0L9.409 9.23V6.897a.066.066 0 0 1 .028-.061l4.83-2.787a4.5 4.5 0 0 1 6.68 4.66zm-12.64 4.135-2.02-1.164a.08.08 0 0 1-.038-.057V6.075a4.5 4.5 0 0 1 7.375-3.453l-.142.08L8.704 5.46a.795.795 0 0 0-.393.681zm1.097-2.365 2.602-1.5 2.607 1.5v2.999l-2.597 1.5-2.607-1.5z"/>
 </svg>`;
-const TOOL_LOGOS={
-  figma:FIGMA_LOGO,
-  playwright:'<svg class="clogo" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="12" rx="3"/><path d="M8 19h8"/><path d="M12 17v2"/><path d="m8 10 2 2-2 2"/><path d="M13 14h3"/></svg>',
-  shadcn:'<svg class="clogo" viewBox="0 0 24 24"><path d="m16 4-8 8"/><path d="m20 8-8 8"/><path d="M4 20h16"/></svg>',
-  context7:'<svg class="clogo" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M4 12h10"/><path d="M4 17h16"/><circle cx="18" cy="12" r="2"/></svg>'
-};
 
 /* ---------- performance line graph (activity on the wire) ---------- */
 function renderPerf(){
@@ -986,8 +978,8 @@ function renderPerf(){
     <path d="${area}" fill="url(#lgfill)"/><path d="${line}" fill="none" stroke="${GREEN}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${lab}${dots}`;
 }
 
-/* ---------- command bar: goal -> refined mission -> orchestrator ---------- */
-const CMD={hist:[],busy:false};
+/* ---------- command bar: prompt -> Haiku refine -> brain recall -> CEO ---------- */
+const CMD={busy:false};
 const CMD_EX=[
   "Go through the codebase of this repo and map its architecture into the brain…",
   "Find every TODO and half-finished idea in the workspace and rank them by impact…",
@@ -1001,7 +993,7 @@ function cmdType(){
   if(document.activeElement===inp||inp.value){setTimeout(cmdType,900);return} // pause while typing
   const ex=CMD_EX[cmdI];
   cmdPos+=cmdDel?-1:1;
-  inp.setAttribute("placeholder",ex.slice(0,cmdPos)||"Tell Maestro what to do…");
+  inp.setAttribute("placeholder",ex.slice(0,cmdPos)||"Tell the CEO what to do…");
   let wait=cmdDel?16:40;
   if(!cmdDel&&cmdPos>=ex.length){cmdDel=true;wait=1700}
   else if(cmdDel&&cmdPos<=0){cmdDel=false;cmdI=(cmdI+1)%CMD_EX.length;wait=600}
@@ -1009,44 +1001,70 @@ function cmdType(){
 }
 function cmdMsg(role,html){const d=document.createElement("div");d.className="cmdmsg "+role;
   d.innerHTML=html;$("cmdflow").appendChild(d);return d}
-// dropdown overrides — "auto" everywhere means the intake decides
-function cmdOpts(){return{model:$("cmd-model").value,turns:$("cmd-turns").value,
-  rounds:$("cmd-rounds").value,critic:$("cmd-critic").value,
-  account:$("cmd-account").value,gate:$("cmd-gate").checked}}
-function cmdTuned(){const o=cmdOpts();
-  return o.model!=="auto"||o.turns!=="auto"||o.rounds!=="auto"||o.critic!=="opus"||o.account!=="auto"||o.gate}
 async function cmdSend(){
   const inp=$("cmdinput"),text=inp.value.trim();
   if(!text||CMD.busy)return;
   CMD.busy=true;$("cmdgo").disabled=true;inp.value="";
-  $("cmdpop").classList.remove("open");$("cmdbarbox").classList.remove("optsopen");
   cmdMsg("u",esc(text));
-  const th=cmdMsg("a",`<span class="dots"><i></i><i></i><i></i></span> refining the goal…`);
+  const th=cmdMsg("a",`<span class="dots"><i></i><i></i><i></i></span> refining the prompt, querying the brain, staffing the mission…`);
   try{
-    const j=await post("/api/mission",{text,history:CMD.hist,opts:cmdOpts()});
-    CMD.hist.push({role:"user",content:text});
-    if(j.action==="clarify"){
-      th.innerHTML=esc(j.question||"Give me one more detail and I'll launch it.");
-      CMD.hist.push({role:"assistant",content:JSON.stringify(j)});
-      inp.focus();
-    }else{
-      th.innerHTML=`<b>${esc(j.name||"Mission")}</b> launched — loop <code>${esc(j.oid||"?")}</code> is running with an opus critic. <a href="#/instances">watch it →</a>
-        <div class="brief">${esc((j.mission||"").slice(0,260))}${(j.mission||"").length>260?"…":""}</div>`;
-      CMD.hist=[];poll();
-    }
+    const j=await post("/api/ceo",{text});
+    th.innerHTML=`<b>${esc(j.name||"Mission")}</b> staffed — ${j.roles.length} role${j.roles.length===1?"":"s"}${j.recall?" · brain recall folded in":""}.
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${j.roles.map(r=>
+        `<span class="achip" title="${esc(r.mission.slice(0,180))}">${esc(r.title)} · ${esc(r.model)} · ${r.turns}t${r.review?" · gated":""}</span>`).join("")}</div>
+      <div class="brief">${esc((j.summary||j.refined||"").slice(0,240))}</div>`;
+    poll();
   }catch(e){th.innerHTML="⚠ "+esc(e.message)}
   CMD.busy=false;$("cmdgo").disabled=false;
 }
+
+/* ---------- CEO missions: running tasks with expandable per-role status ---------- */
+const MOPEN=new Set();                      // expanded runs survive re-renders
+const RSTAT_ORDER={working:0,review:1,pending:2,blocked:3,failed:3,done:4,skipped:4};
+function ceoCard(o,full){
+  const segs=o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}"></i>`).join("");
+  const statPill=`<span class="pill ${o.status==="running"?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
+  const roles=o.roles.map(r=>{
+    const acts=(r.status==="review"&&o.live)?`<div class="racts">
+        <button class="btn line sm" data-ceo-act="approve" data-cid="${o.cid}" data-role="${r.id}">Approve</button>
+        <button class="btn line sm" data-ceo-act="redo" data-cid="${o.cid}" data-role="${r.id}">Redo</button>
+        <button class="btn line sm danger" data-ceo-act="skip" data-cid="${o.cid}" data-role="${r.id}">Skip</button></div>`:"";
+    const out=(r.result&&(full||r.status==="review"))?`<div class="rout">${esc(r.result.slice(0,1800))}</div>`:"";
+    return`<div class="rrow"><span class="rstat ${esc(r.status)}">${esc(r.status)}</span>
+      <div class="rbd"><div class="rt">${esc(r.title)}<small>${esc(r.model)} · ${r.turns}t${r.secs?" · "+r.secs+"s":""}${r.cost?" · $"+r.cost:""}${r.review?" · gated":""}${r.depends_on.length?" · after "+r.depends_on.join(","):""}</small></div>
+      ${full?`<div class="rm">${esc(r.mission.slice(0,300))}</div>`:""}${out}${acts}</div></div>`;
+  }).join("");
+  const stop=o.live?`<button class="btn line sm danger" data-ceo-act="stop" data-cid="${o.cid}" data-role="" style="margin-top:8px">Stop mission</button>`:"";
+  return`<details class="mrun" data-cid="${o.cid}" ${MOPEN.has(o.cid)?"open":""}>
+    <summary><span class="chev"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
+      <span class="mname" title="${esc(o.goal)}">${esc(o.name)}</span>
+      <span class="mbar">${segs}</span>
+      <span class="mmeta">${o.roles.filter(r=>["done","skipped"].includes(r.status)).length}/${o.roles.length} · $${(o.cost||0).toFixed(2)}${o.account?" · "+esc(o.account):""}</span>
+      ${statPill}</summary>
+    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${roles}${stop}</div></details>`;
+}
+function renderCeo(){
+  const runs=S.ceo.slice(0,8);
+  const active=runs.filter(o=>["running","review"].includes(o.status)||o.live);
+  const html1=(active.length?active:runs.slice(0,3)).map(o=>ceoCard(o,false)).join("")
+    ||`<div class="none">no missions yet — type a goal above and the CEO staffs it.</div>`;
+  const el1=$("ceoruns");if(el1&&html1!==el1.dataset.sig){el1.dataset.sig=html1;el1.innerHTML=html1}
+  const html2=runs.map(o=>ceoCard(o,true)).join("")
+    ||`<div class="none">no missions yet — use the command bar on the dashboard.</div>`;
+  const el2=$("ceoruns2");if(el2&&html2!==el2.dataset.sig){el2.dataset.sig=html2;el2.innerHTML=html2}
+}
+document.addEventListener("toggle",e=>{const d=e.target.closest?.(".mrun");if(!d)return;
+  d.open?MOPEN.add(d.dataset.cid):MOPEN.delete(d.dataset.cid)},true);
 
 /* ---------- chat assistant ---------- */
 const CHAT={open:false,busy:false,history:[]};
 function chatToggle(v){CHAT.open=(v===undefined)?!CHAT.open:v;
   $("chatpanel").classList.toggle("open",CHAT.open);
   if(CHAT.open){$("chatinput").focus();
-    if(!CHAT.history.length)chatAdd("a","Hi — I'm your Maestro assistant. Ask me about the software, the brain, or anything else.");}}
+    if(!CHAT.history.length)chatAdd("a","Hi — I'm your Rune assistant. Ask me about the software, the brain, or anything else.");}}
 function chatAdd(role,text,think){const log=$("chatlog");
   const d=document.createElement("div");d.className="msg "+role+(think?" think":"");
-  d.innerHTML=`<span class="who">${role==="u"?"you":"maestro"}</span>${esc(text)}`;
+  d.innerHTML=`<span class="who">${role==="u"?"you":"rune"}</span>${esc(text)}`;
   log.appendChild(d);log.scrollTop=log.scrollHeight;return d;}
 async function chatSend(){
   const inp=$("chatinput"),text=inp.value.trim();
@@ -1068,16 +1086,18 @@ const jsonl=t=>t.split("\n").filter(l=>l.trim()).map(l=>{try{return JSON.parse(l
 async function poll(){
   if(S.paused){render();return}
   try{
-    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls]=await Promise.all([
+    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls,ceo]=await Promise.all([
       jget("/state/events.jsonl"),jget("/skills/registry.json"),jget("/hermes/solved.jsonl"),
       jget("/state/approvals.json"),jget("/state/inbox.jsonl",1),jget("/memory/OBSIDIAN.md",1),
       jget("/api/instances",1),jget("/api/integrations",1),jget("/api/vault",1),
-      jget("/api/orchestrations",1),jget("/api/ssh-creds",1),jget("/api/pulse",1)]);
+      jget("/api/orchestrations",1),jget("/api/ssh-creds",1),jget("/api/pulse",1),
+      jget("/api/ceo",1)]);
     S.pulse=pls?JSON.parse(pls):{};
     S.events=jsonl(ev);S.skills=JSON.parse(reg);S.solved=jsonl(sol);
     S.approvals=JSON.parse(app);S.inbox=jsonl(inb);
     S.instances=(inst?JSON.parse(inst).windows:[])||[];S.integ=integ?JSON.parse(integ):null;
     S.orchs=orc?(JSON.parse(orc).orchestrations||[]):[];
+    S.ceo=ceo?(JSON.parse(ceo).runs||[]):[];
     S.sshKeys=shk?(JSON.parse(shk).keys||[]):[];
     if(vlt){try{S.vaultData=JSON.parse(vlt)}catch(e){}}
     S.vault=(S.vaultData&&S.vaultData.vault)||(obs.split("\n").find(l=>l.toLowerCase().startsWith("vault:"))||"vault: ?").split(":").slice(1).join(":").trim();
@@ -1125,10 +1145,12 @@ function statCard(dark,label,num,unit,delta,deltaCls,go){
 }
 function taskData(done,aliveInst,loopsLive,earned,sk,evToday,staleN,live){
   const queued=S.inbox.filter(d=>!done.has(d.id));
-  const waiting=S.orchs.filter(o=>o.live&&o.status==="waiting").length;
+  const waiting=reviewCount();
+  const ceoLive=S.ceo.filter(o=>o.live).length;
   const total=Math.max(1,sk.length);
   const out=[];
-  if(waiting)out.push({status:"warn",title:"Critic verdict",meta:waiting+" loop"+(waiting===1?"":"s")+" waiting",pill:"Review"});
+  if(waiting)out.push({status:"warn",title:"Awaiting review",meta:waiting+" task"+(waiting===1?"":"s")+" gated on you",pill:"Review"});
+  else if(ceoLive)out.push({status:"live",title:"CEO missions",meta:ceoLive+" running",pill:"Live"});
   else if(loopsLive)out.push({status:"live",title:"Conductor loop",meta:loopsLive+" active loop"+(loopsLive===1?"":"s"),pill:"Live"});
   else if(aliveInst.length)out.push({status:"live",title:"Terminal field",meta:aliveInst.length+" active terminal"+(aliveInst.length===1?"":"s"),pill:"Live"});
   else if(live.length)out.push({status:"live",title:"Wire session",meta:live.length+" live session"+(live.length===1?"":"s"),pill:"Live"});
@@ -1201,89 +1223,42 @@ const PI={
   mail:'<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
   timer:'<line x1="10" x2="14" y1="2" y2="2"/><line x1="12" x2="15" y1="14" y2="11"/><circle cx="12" cy="14" r="8"/>'
 };
-// open-meteo WMO weather codes -> emoji + word
-function wxIcon(c){
-  if(c==null)return["","—"];
-  if(c===0)return["☀️","clear"];if(c<=2)return["🌤️","fair"];if(c===3)return["☁️","cloudy"];
-  if(c<=48)return["🌫️","fog"];if(c<=57)return["🌦️","drizzle"];if(c<=67)return["🌧️","rain"];
-  if(c<=77)return["🌨️","snow"];if(c<=82)return["🌧️","showers"];if(c<=86)return["🌨️","snow"];
-  return["⛈️","storm"];
+// topbar status: the one number that needs Daniel — things awaiting a verdict
+function reviewCount(){
+  return S.orchs.filter(o=>o.live&&o.status==="waiting").length
+    +S.ceo.filter(o=>o.live).reduce((n,o)=>n+o.roles.filter(r=>r.status==="review").length,0);
 }
 function renderTopStatus(){
-  const waiting=S.orchs.filter(o=>o.live&&o.status==="waiting").length;
-  const el=$("topstatus"),w=S.pulse.weather||{};
+  const waiting=reviewCount(),el=$("topstatus");
   if(waiting){el.className="topstat attn";
-    el.innerHTML=`<span class="dot"></span>${waiting} loop${waiting===1?"":"s"} awaiting your verdict`;}
-  else{const[ic,word]=wxIcon(w.code);
-    el.className="topstat";
-    el.innerHTML=w.temp!=null
-      ?`<span class="wxi">${ic}</span>${Math.round(w.temp)}${esc(w.unit||"°")} · ${word}${w.label?` · ${esc(w.label)}`:""}`
-      :`<span class="wxi">🌡️</span>weather —`;}
+    el.innerHTML=`<span class="dot"></span>${waiting} task${waiting===1?"":"s"} awaiting your review`;}
+  else{el.className="topstat";el.innerHTML=`<span class="dot"></span>all clear`;}
   $("datechip").textContent=new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
 }
-// gmail / github / spotify — same card size + design as the Claude card, own brand
-function serviceCards(){
-  const p=S.pulse||{},sp=p.spotify||{},gh=p.github||{},gm=p.gmail||{};
-  const err=(cls,logo,name,msg)=>`<div class="ccard ${cls} dim"><div class="ctop"><svg class="clogo" viewBox="0 0 24 24">${logo}</svg>
-    <div><div class="cname">${name}</div><div class="csub">${esc(msg||"not connected")}</div></div></div>
-    <div class="cline">connect in state/pulse.json</div></div>`;
-  const g0=(gm.latest||[])[0];
-  const gmail=gm.error?err("gmail",PI.mail,"Gmail",gm.error)
-    :`<div class="ccard gmail"><div class="ctop"><svg class="clogo" viewBox="0 0 24 24">${PI.mail}</svg>
-      <div><div class="cname">Gmail</div><div class="csub">${esc(gm.email||"inbox")}</div></div>
-      <span class="clive">${(gm.latest||[]).length} new</span></div>
-      <div class="cbig">${fmtTok(gm.unread||0)}<em>unread</em></div>
-      <div class="cline" title="${esc(g0?g0.from+": "+g0.subject:"")}">${g0?`<b>${esc(g0.from||"")}</b> · ${esc(g0.subject)}`:"inbox clear"}</div></div>`;
-  const c0=(gh.commits||[])[0];
-  const github=gh.error?err("github",PI.gh,"GitHub",gh.error)
-    :`<div class="ccard github"><div class="ctop"><svg class="clogo" viewBox="0 0 24 24">${PI.gh}</svg>
-      <div><div class="cname">GitHub</div><div class="csub">${esc(gh.user||"")}</div></div>
-      <span class="clive">${gh.today||0} today</span></div>
-      <div class="cbig">${gh.today||0}<em>commit${gh.today===1?"":"s"} today</em></div>
-      <div class="cline" title="${esc(c0?c0.repo+": "+c0.msg:"")}">${c0?`<b>${esc(c0.repo)}</b> · ${esc(c0.msg)}`:"no recent pushes"}</div></div>`;
-  const spotify=sp.error
-    // not connected -> a big, obvious Connect button
-    ? `<div class="ccard spotify"><div class="ctop"><svg class="clogo" viewBox="0 0 24 24">${PI.spot}</svg>
-        <div><div class="cname">Spotify</div><div class="csub">link to see now-playing</div></div></div>
-        <div class="spnow"><div class="spmeta"><div class="sptrack">Not connected</div>
-          <div class="spartist">${esc(sp.error==="not connected"?"one click to link your account":sp.error)}</div></div></div>
-        <div class="cfoot"><a class="cchip setup" href="/api/spotify/login"><svg viewBox="0 0 24 24">${PI.spot}</svg>connect spotify</a></div></div>`
-    // connected -> always show it's linked + a reconnect link so you're never stuck
-    : `<div class="ccard spotify"><div class="ctop"><svg class="clogo" viewBox="0 0 24 24">${PI.spot}</svg>
-        <div><div class="cname">Spotify</div><div class="csub">${sp.playing?"now playing":"connected"}</div></div>
-        <span class="clive">${sp.playing?"● live":"idle"}</span></div>
-      <div class="spnow">${sp.art?`<img class="cart" src="${esc(sp.art)}" alt="">`:""}
-        <div class="spmeta"><div class="sptrack">${esc(sp.track||"Nothing playing")}</div>
-          <div class="spartist">${esc(sp.artist||"start something in Spotify")}</div></div></div>
-      <div class="cfoot"><a class="cchip setup" href="/api/spotify/login" title="re-link a different account">${copySvg}reconnect</a></div></div>`;
-  return gmail+github+spotify;
-}
-function toolUsesToday(keys){
-  const today=dayKey(new Date()),need=keys.map(k=>String(k).toLowerCase());
-  return S.events.filter(e=>{
-    if((e.ts||"").slice(0,10)!==today)return false;
-    const hay=[e.tool,e.event,e.stage,e.agent,e.detail].filter(Boolean).join(" ").toLowerCase();
-    return need.some(k=>hay.includes(k));
-  }).length;
-}
-function workflowCards(){
-  const mcp=new Map(((S.integ||{}).mcp||[]).map(m=>[m.name,m]));
-  const defs=[
-    {name:"figma",title:"Figma",sub:"design MCP",keys:["figma"],hint:"desktop MCP endpoint"},
-    {name:"playwright",title:"Playwright",sub:"browser QA",keys:["playwright","browser_take","screenshot"],hint:"screenshots and console"},
-    {name:"shadcn",title:"shadcn",sub:"component reference",keys:["shadcn"],hint:"UI component patterns"},
-    {name:"context7",title:"Context7",sub:"live docs",keys:["context7"],hint:"library documentation"}
-  ];
-  return defs.map(d=>{
-    const cfg=mcp.get(d.name),uses=toolUsesToday(d.keys);
-    return`<div class="ccard tool">
-      <div class="ctop">${TOOL_LOGOS[d.name]||TOOL_LOGOS.context7}
-        <div><div class="cname">${d.title}</div><div class="csub">${d.sub}</div></div>
-        <span class="clive">${cfg?"wired":"missing"}</span></div>
-      <div class="cbig">${uses}<em>calls today</em></div>
-      <div class="cline" title="${esc(cfg?cfg.command:"not configured")}">${cfg?esc(d.hint):"add to .mcp.json"}</div>
-      <div class="cfoot"><span class="cchip">${cfg?esc(cfg.type||"mcp"):"not wired"}</span></div></div>`;
-  }).join("");
+// Codex account card — white, OpenAI mark, real cooldown timers from the CLI's
+// own rate-limit snapshots (primary=5h, secondary=weekly); business plans on
+// credits show credit state instead of a window.
+function codexCard(){
+  const cx=S.pulse.codex||{};
+  if(cx.error)return`<div class="ccard codex dim"><div class="ctop">${OPENAI_LOGO}
+    <div><div class="cname">Codex</div><div class="csub">OpenAI · not connected</div></div></div>
+    <div class="cline">${esc(cx.hint||cx.error)}</div>
+    <div class="cfoot"><button class="cchip setup" data-codex-login title="copy the login command">${copySvg}connect codex</button></div></div>`;
+  const pct=cx.pct!=null?cx.pct:null;
+  const chips=[
+    cx.reset_at?`<span class="cchip"><svg viewBox="0 0 24 24">${PI.timer}</svg>5h resets in <b data-reset="${cx.reset_at}">${resetText(cx.reset_at)}</b></span>`:"",
+    cx.pct7d!=null?`<span class="cchip" title="weekly window"><b>${cx.pct7d}%</b> · 7d${cx.reset_at7d?` · <b data-reset="${cx.reset_at7d}">${resetText(cx.reset_at7d)}</b>`:""}</span>`:"",
+    (pct==null&&cx.credits)?`<span class="cchip">credits ${esc(cx.credits)}</span>`:"",
+    `<button class="cchip setup" data-codex-login title="copy the command to re-login">${copySvg}relogin</button>`
+  ].join("");
+  return`<div class="ccard codex">
+    <div class="ctop">${OPENAI_LOGO}
+      <div><div class="cname">Codex</div><div class="csub" title="${esc(cx.email||"")}">${esc(cx.email||"OpenAI")}</div></div>
+      <span class="clive">${esc(cx.plan||cx.mode||"cli")}</span></div>
+    <div class="cbig">${pct!=null?pct:"–"}<em>${pct!=null?"% of 5h used":cx.credits?"credit plan":"no usage data"}</em></div>
+    <div class="cfoot">${chips}</div>
+    ${pct!=null?`<div class="ctrk"><i style="width:${pct}%"></i></div>`:""}
+    ${cx.asof?`<div class="cline" style="font-size:10.5px" title="rate limits come from the newest Codex session log">as of ${esc(rel(new Date(cx.asof*1000).toISOString()))}</div>`:""}</div>`;
 }
 function serviceCards2(){
   const p=S.pulse||{},gh=p.github||{},gm=p.gmail||{};
@@ -1338,7 +1313,8 @@ function renderVinyl(){
       <g transform="rotate(63 36 92)"><rect x="27" y="85" width="19" height="13" rx="3" fill="#18181c"/>
         <rect x="24" y="95" width="6" height="8" rx="2" fill="#101014"/></g></svg>`;
     box.innerHTML=`
-      <div class="vlab"><span class="eq"><i></i><i></i><i></i></span> <span id="vlabtxt">vinyl</span></div>
+      <div class="vlab"><span class="eq"><i></i><i></i><i></i></span> <span id="vlabtxt">vinyl</span>
+        <button class="vmin" id="vminbtn" title="minimize player"><svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button></div>
       <div class="vdeck"><div class="record" id="vrec"><span class="hole"></span></div>${arm}</div>
       <div class="vmeta" id="vmeta"></div>
       <div id="vplayer" style="display:none">
@@ -1351,6 +1327,10 @@ function renderVinyl(){
         </div>
       </div>`;
     box.addEventListener("click",e=>{
+      // minimize toggle (persisted) — collapsed card is just the now-playing line
+      if(e.target.closest("#vminbtn")||(box.classList.contains("min")&&!e.target.closest("[data-vc],#vbar,.vcta"))){
+        try{localStorage.setItem("rune-vinyl-min",box.classList.contains("min")?"":"1")}catch(_){}
+        renderVinyl();return}
       const b=e.target.closest("[data-vc]");if(b){vCtl(b.dataset.vc);return}
       const bar=e.target.closest("#vbar");
       if(bar){const sp2=S.pulse.spotify||{};if(!sp2.duration_ms)return;
@@ -1360,8 +1340,14 @@ function renderVinyl(){
         vCtl("seek",pos);}
     });
   }
-  box.className="vinyl"+(playing?" playing":"");
-  $("vlabtxt").textContent=playing?"now playing":connected?"paused":"vinyl";
+  let min=false;
+  try{min=!!localStorage.getItem("rune-vinyl-min")}catch(_){}
+  box.className="vinyl"+(playing?" playing":"")+(min?" min":"");
+  $("vminbtn").innerHTML=min?'<svg viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg>':'<svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>';
+  $("vminbtn").title=min?"expand player":"minimize player";
+  // minimized: the label line doubles as a tiny now-playing readout
+  $("vlabtxt").textContent=min?(playing?(sp.track||"now playing"):connected?"paused":"vinyl")
+    :playing?"now playing":connected?"paused":"vinyl";
   // album cover = the record face (smooth), swaps on song change
   const art=(connected&&sp.art)?sp.art:"";
   if(art!==vArt){vArt=art;$("vrec").style.backgroundImage=art?`url("${art}")`:"none";}
@@ -1470,7 +1456,7 @@ function renderSkills(){
   genres+=LOCKED_GENRES.filter(g=>!branches[g]).map(g=>treeGenre(g,[],true)).join("");
   // root → genre branches → skill leaves, one connected dendrogram
   $("sktree").innerHTML=`<ul class="stree"><li>
-    <div class="tnode root"><b>Maestro</b><small>${esc(reg.goal||"–")}</small></div>
+    <div class="tnode root"><b>Rune</b><small>${esc(reg.goal||"–")}</small></div>
     <ul>${genres}</ul></li></ul>`;
   if(!$("sdetail").dataset.sel)skDetailHint();
   if($("p-skills").classList.contains("show"))requestAnimationFrame(growTree);
@@ -1571,14 +1557,14 @@ function render(){
       <div class="cbig">${pct}<em>% of 5h used</em></div>
       <div class="cfoot">
         <span class="cchip">${a.reset_at?`<svg viewBox="0 0 24 24">${PI.timer}</svg>resets in <b data-reset="${a.reset_at}">${resetText(a.reset_at)}</b>`:"window clear"}</span>
-        ${a.pct7d!=null?`<span class="cchip" title="rolling 7-day window"><b>${a.pct7d}%</b> · 7d</span>`:""}
+        ${a.pct7d!=null?`<span class="cchip" title="rolling 7-day window"><b>${a.pct7d}%</b> · 7d${a.reset7d?` · <b data-reset="${a.reset7d}">${resetText(a.reset7d)}</b>`:""}</span>`:""}
         <button class="cchip setup" data-setup="${esc(a.dir||"")}" data-name="${esc(a.name||"")}" title="copy the command to launch this account in a terminal">${copySvg}setup</button>
       </div>
       <div class="ctrk" title="${pct}% of the 5h window used"><i style="width:${pct}%"></i></div></div>`;
   }).join(""):`<div class="ccard claude dim"><div class="ctop">${CLAUDE_LOGO}<div><div class="cname">Claude</div>
       <div class="csub">${esc((S.pulse.claude||{}).error||"no accounts configured")}</div></div></div>
       <div class="cline">add claude_accounts to state/pulse.json</div></div>`;
-  const track=$("claudecards"),html=workflowCards()+claudeHtml+serviceCards2();
+  const track=$("claudecards"),html=claudeHtml+codexCard()+serviceCards2();
   // only rebuild when the content actually changed — otherwise the 2.5s poll
   // resets carousel scroll position and detaches mid-click (buttons, arrows).
   if(html!==track.dataset.sig){track.dataset.sig=html;track.innerHTML=html;}
@@ -1603,7 +1589,7 @@ function render(){
       <span class="pill idle mono" style="flex:none">${esc(e.tool)}</span>
       <div class="bd"><div class="s mono" style="font-size:11.5px" title="${esc(e.detail||"")}">${esc(e.detail||"")}</div></div></div>`
   ).join("")||`<div class="none">no changes on the wire yet</div>`;
-  renderTopStatus();renderPerf();renderVinyl();
+  renderTopStatus();renderPerf();renderVinyl();renderCeo();
 
   // latest solutions
   $("soltag").textContent=S.solved.length+" solved";
@@ -1636,8 +1622,10 @@ function render(){
       <button class="btn line sm danger" data-close="${esc(w.sid)}">Close</button></div></div>`;
   }).join(""):`<div class="none">No terminals launched yet — use the launcher above.</div>`;
   renderOrchs();
+  // only sessions Rune didn't launch — launched ones already show on their cards
   const named=new Map(S.instances.map(w=>[w.sid,w.name]));
-  $("wire-sessions").innerHTML=ss.length?ss.map(s=>{
+  const outside=ss.filter(s=>!named.has(s.id));
+  $("wire-sessions").innerHTML=outside.length?outside.map(s=>{
     const chips=s.agents.map((a,i)=>`<span class="achip ${i<s.exits?"done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?" ✓":""}</span>`).join("");
     const label=named.get(s.id)?named.get(s.id)+" — "+(s.job||"working"):(s.job||"idle conductor");
     return`<div class="inst"><div class="top"><span class="iname" title="${esc(s.job||"")}">${esc(label.slice(0,48))}</span>
@@ -1654,10 +1642,10 @@ function render(){
   // brain
   renderHermes();
   const vslug=(S.vault.split("\\").pop()||"");
-  $("vaultinfo").innerHTML=`<div>Brain section: <code class="k">Maestro/Hermes/</code></div>
+  $("vaultinfo").innerHTML=`<div>Brain section: <code class="k">Rune/Hermes/</code></div>
     <div>Vault: <span class="mono" style="font-size:11px">${esc(S.vault)}</span></div>
-    <div><a href="obsidian://open?vault=${encodeURIComponent(vslug)}&file=${encodeURIComponent("Maestro/Hermes/_index")}">Open the index in Obsidian ↗</a></div>
-    <div style="margin-top:6px;color:var(--ink3)">Maestro reads your whole vault and writes solved problems back as linked cards. No naked facts — writes carry a source and a freshness stamp.</div>
+    <div><a href="obsidian://open?vault=${encodeURIComponent(vslug)}&file=${encodeURIComponent("Rune/Hermes/_index")}">Open the index in Obsidian ↗</a></div>
+    <div style="margin-top:6px;color:var(--ink3)">Rune reads your whole vault and writes solved problems back as linked cards. No naked facts — writes carry a source and a freshness stamp.</div>
     <div style="margin-top:6px"><b>${S.vaultData?S.vaultData.notes.length:0}</b> vault notes indexed · <b>${S.solved.length}</b> Hermes cards · <b>${staleN}</b> stale</div>`;
 
   // integrations
@@ -1670,7 +1658,7 @@ function render(){
 
   Graph.sync();
   syncMotion();
-  document.title=`Maestro — ${live.length} live · ${S.events.length} ev`;
+  document.title=`Rune — ${live.length} live · ${S.events.length} ev`;
 }
 
 /* ---------- hermes search ---------- */
@@ -1867,6 +1855,18 @@ document.addEventListener("click",async e=>{
     try{await post("/api/orch-action",{oid:oa.dataset.oid,action:act,feedback});
       toast(act==="stop"?"Loop stopped.":"Verdict sent: "+act);poll()}
     catch(err){toast("Action failed: "+err.message,true)}}
+  const ca=e.target.closest("[data-ceo-act]");
+  if(ca){const act=ca.dataset.ceoAct;
+    let feedback="";
+    if(act==="redo"){feedback=prompt("What should this role fix?")||"";if(!feedback)return}
+    if(act==="stop"&&!confirm("Stop this mission? The running role is killed."))return;
+    try{await post("/api/ceo-action",{cid:ca.dataset.cid,role:ca.dataset.role,action:act,feedback});
+      toast(act==="stop"?"Mission stopped.":"Sent: "+act);poll()}
+    catch(err){toast("Action failed: "+err.message,true)}return}
+  const cl=e.target.closest("[data-codex-login]");
+  if(cl){try{await navigator.clipboard.writeText("codex login");
+      toast("Copied — run `codex login` in a terminal, then this card goes live.")}
+    catch(err){toast("Run `codex login` in a terminal.",true)}return}
   if(fg){e.preventDefault();
     try{await post("/api/ssh-forget",{key:fg.dataset.forget});toast("Credential forgotten.");poll()}
     catch(err){toast("Forget failed: "+err.message,true)}}
@@ -2117,12 +2117,6 @@ $("sk-add").addEventListener("click",async()=>{
 $("cmdspark").innerHTML=SPARK;
 $("cmdgo").addEventListener("click",cmdSend);
 $("cmdinput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();cmdSend()}});
-$("cmddrop").addEventListener("click",()=>{
-  $("cmdpop").classList.toggle("open");
-  $("cmdbarbox").classList.toggle("optsopen",$("cmdpop").classList.contains("open"));});
-document.addEventListener("click",e=>{           // click-away closes the options
-  if(!e.target.closest("#cmdbarbox")){$("cmdpop").classList.remove("open");$("cmdbarbox").classList.remove("optsopen");}});
-$("cmdpop").addEventListener("change",()=>$("cmddrop").classList.toggle("tuned",cmdTuned()));
 cmdType();
 // chat assistant
 $("chatspark").innerHTML=SPARK;

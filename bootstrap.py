@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maestro bootstrap: verify every layer with real commands.
+"""Rune bootstrap: verify every layer with real commands.
 
   python bootstrap.py         run all layer checks (exit 1 on any FAIL)
   python bootstrap.py boot    run the CLAUDE.md boot sequence (vault, skills, announce)
@@ -88,7 +88,7 @@ def main():
     dirty = []
     for dirpath, dirs, files in os.walk(ROOT):
         # .appwindow is Edge's app-mode browser profile (desktop.py) — browser
-        # junk, not Maestro's writing; it can legitimately contain any string.
+        # junk, not Rune's writing; it can legitimately contain any string.
         dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", ".appwindow")]
         for fn in files:
             p = os.path.join(dirpath, fn)
@@ -104,7 +104,7 @@ def main():
 
 
 def boot():
-    print("== Maestro boot ==")
+    print("== Rune boot ==")
     print("[1/3] soul: read soul/soul.md (conductor identity)")
     for label, args in (
         ("[2/3] vault", [os.path.join("memory", "pipeline.py"), "vault"]),

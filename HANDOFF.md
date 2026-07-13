@@ -1,17 +1,44 @@
-# Maestro — agent handoff
+# Rune — agent handoff
 
 Written 2026-07-09 (commit `83a6d28`, "Console v5") for the next agent picking up this repo.
+
+## Console v6 addendum (2026-07-13) — Rune
+
+- **Renamed Maestro → Rune** (Daniel asked for a memorable 1-syllable name).
+  `MAESTRO_SID`/`MAESTRO_SSH_*` env vars and the `maestro_agent_os` remote
+  keep their old names on purpose (running hooks / GitHub). The Obsidian
+  section moved: all cards migrated from `Maestro/` to `Rune/Hermes` +
+  `Rune/Knowledge`, index regenerated, recall verified.
+- **CEO pipeline** (`dashboard/ceo.py`, replaces `mission.py` + `/api/mission`):
+  command bar → Haiku prompt-refiner → Hermes recall → CEO (Opus structured
+  output) staffs 1-6 roles with per-role model (opus default for hard work,
+  fable only for frontier-complex, sonnet light, haiku mechanical) + turns +
+  depends_on + review gates. Roles run as headless `claude -p` on the
+  least-used account; state in `state/ceo/<cid>.json`; dashboard "Running
+  tasks" card expands to per-role status (pending/working/blocked/review/
+  done/failed) with Approve/Redo/Skip on gated roles. On finish the outcome is
+  written to Hermes → mirrored into Obsidian. Verified end-to-end (a real
+  mission planned by Opus, executed by a haiku role).
+- **Accounts row**: white cards + brand logos + hover lift. New **Codex card**
+  reads `~/.codex/auth.json` (email/plan from the id_token JWT) and the newest
+  session rollout's `rate_limits` snapshot for 5h/weekly cooldowns — zero
+  network probes. Claude cards now show the 7d reset countdown too.
+  Removed: weather chip, MCP tool cards, the pulse-row Spotify card.
+- **Vinyl player** is minimizable (toggle top-right, persisted in
+  localStorage `rune-vinyl-min`; collapsed = one now-playing line).
+- **Instances → Agent console**; session feed now shows only sessions Rune
+  didn't launch (redundancy cut). Orchestrator loops unchanged.
 Read `soul/soul.md` and `CLAUDE.md` first — this file is the operational map on top of them.
 
-## What Maestro is
+## What Rune is
 
 Claude Code as a personal AI operating system for **Daniel (Khang Daniel Tran)**. One
 *conductor* that keeps memory fresh, reuses hard-won skills, spawns specialist agents only
 when needed, and never re-solves a solved problem. It is a **substrate**: a future consumer
-runs on top of it (Daniel's memory holds its name). Maestro must contain **zero references
+runs on top of it (Daniel's memory holds its name). Rune must contain **zero references
 to that consumer** — `bootstrap.py`'s hygiene check greps EVERY file (including code
 comments — it has caught a comment once) and fails the build if the name appears.
-Naming history: AIOS → EMBER → Maestro (run new product names past Daniel).
+Naming history: AIOS → EMBER → Rune (run new product names past Daniel).
 
 Location: `C:\Users\user\OneDrive\Desktop\Python Env\agentic_os` (note the SPACE in the
 path — it has broken SSH_ASKPASS once already; see Conventions). MIT. Python 3 stdlib only —
@@ -27,7 +54,7 @@ mission ran for $0.10 on auto-routed account), **server-accurate account pulse**
 live), **Spotify OAuth + now-playing + vinyl player**, weather, chat assistant, plum retheme,
 dendrogram skill tree, admin add-skill.
 
-Skill registry goal: `stand up Maestro v1` — 4/9 earned (automation, web-design,
+Skill registry goal: `stand up Rune v1` — 4/9 earned (automation, web-design,
 loop-engineering, skill-creation), learning (3d-interaction, orchestration, workflow-audit),
 candidate (design-intelligence — seeded via the new admin endpoint), archived (vault-gardening).
 
@@ -51,13 +78,13 @@ intermittently* (burned an hour once). Always kill ALL pids on the port before s
 
 | Piece | Where | The point |
 |---|---|---|
-| **Mission command bar** | `index.html` (cmd*), `dashboard/mission.py`, `serve.py api_mission` | Top-center "Tell Maestro what to do…" with typewriter placeholder examples. One Sonnet-5 structured-output call either asks ONE clarifying question back (bar becomes a mini-conversation) or returns a launch brief {mission, name, turns, rounds, model, dir} with conscious spend baked in, then auto-starts the orchestrator (opus critic, account="auto"). Split-button dropdown (model/effort/rounds/critic/account/gate-verdicts) overrides any auto choice; white dot on the chevron = tuned. |
+| **Mission command bar** | `index.html` (cmd*), `dashboard/mission.py`, `serve.py api_mission` | Top-center "Tell Rune what to do…" with typewriter placeholder examples. One Sonnet-5 structured-output call either asks ONE clarifying question back (bar becomes a mini-conversation) or returns a launch brief {mission, name, turns, rounds, model, dir} with conscious spend baked in, then auto-starts the orchestrator (opus critic, account="auto"). Split-button dropdown (model/effort/rounds/critic/account/gate-verdicts) overrides any auto choice; white dot on the chevron = tuned. |
 | **Learning loop closed** | `orchestrator.py` accept path | On accept, the orchestrator itself writes a Hermes note (mission + outcome), AND every intake brief ends by instructing the worker to write one. Missions now feed the brain both ways without anyone remembering to. |
 | **Accurate account pulse** | `dashboard/pulse.py` | Transcripts can't attribute usage when accounts are swapped in one terminal (they don't record the account). Real method: capture each account's OAuth token from `<config>/.credentials.json` into gitignored `state/claude-seen.json` (keyed by accountUuid), probe `POST /v1/messages` (1 token, `anthropic-beta: oauth-2025-04-20`), read `anthropic-ratelimit-unified-5h/7d-{reset,utilization}` headers. A 429 still carries them. `least_used()` scores **max(5h, 7d)** — 5h-only picked an account at 100% weekly once. |
 | **Per-account spawning** | `serve.py`, `orchestrator.py` | Launch form + orchestrator take an account; spawns set `CLAUDE_CONFIG_DIR`. "auto" = `pulse.least_used()`. |
 | **Spotify: OAuth + player** | `pulse.py`, `serve.py`, `index.html` | Full code flow (`/api/spotify/login` → consent → callback saves refresh token; redirect URI is FIXED `http://127.0.0.1:8817/api/spotify/callback` — Spotify requires exact match, loopback must be 127.0.0.1 not localhost). 7s now-playing loop. `spotify_ctl()`: next/prev/seek/toggle via `/api/spotify/ctl`. |
 | **Vinyl mini-player** | sidebar, `index.html` (.vinyl), `dashboard/lofi.jpg` | Lofi starry-mountain backdrop (local file), record face = album cover with grooves/sheen, spinning; SVG tonearm morphs down when playing; interactive seek bar (click-to-seek, hover knob, mm:ss), prev/play/next. Progress advances via a local 1s ticker resynced ONLY when the server snapshot changes (resyncing every poll snaps the bar backwards). No `filter:` on animated elements — that was the lag. |
-| **Chat assistant** | `dashboard/chat.py`, FAB bottom-right | "Ask Maestro" bubble: Haiku for light questions, Sonnet for heavy (regex routing), raw urllib, context = soul + skills + wire + Hermes. Key from env or gitignored `.env` (VALUE copied in; never a consumer path). |
+| **Chat assistant** | `dashboard/chat.py`, FAB bottom-right | "Ask Rune" bubble: Haiku for light questions, Sonnet for heavy (regex routing), raw urllib, context = soul + skills + wire + Hermes. Key from env or gitignored `.env` (VALUE copied in; never a consumer path). |
 | **Plum retheme** | whole `index.html` | Green → royal plum (#5c1346) via scripted hue-rotation of the entire palette (~318°), preserving lightness relationships. Per-service brand cards allowed (Claude orange / Gmail red / GitHub ink / Spotify green). |
 | **Pulse row** | dashboard top | Brand cards with emails auto-read from each config's `.claude.json`, setup buttons (copy `$env:CLAUDE_CONFIG_DIR=…; claude`), carousel arrows (rAF easeOutCubic tween — `scrollTo({smooth})` is a no-op under scroll-snap), content-signature guard so the 2.5s poll doesn't reset scroll/detach clicks. |
 | **Skill tree** | skills tab | Dendrogram: root → genre branches → skill leaves with CSS connector lines, progress-ring nodes, stat tiles (earned/in-progress/XP + %), detail panel on click, admin "Add a skill" form → `POST /api/skill` → `engine.py add`. **LIGHT theme — Daniel rejected the dark version as unreadable slop.** |
@@ -166,7 +193,7 @@ A pre-commit content scan for token patterns was clean at `83a6d28`; keep it tha
 Daniel's memory (`C:\Users\user\.claude\projects\C--Users-user\memory\`): `agentic-os.md`
 (dense per-session changelog of this project — read it), `design-taste.md`,
 `conscious-agent-spend.md`, index `MEMORY.md`. Obsidian vault:
-`C:\Obsidian_Brain\Daniel_Obsidian_Vault` — Maestro reads all, writes only under `Maestro/`.
+`C:\Obsidian_Brain\Daniel_Obsidian_Vault` — Rune reads all, writes only under `Rune/`.
 
 ## Suggested first move
 

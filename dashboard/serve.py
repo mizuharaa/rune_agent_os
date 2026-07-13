@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Maestro dashboard server. Zero dependencies: stdlib http.server + ctypes.
+"""Rune dashboard server. Zero dependencies: stdlib http.server + ctypes.
 
 GET  /...                serves the repo root (dashboard + live state), no-store.
 GET  /api/instances      managed Claude Code windows Maestro launched, with liveness.
@@ -41,9 +41,9 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pipeline import vault_path  # single source of truth for the vault location
 import askpass                   # DPAPI ssh credential store
 import orchestrator              # the conductor feedback loop
-import pulse                     # outside world: claude usage, github, gmail, spotify
+import pulse                     # outside world: claude/codex usage, github, gmail, spotify
 import chat                      # dashboard assistant (Haiku/Sonnet over the Anthropic API)
-import mission                   # command bar: goal -> refined mission -> orchestrator
+import ceo                       # command bar: prompt -> Haiku refine -> CEO plan -> roles
 MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 INBOX = os.path.join(ROOT, "state", "inbox.jsonl")
 WINDOWS = os.path.join(ROOT, "state", "windows.json")
@@ -287,6 +287,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"content": body})
         if self.path == "/api/orchestrations":
             return self._json(200, {"orchestrations": orchestrator.list_all()})
+        if self.path == "/api/ceo":
+            return self._json(200, {"runs": ceo.list_all()})
         if self.path == "/api/ssh-creds":
             return self._json(200, {"keys": askpass.keys()})  # names only, never secrets
         if self.path == "/api/pulse":
@@ -307,7 +309,8 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/ssh-forget": self.api_ssh_forget,
             "/api/chat": self.api_chat,
             "/api/skill": self.api_skill,
-            "/api/mission": self.api_mission,
+            "/api/ceo": self.api_ceo,
+            "/api/ceo-action": self.api_ceo_action,
             "/api/spotify/ctl": self.api_spotify_ctl,
         }.get(self.path)
         if not route:
@@ -332,51 +335,23 @@ class Handler(SimpleHTTPRequestHandler):
         out = pulse.spotify_ctl(str(data.get("action") or ""), data.get("pos_ms"))
         return self._json(200 if out.get("ok") else 502, out)
 
-    def api_mission(self, data):
-        text = (data.get("text") or "").strip()
-        if not text:
-            return self._json(400, {"error": "empty goal"})
-        hist = data.get("history") if isinstance(data.get("history"), list) else []
-        out = mission.intake(text, hist)
-        if out.get("error"):
-            return self._json(502, out)
-        if out.get("action") == "launch":
-            brief = (out.get("mission") or text).strip()
-            wd = (out.get("dir") or "").strip()
-            if wd and not os.path.isdir(wd):
-                wd = ""  # never launch into a hallucinated path
-            # dropdown overrides: "auto"/missing = let the intake's choice stand
-            opts = data.get("opts") if isinstance(data.get("opts"), dict) else {}
-            try:
-                turns = max(10, min(80, int(out.get("turns") or 40)))
-                # >=2 rounds: the opus critic often demands proof on round 1 —
-                # one revise pass keeps correct work from ending "exhausted"
-                rounds = max(2, min(5, int(out.get("rounds") or 3)))
-            except (TypeError, ValueError):
-                turns, rounds = 40, 3
-            try:
-                if str(opts.get("turns") or "auto") != "auto":
-                    turns = max(5, min(100, int(opts["turns"])))
-                if str(opts.get("rounds") or "auto") != "auto":
-                    rounds = max(1, min(5, int(opts["rounds"])))  # explicit 1 respected
-            except (TypeError, ValueError):
-                pass
-            model = opts.get("model") if opts.get("model") in ("haiku", "sonnet", "opus", "fable", "default") \
-                else str(out.get("model") or "default")
-            critic = opts.get("critic") if opts.get("critic") in ("sonnet", "fable") else "opus"
-            account = str(opts.get("account") or "auto")
-            auto = not bool(opts.get("gate"))  # gate=True -> verdicts wait on Daniel
-            oid, err = orchestrator.start(
-                brief, name=(out.get("name") or text[:40]).strip()[:40],
-                model=model, critic=critic,
-                turns=turns, rounds=rounds, auto=auto, skip=True,
-                workdir=wd, account=account)
-            if err:
-                return self._json(400, {"error": err})
-            out["oid"] = oid
-            emit(session="operator", event="mission",
-                 detail=("[%s] command bar: %s" % (oid, out.get("name") or brief))[:200])
+    def api_ceo(self, data):
+        """Command bar: prompt -> Haiku refine -> brain recall -> CEO plan -> roles."""
+        out, err = ceo.plan_and_start(str(data.get("text") or ""))
+        if err:
+            return self._json(502, {"error": err})
+        emit(session="operator", event="mission",
+             detail=("[%s] CEO: %s" % (out["cid"], out["name"]))[:200])
         return self._json(200, out)
+
+    def api_ceo_action(self, data):
+        err = ceo.action(str(data.get("cid") or ""), str(data.get("role") or ""),
+                         str(data.get("action") or ""), str(data.get("feedback") or ""))
+        if err:
+            return self._json(409, {"error": err})
+        emit(session="operator", event="ceo-action",
+             detail="%s/%s -> %s" % (data.get("cid"), data.get("role"), data.get("action")))
+        return self._json(200, {"ok": True})
 
     def api_chat(self, data):
         out = chat.ask(str(data.get("message") or ""),
@@ -415,7 +390,7 @@ class Handler(SimpleHTTPRequestHandler):
         sid = uuid.uuid4().hex[:8]
         # human name so the manager reads like a team, not a hex dump
         name = (data.get("name") or "").strip()[:40] or re.sub(r"\s+", " ", mission)[:40]
-        title = "MAESTRO " + sid
+        title = "RUNE " + sid
         flag = " --dangerously-skip-permissions" if skip else ""
         mflag = (" --model " + model) if model else ""
         host_label = None
@@ -563,7 +538,7 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8817
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
-    print("Maestro: http://127.0.0.1:%d/dashboard/" % port)
+    print("Rune: http://127.0.0.1:%d/dashboard/" % port)
     print("serving %s (Ctrl+C to stop)" % ROOT)
     try:
         srv.serve_forever()

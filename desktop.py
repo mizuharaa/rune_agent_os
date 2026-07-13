@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch Maestro as a local desktop app: start the server, open the console in a
+"""Launch Rune as a local desktop app: start the server, open the console in a
 chromeless app window (no tabs, no address bar), and shut the server down when
 you close it.
 

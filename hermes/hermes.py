@@ -50,7 +50,7 @@ def brain_folder():
     vp = vault_path()
     if not vp or not os.path.isdir(vp):
         return None
-    folder = os.path.join(vp, "Maestro", "Hermes")
+    folder = os.path.join(vp, "Rune", "Hermes")
     os.makedirs(folder, exist_ok=True)
     return folder
 
@@ -64,14 +64,14 @@ def card_path(row):
 
 
 def write_index(rows):
-    """Regenerate the browsable MOC for the Maestro section of the brain."""
+    """Regenerate the browsable MOC for the Rune section of the brain."""
     folder = brain_folder()
     if not folder:
         return
     stale_n = sum(1 for r in rows if r.get("stale"))
     lines = [
         "---", "generated: " + datetime.datetime.now().isoformat(timespec="seconds"), "---", "",
-        "# Maestro · Hermes — solved problems", "",
+        "# Rune · Hermes — solved problems", "",
         "%d solved · %d stale. One card per problem, solved exactly once." % (len(rows), stale_n), "",
     ]
     for r in sorted(rows, key=lambda r: r.get("ts", ""), reverse=True):

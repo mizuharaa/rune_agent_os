@@ -472,26 +472,94 @@ def spotify_exchange(code, redirect_uri):
     return None
 
 
-# ---------------------------------------------------------------- weather
-def _weather(cfg):
-    w = cfg.get("weather") or {}
-    lat, lon = w.get("lat"), w.get("lon")
-    if lat is None or lon is None:
-        return {"error": "not connected"}
-    j = _http("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
-              "&current=temperature_2m,weather_code&timezone=auto" % (lat, lon))
-    c = j.get("current") or {}
-    return {"label": w.get("label", ""), "temp": c.get("temperature_2m"),
-            "code": c.get("weather_code"),
-            "unit": (j.get("current_units") or {}).get("temperature_2m", "°C")}
+# ---------------------------------------------------------------- codex
+# OpenAI Codex CLI account. Auth lives in ~/.codex/auth.json (chatgpt OAuth);
+# the id_token JWT carries the email + plan. Rate-limit state is read from the
+# newest session rollout's token_count events — Codex records a rate_limits
+# snapshot there (primary=5h window, secondary=weekly), so no network probe
+# is needed; the card shows the last snapshot and how old it is.
+def _jwt_claims(tok):
+    try:
+        seg = tok.split(".")[1]
+        seg += "=" * (-len(seg) % 4)
+        return json.loads(base64.urlsafe_b64decode(seg))
+    except Exception:
+        return {}
+
+
+def _codex_dir(cfg):
+    return (cfg.get("codex") or {}).get("dir") or os.path.expanduser("~/.codex")
+
+
+def _codex(cfg):
+    base = _codex_dir(cfg)
+    auth_path = os.path.join(base, "auth.json")
+    try:
+        auth = json.load(open(auth_path, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"error": "not connected", "hint": "run `codex login` in a terminal"}
+    toks = auth.get("tokens") or {}
+    claims = _jwt_claims(toks.get("id_token") or "")
+    oai = claims.get("https://api.openai.com/auth") or {}
+    out = {"email": claims.get("email"), "mode": auth.get("auth_mode"),
+           "plan": oai.get("chatgpt_plan_type"),
+           "last_refresh": auth.get("last_refresh")}
+    # newest rollout that carries a rate_limits snapshot
+    sess = os.path.join(base, "sessions")
+    files = []
+    for dirpath, _dirs, fns in os.walk(sess):
+        for fn in fns:
+            if fn.endswith(".jsonl"):
+                p = os.path.join(dirpath, fn)
+                try:
+                    files.append((os.path.getmtime(p), p))
+                except OSError:
+                    continue
+    for _mt, p in sorted(files, reverse=True)[:5]:
+        snap = None
+        try:
+            for line in open(p, encoding="utf-8", errors="ignore"):
+                if '"rate_limits"' in line:
+                    snap = line  # keep the LAST snapshot in the file
+        except OSError:
+            continue
+        if not snap:
+            continue
+        try:
+            j = json.loads(snap)
+        except json.JSONDecodeError:
+            continue
+        pay = j.get("payload") or {}
+        rl = pay.get("rate_limits") or {}
+        try:
+            ts = datetime.datetime.fromisoformat(
+                (j.get("timestamp") or "").replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            ts = _mt
+        out["plan"] = rl.get("plan_type") or out["plan"]
+        out["asof"] = int(ts)
+        cred = rl.get("credits") or {}
+        if cred:
+            out["credits"] = ("unlimited" if cred.get("unlimited")
+                              else "available" if cred.get("has_credits") else "exhausted")
+        for key, name in (("primary", ""), ("secondary", "7d")):
+            w = rl.get(key)
+            if not w:
+                continue
+            if w.get("used_percent") is not None:
+                out["pct" + name] = min(100, round(w["used_percent"]))
+            if w.get("resets_in_seconds"):
+                out["reset_at" + ("7d" if name else "")] = int(ts + w["resets_in_seconds"])
+        break
+    return out
 
 
 # ---------------------------------------------------------------- loop
 def _refresh():
     cfg = _cfg()
     snap = {"asof": int(time.time())}
-    for key, fn in (("claude", _claude), ("github", _github),
-                    ("gmail", _gmail), ("spotify", _spotify), ("weather", _weather)):
+    for key, fn in (("claude", _claude), ("codex", _codex), ("github", _github),
+                    ("gmail", _gmail), ("spotify", _spotify)):
         try:
             snap[key] = fn(cfg)
         except Exception as e:

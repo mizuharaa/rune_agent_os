@@ -64,8 +64,9 @@ REFINE_SCHEMA = {
     "properties": {
         "prompt": {"type": "string"},    # the improved, specific prompt
         "keywords": {"type": "string"},  # search keywords for brain recall
+        "simple": {"type": "boolean"},   # answerable directly, no agents/tools
     },
-    "required": ["prompt", "keywords"],
+    "required": ["prompt", "keywords", "simple"],
     "additionalProperties": False,
 }
 
@@ -73,7 +74,19 @@ REFINE_SYSTEM = """You improve raw operator prompts before they reach the CEO \
 of an agentic OS. Rewrite the prompt to be specific and unambiguous: expand \
 vague verbs, name concrete deliverables, keep every constraint the operator \
 stated, add nothing they didn't ask for. Also produce a short keyword string \
-for searching a knowledge base of previously solved problems."""
+for searching a knowledge base of previously solved problems.
+
+Set simple=true when the goal is a question or a small ask that can be \
+answered directly in one reply WITHOUT editing files, running tools, or \
+multi-step work — e.g. 'what does X do', 'explain Y', 'summarize this', a \
+quick lookup, a definition, advice. Set simple=false when it needs building, \
+editing, testing, research, or multi-step orchestration (anything that should \
+staff agents). When unsure, prefer simple=false."""
+
+# a direct-answer request uses the cheap chat assistant, not the CEO. map the
+# dropdown's model override to a real id; None lets chat pick Haiku/Sonnet.
+DIRECT_MODELS = {"haiku": "claude-haiku-4-5", "sonnet": "claude-sonnet-5",
+                 "opus": "claude-opus-4-8", "fable": "claude-fable-5"}
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -278,12 +291,15 @@ def plan_and_start(text, opts=None):
     (the command bar shows a spinner); execution then runs on a thread.
 
     opts (from the Run-it dropdown) override the CEO's per-role choices:
+      mode    "auto" (decide per prompt) | direct (answer, no agents) | delegate
       model   "auto" (CEO decides) | haiku|sonnet|opus|fable (force all roles)
       effort  "auto" | quick|standard|deep (force every role's turn budget)
       account "auto" (least used) | an account display-name
       gate    True -> operator reviews every role before it runs
-    Returns (run-dict, None) or (None, error)."""
+    Returns (result, None) or (None, error). result["kind"] is "answer" (a
+    direct cheap reply, no mission) or "mission" (the CEO staffed roles)."""
     opts = opts if isinstance(opts, dict) else {}
+    mode = opts.get("mode") if opts.get("mode") in ("auto", "direct", "delegate") else "auto"
     force_model = opts.get("model") if opts.get("model") in ROLE_MODELS else None
     force_turns = EFFORT_TURNS.get(opts.get("effort"))
     gate_all = bool(opts.get("gate"))
@@ -291,10 +307,21 @@ def plan_and_start(text, opts=None):
     text = (text or "").strip()
     if not text:
         return None, "empty goal"
-    # 1. Haiku prompt smith — degrade gracefully to the raw prompt
+    # 1. Haiku prompt smith — degrade gracefully to the raw prompt. Also judges
+    # whether this is a simple ask (answer directly) vs work worth staffing.
     r = _api(REFINER, REFINE_SYSTEM, text, REFINE_SCHEMA, max_tokens=1500, timeout=45)
     refined = r.get("prompt") if isinstance(r.get("prompt"), str) and r.get("prompt") else text
     keywords = r.get("keywords") or text
+    simple = bool(r.get("simple"))
+    # Not every prompt needs the full CEO+agents machinery. Simple asks get a
+    # direct, cheap answer (no delegation, no high effort). "delegate" forces
+    # the CEO; "direct" always answers; "auto" delegates only when non-trivial.
+    if mode == "direct" or (mode == "auto" and simple):
+        ans = chat.ask(refined, model=DIRECT_MODELS.get(force_model))
+        if ans.get("error"):
+            return None, ans["error"]
+        return {"kind": "answer", "reply": ans.get("reply") or "(no reply)",
+                "model": ans.get("model"), "goal": text[:1000]}, None
     # 2. Brain recall — requery learnt knowledge before planning
     recall = _recall(keywords)
     # 3. CEO plan (Opus, structured output)
@@ -343,7 +370,7 @@ def plan_and_start(text, opts=None):
     t.start()
     emit(cid, "CEO staffed '%s': %s" % (o["name"], ", ".join(
         "%s(%s/%dt)" % (r["id"], r["model"], r["turns"]) for r in o["roles"])))
-    return o, None
+    return dict(o, kind="mission"), None
 
 
 def _worker(cid, role, context, cfg_dir):

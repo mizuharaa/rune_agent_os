@@ -350,8 +350,12 @@ class Handler(SimpleHTTPRequestHandler):
         out, err = ceo.plan_and_start(str(data.get("text") or ""), opts)
         if err:
             return self._json(502, {"error": err})
-        emit(session="operator", event="mission",
-             detail=("[%s] CEO: %s" % (out["cid"], out["name"]))[:200])
+        if out.get("kind") == "answer":
+            emit(session="operator", event="mission",
+                 detail=("CEO answered directly (%s): %s" % (out.get("model"), out.get("goal")))[:200])
+        else:
+            emit(session="operator", event="mission",
+                 detail=("[%s] CEO: %s" % (out["cid"], out["name"]))[:200])
         return self._json(200, out)
 
     def api_ceo_action(self, data):

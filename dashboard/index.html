@@ -820,7 +820,9 @@
             <button class="cmddrop" id="cmddrop" title="model, effort & account overrides"><span class="dot"></span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
           </div>
           <div class="cmdpop" id="cmdpop">
-            <div class="phead">CEO overrides · auto = the CEO decides per role</div>
+            <div class="phead">CEO overrides · auto = the CEO decides per prompt</div>
+            <div class="prow"><label>Mode</label>
+              <select id="cmd-mode"><option value="auto" selected>Auto · decide per prompt</option><option value="direct">Direct answer · no agents</option><option value="delegate">Delegate · always staff roles</option></select></div>
             <div class="prow"><label>Model</label>
               <select id="cmd-model"><option value="auto" selected>Auto · per role</option><option value="haiku">Haiku · all roles</option><option value="sonnet">Sonnet · all roles</option><option value="opus">Opus · all roles</option><option value="fable">Fable · all roles</option></select></div>
             <div class="prow"><label>Effort</label>
@@ -828,7 +830,7 @@
             <div class="prow"><label>Account</label>
               <select id="cmd-account"><option value="auto" selected>Auto · most headroom</option></select></div>
             <label class="chk"><input type="checkbox" id="cmd-gate"> Review every role before it runs</label>
-            <div class="pnote">On Auto the CEO tiers each role itself — Opus for hard work, Fable for frontier thinking, Sonnet/Haiku for light steps. Override to force the whole roster.</div>
+            <div class="pnote">Auto answers simple prompts directly (cheap, no agents) and only staffs the CEO for real work. Direct = always answer, no agents. Delegate = always staff roles.</div>
           </div>
         </div>
         <div class="cmdflow" id="cmdflow"></div>
@@ -1189,11 +1191,11 @@ function cmdType(){
 }
 function cmdMsg(role,html){const d=document.createElement("div");d.className="cmdmsg "+role;
   d.innerHTML=html;$("cmdflow").appendChild(d);return d}
-// Run-it dropdown overrides — "auto" everywhere means the CEO decides per role
-function cmdOpts(){return{model:$("cmd-model").value,effort:$("cmd-effort").value,
+// Run-it dropdown overrides — "auto" everywhere means the CEO decides per prompt
+function cmdOpts(){return{mode:$("cmd-mode").value,model:$("cmd-model").value,effort:$("cmd-effort").value,
   account:$("cmd-account").value,gate:$("cmd-gate").checked}}
 function cmdTuned(){const o=cmdOpts();
-  return o.model!=="auto"||o.effort!=="auto"||o.account!=="auto"||o.gate}
+  return o.mode!=="auto"||o.model!=="auto"||o.effort!=="auto"||o.account!=="auto"||o.gate}
 async function cmdSend(){
   const inp=$("cmdinput"),text=inp.value.trim();
   if(!text||CMD.busy)return;
@@ -1203,10 +1205,15 @@ async function cmdSend(){
   const th=cmdMsg("a",`<span class="dots"><i></i><i></i><i></i></span> refining the prompt, querying the brain, staffing the mission…`);
   try{
     const j=await post("/api/ceo",{text,opts:cmdOpts()});
-    th.innerHTML=`<b>${esc(j.name||"Mission")}</b> staffed — ${j.roles.length} role${j.roles.length===1?"":"s"}${j.recall?" · brain recall folded in":""}.
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${j.roles.map(r=>
-        `<span class="achip" title="${esc(r.mission.slice(0,180))}">${esc(r.title)} · ${esc(r.model)} · ${r.turns}t${r.review?" · gated":""}</span>`).join("")}</div>
-      <div class="brief">${esc((j.summary||j.refined||"").slice(0,240))}</div>`;
+    if(j.kind==="answer"){
+      // simple prompt: a direct cheap reply, no agents staffed
+      th.innerHTML=`${esc(j.reply)}<div class="brief">answered directly · ${esc(j.model||"cheap model")} · no agents</div>`;
+    }else{
+      th.innerHTML=`<b>${esc(j.name||"Mission")}</b> staffed — ${j.roles.length} role${j.roles.length===1?"":"s"}${j.recall?" · brain recall folded in":""}.
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">${j.roles.map(r=>
+          `<span class="achip" title="${esc(r.mission.slice(0,180))}">${esc(r.title)} · ${esc(r.model)} · ${r.turns}t${r.review?" · gated":""}</span>`).join("")}</div>
+        <div class="brief">${esc((j.summary||j.refined||"").slice(0,240))}</div>`;
+    }
     poll();
   }catch(e){th.innerHTML="⚠ "+esc(e.message)}
   CMD.busy=false;$("cmdgo").disabled=false;

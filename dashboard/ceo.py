@@ -34,11 +34,17 @@ import pulse   # account routing for workers
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CDIR = os.path.join(ROOT, "state", "ceo")
+ADIR = os.path.join(CDIR, "archive")   # finished runs moved here, kept not deleted
 MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 HERMES = os.path.join(ROOT, "hermes", "hermes.py")
 API = "https://api.anthropic.com/v1/messages"
 IS_WIN = sys.platform == "win32"
 WORKER_TIMEOUT = 1800
+
+# finished missions older than this auto-archive out of the active list to keep
+# the UI lean; a Done/failed mission can also be archived by hand any time.
+AUTO_ARCHIVE_DAYS = 7
+TERMINAL = ("done", "failed", "rejected", "exhausted", "stopped", "error", "stalled")
 
 REFINER = "claude-haiku-4-5"   # prompt smith: cheap, fast
 PLANNER = "claude-opus-4-8"    # the CEO itself: judgment is the product
@@ -210,6 +216,35 @@ def _save(o):
     os.replace(tmp, _path(o["cid"]))
 
 
+def _age_days(o):
+    ts = o.get("updated") or o.get("started") or ""
+    try:
+        return (datetime.datetime.now()
+                - datetime.datetime.fromisoformat(ts)).total_seconds() / 86400
+    except ValueError:
+        return 0.0
+
+
+def _archive_file(cid):
+    """Move a run out of the active dir into state/ceo/archive/ (kept, not deleted).
+    list_all only scans the top level, so archived runs drop out of the UI."""
+    src = _path(cid)
+    if not os.path.exists(src):
+        return False
+    os.makedirs(ADIR, exist_ok=True)
+    os.replace(src, os.path.join(ADIR, cid + ".json"))
+    return True
+
+
+def archive(cid):
+    """Manual archive (the mission card's Archive button). Refuses a live run."""
+    with LOCK:
+        st = LIVE.get(cid)
+        if st and st["thread"].is_alive():
+            return "can't archive a running mission — stop it first"
+    return None if _archive_file(cid) else "no such mission"
+
+
 def list_all():
     out = []
     if os.path.isdir(CDIR):
@@ -224,6 +259,12 @@ def list_all():
                 o["live"] = o["cid"] in LIVE and LIVE[o["cid"]]["thread"].is_alive()
             if o.get("status") in ("running", "review") and not o["live"]:
                 o["status"] = "stalled"  # server restarted mid-run
+            # auto-archive: finished, not live, and past the window -> move it out
+            # so the active list stays short. Runs the sweep for free on the poll.
+            if (not o["live"] and o.get("status") in TERMINAL
+                    and _age_days(o) >= AUTO_ARCHIVE_DAYS):
+                _archive_file(o["cid"])
+                continue
             out.append(o)
     out.sort(key=lambda o: o.get("started", ""), reverse=True)
     return out
@@ -498,9 +539,11 @@ def resume(cid):
 
 
 def action(cid, role_id, act, feedback=""):
-    """Operator verdicts: approve | redo | skip (per role), stop, or resume."""
+    """Operator verdicts: approve | redo | skip (per role), stop, resume, archive."""
     if act == "resume":
         return resume(cid)  # valid precisely when the mission is NOT live
+    if act == "archive":
+        return archive(cid)
     with LOCK:
         st = LIVE.get(cid)
         if not st:
@@ -534,4 +577,7 @@ if __name__ == "__main__":
     assert not _worth_remembering(trivial), "cheap mechanical success should be skipped"
     assert _worth_remembering(hard), "opus reasoning should be kept"
     assert _worth_remembering(failed), "failures should be kept"
+    # archive age math: an 8-day-old run is past the 7-day window, a fresh one isn't
+    old = {"updated": (datetime.datetime.now() - datetime.timedelta(days=8)).isoformat()}
+    assert _age_days(old) >= AUTO_ARCHIVE_DAYS and _age_days({"updated": ""}) == 0.0
     print("ceo.py OK — key present:", bool(chat._api_key()))

@@ -10,12 +10,18 @@ You are the **conductor** of Rune. Your identity and operating character live in
 3. **Skill registry** — `python skills/engine.py list`
 4. **Hermes check** — before ANY hard problem: `python hermes/hermes.py query "<problem>"`.
    Hit → reuse it. Miss → solve, then `python hermes/hermes.py note ...`.
-5. **Directives** — read the tail of `state/inbox.jsonl` (Daniel queues missions
+5. **Briefing** — `python daily_briefing.py`. This is where you left off: commits
+   here and on GitHub, the missions that ran, the Hermes notes learned, the
+   calendar, and — the part that matters — **Pick back up**: work that stopped
+   before it finished, with the reason it stopped. Open a session by naming what
+   is unfinished and continuing it; never re-do work the briefing says is done.
+   (Offline by construction — it only reads disk, so it is always there.)
+6. **Directives** — read the tail of `state/inbox.jsonl` (Daniel queues missions
    there from the dashboard Command Deck). For any entry with no matching
    `directive-done` event on the wire: act on it, then
    `python .claude/hooks/mirror.py --event directive-done --detail "<id> <one-line outcome>"`.
    Re-check the inbox whenever you finish a mission.
-6. **Announce** — `python .claude/hooks/mirror.py --stage think --detail "session online"`
+7. **Announce** — `python .claude/hooks/mirror.py --stage think --detail "session online"`
    (the dashboard reads the wire; an unannounced session is invisible).
 
 ## The map

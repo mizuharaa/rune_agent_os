@@ -11,6 +11,8 @@ owner's env — never paths, never committed) and serves one cached snapshot:
   gmail    unread count + latest subjects via IMAP (app password)
   spotify  now playing via refresh-token flow; "not connected" until
            client_id/client_secret/refresh_token exist in pulse.json
+  outlook  calendar via Microsoft Graph (device-code auth, no client secret).
+           Sign in once: python dashboard/pulse.py --outlook-login
 
 A daemon thread refreshes every 45s so requests never block on the network.
 Each service degrades to {"error": ...} independently.
@@ -21,6 +23,7 @@ import email.header
 import imaplib
 import json
 import os
+import sys
 import threading
 import time
 import urllib.parse
@@ -28,6 +31,10 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CFG = os.path.join(ROOT, "state", "pulse.json")
+# last good snapshot on disk. The live SNAP is memory-only, so anything built
+# from it (the daily briefing's GitHub section) had nothing to read when the
+# network — or the process — was gone. This is the offline copy.
+CACHE = os.path.join(ROOT, "state", "pulse-cache.json")
 WINDOW = 5 * 3600
 SNAP = {"asof": 0}
 LOCK = threading.Lock()
@@ -526,6 +533,159 @@ def spotify_exchange(code, redirect_uri):
     return None
 
 
+# ---------------------------------------------------------------- outlook
+# Outlook calendar over Microsoft Graph, device-code flow: a PUBLIC client, so
+# there is no client secret to keep and no redirect URI to register — you paste
+# a code at microsoft.com/devicelogin once and Rune holds a refresh token.
+#
+#   state/pulse.json:  {"outlook": {"client_id": "<azure app id>",
+#                                   "tenant": "common"}}   # or your tenant id
+#   then:              python dashboard/pulse.py --outlook-login
+#
+# Graph ROTATES the refresh token on every use — persist the new one or the next
+# refresh fails with invalid_grant (and the calendar silently goes empty).
+MS_SCOPE = "offline_access Calendars.Read"
+MS_DEVICE = "https://login.microsoftonline.com/%s/oauth2/v2.0/devicecode"
+MS_TOKEN = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
+MS_CAL = "https://graph.microsoft.com/v1.0/me/calendarView"
+CAL_AHEAD_DAYS = 7
+_MS = {"at": "", "exp": 0}      # access token cache: it lives ~1h, the loop is 45s
+
+
+def _save_cfg(section, patch):
+    cfg = _cfg()
+    cfg.setdefault(section, {}).update(patch)
+    tmp = CFG + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2)
+    os.replace(tmp, CFG)
+    return cfg
+
+
+def _ms_post(url, form):
+    return _http(url, {"Content-Type": "application/x-www-form-urlencoded"},
+                 urllib.parse.urlencode(form).encode())
+
+
+def _ms_token(cfg):
+    """(access_token, error) from the stored refresh token, cached until expiry."""
+    o = cfg.get("outlook") or {}
+    cid, rt = o.get("client_id"), o.get("refresh_token")
+    tenant = o.get("tenant") or "common"
+    if not cid:
+        return None, "not connected — add outlook.client_id to state/pulse.json"
+    if not rt:
+        return None, "not signed in — run: python dashboard/pulse.py --outlook-login"
+    if _MS["at"] and time.time() < _MS["exp"]:
+        return _MS["at"], None
+    try:
+        tok = _ms_post(MS_TOKEN % tenant,
+                       {"client_id": cid, "grant_type": "refresh_token",
+                        "refresh_token": rt, "scope": MS_SCOPE})
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "ignore")
+        if "invalid_grant" in body or "AADSTS70008" in body:   # expired/revoked
+            return None, "sign-in expired — run: python dashboard/pulse.py --outlook-login"
+        return None, "token refresh %s: %s" % (e.code, body[:120])
+    if tok.get("refresh_token") and tok["refresh_token"] != rt:
+        _save_cfg("outlook", {"refresh_token": tok["refresh_token"]})   # rotated
+    at = tok.get("access_token")
+    if not at:
+        return None, "no access_token from Microsoft"
+    _MS.update(at=at, exp=time.time() + max(60, int(tok.get("expires_in") or 3600)) - 120)
+    return at, None
+
+
+def _ms_local(slot):
+    """Graph returns {'dateTime','timeZone'} in UTC by default — make it local."""
+    raw = (slot or {}).get("dateTime") or ""
+    try:
+        d = datetime.datetime.fromisoformat(raw[:26])
+    except ValueError:
+        return None
+    if (slot.get("timeZone") or "UTC").upper() == "UTC":
+        d = d.replace(tzinfo=datetime.timezone.utc).astimezone().replace(tzinfo=None)
+    return d
+
+
+def _outlook(cfg):
+    """Calendar events from yesterday through the next week. Shaped exactly like
+    the .ics events the briefing already renders, so it's a drop-in source."""
+    at, err = _ms_token(cfg)
+    if err:
+        return {"error": err}
+    start = datetime.datetime.combine(datetime.date.today(), datetime.time.min) \
+        - datetime.timedelta(days=1)
+    end = start + datetime.timedelta(days=CAL_AHEAD_DAYS + 1)
+    url = MS_CAL + "?" + urllib.parse.urlencode({
+        "startDateTime": start.isoformat(), "endDateTime": end.isoformat(),
+        "$select": "subject,start,end,isAllDay,isCancelled,location",
+        "$orderby": "start/dateTime", "$top": 50})
+    j = _http(url, {"Authorization": "Bearer " + at, "Accept": "application/json"})
+    events = []
+    for e in j.get("value") or []:
+        if e.get("isCancelled"):
+            continue
+        if e.get("isAllDay"):
+            # all-day comes back as midnight UTC. Converting it to a negative-offset
+            # zone (any US one) would drag it onto the PREVIOUS day — take the date
+            # as given and never localise it.
+            day = ((e.get("start") or {}).get("dateTime") or "")[:10]
+            if len(day) != 10:
+                continue
+            events.append({"date": day, "time": "all-day",
+                           "summary": (e.get("subject") or "(no subject)")[:100],
+                           "where": ((e.get("location") or {}).get("displayName") or "")[:60]})
+            continue
+        d = _ms_local(e.get("start"))
+        if not d:
+            continue
+        events.append({
+            "date": d.date().isoformat(),
+            "time": d.strftime("%H:%M"),
+            "summary": (e.get("subject") or "(no subject)")[:100],
+            "where": ((e.get("location") or {}).get("displayName") or "")[:60]})
+    return {"events": events, "count": len(events)}
+
+
+def outlook_login():
+    """Device-code sign-in. Prints a code, waits for you to enter it, stores the
+    refresh token in state/pulse.json. Run once; the loop keeps it alive after."""
+    cfg = _cfg()
+    o = cfg.get("outlook") or {}
+    cid, tenant = o.get("client_id"), (o.get("tenant") or "common")
+    if not cid:
+        print('Add your Azure app id first:\n  state/pulse.json -> '
+              '"outlook": {"client_id": "<app id>", "tenant": "common"}')
+        return 1
+    d = _ms_post(MS_DEVICE % tenant, {"client_id": cid, "scope": MS_SCOPE})
+    print("\n  Go to: %s\n  Enter code: %s\n" % (d.get("verification_uri"), d.get("user_code")))
+    print("  waiting for you to approve…")
+    deadline = time.time() + int(d.get("expires_in") or 900)
+    interval = max(3, int(d.get("interval") or 5))
+    while time.time() < deadline:
+        time.sleep(interval)
+        try:
+            tok = _ms_post(MS_TOKEN % tenant,
+                           {"client_id": cid, "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                            "device_code": d["device_code"]})
+        except urllib.error.HTTPError as e:
+            err = json.loads(e.read().decode("utf-8", "ignore") or "{}").get("error", "")
+            if err == "authorization_pending":
+                continue
+            if err == "slow_down":
+                interval += 5
+                continue
+            print("  sign-in failed: " + (err or "unknown"))
+            return 1
+        if tok.get("refresh_token"):
+            _save_cfg("outlook", {"refresh_token": tok["refresh_token"]})
+            print("  signed in — Outlook calendar connected.")
+            return 0
+    print("  timed out — run it again.")
+    return 1
+
+
 # ---------------------------------------------------------------- codex
 # OpenAI Codex CLI account. Auth lives in ~/.codex/auth.json (chatgpt OAuth);
 # the id_token JWT carries the email + plan. Rate-limit state is read from the
@@ -613,7 +773,7 @@ def _refresh():
     cfg = _cfg()
     snap = {"asof": int(time.time())}
     for key, fn in (("claude", _claude), ("codex", _codex), ("github", _github),
-                    ("gmail", _gmail), ("spotify", _spotify)):
+                    ("gmail", _gmail), ("spotify", _spotify), ("outlook", _outlook)):
         try:
             snap[key] = fn(cfg)
         except Exception as e:
@@ -621,11 +781,51 @@ def _refresh():
     with LOCK:
         SNAP.clear()
         SNAP.update(snap)
+    _write_cache(snap)
+    try:
+        # keep the subscribed calendar on disk (self-throttled to hourly) so the
+        # briefing has your day even with no network. Never fatal to the loop.
+        sys.path.insert(0, ROOT)
+        import daily_briefing
+        daily_briefing.refresh_calendar()
+    except Exception:
+        pass
+
+
+def _write_cache(snap):
+    """Persist the snapshot so the briefing can read GitHub activity with no
+    network (and before the first refresh of a cold start). Best-effort: a failed
+    write must never take the pulse loop down."""
+    keep = {k: v for k, v in snap.items()
+            if k in ("asof", "github", "gmail", "outlook")
+            and not (isinstance(v, dict) and v.get("error"))}
+    if len(keep) < 2:               # asof alone = every service errored
+        return
+    try:
+        tmp = CACHE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(keep, f)
+        os.replace(tmp, CACHE)
+    except OSError:
+        pass
+
+
+def cached():
+    """Last good snapshot from disk — works offline, works before first refresh."""
+    try:
+        return json.load(open(CACHE, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
 
 
 def _loop():
     while True:
-        _refresh()
+        try:
+            _refresh()
+        except Exception as e:
+            # a crash here used to kill the thread outright: the strip froze on
+            # its last snapshot forever and said nothing. Log and keep looping.
+            SNAP["loop_error"] = type(e).__name__ + ": " + str(e)[:120]
         time.sleep(45)
 
 
@@ -685,5 +885,13 @@ threading.Thread(target=_loop, daemon=True).start()
 threading.Thread(target=_loop_spotify, daemon=True).start()
 
 if __name__ == "__main__":
+    # Graph hands back UTC; a 23:30Z event is *tomorrow* in a +2 zone. Pin it.
+    utc = _ms_local({"dateTime": "2026-07-14T09:30:00.0000000", "timeZone": "UTC"})
+    exp = (datetime.datetime(2026, 7, 14, 9, 30, tzinfo=datetime.timezone.utc)
+           .astimezone().replace(tzinfo=None))
+    assert utc == exp, (utc, exp)
+    assert _ms_local({"dateTime": "junk"}) is None
+    if "--outlook-login" in sys.argv:
+        sys.exit(outlook_login())
     _refresh()
     print(json.dumps(get(), indent=2)[:3000])

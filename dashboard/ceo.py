@@ -41,6 +41,22 @@ API = "https://api.anthropic.com/v1/messages"
 IS_WIN = sys.platform == "win32"
 WORKER_TIMEOUT = 1800
 
+# A role that burns its whole turn budget was CUT OFF mid-task — it is not done.
+# It used to be recorded as a silent success on half-finished work (the "it died
+# out of nowhere and gave no reason" bug: a self-revamp needs far more than 40
+# turns). Now we continue the SAME claude session, which keeps its full context,
+# so it picks up where it stopped instead of re-doing the work. Only after this
+# many auto-continues do we park the role as "exhausted" WITH a stated reason.
+# ponytail: fixed budget; make it per-role if a mission ever needs a deeper one.
+MAX_CONTINUES = 3
+
+CONTINUE_PROMPT = """You ran out of your turn budget mid-task — this is a \
+continuation of that same session, not a new one.
+
+Continue exactly where you left off. Do NOT start over and do NOT redo work you \
+already finished. Re-read anything you need, pick up the next unfinished step, \
+and carry the task to completion. Finish by reporting what you did."""
+
 # finished missions older than this auto-archive out of the active list to keep
 # the UI lean; a Done/failed mission can also be archived by hand any time.
 AUTO_ARCHIVE_DAYS = 7
@@ -301,7 +317,13 @@ def list_all():
             with LOCK:
                 o["live"] = o["cid"] in LIVE and LIVE[o["cid"]]["thread"].is_alive()
             if o.get("status") in ("running", "review", "planning") and not o["live"]:
-                o["status"] = "stalled"  # server restarted mid-plan/run
+                # the run's thread is gone but the file says running: the server
+                # process died under it (window closed, restart, or Rune rewrote
+                # its own backend). Say so — a stalled run used to give no reason.
+                o["status"] = "stalled"
+                o["detail"] = ("the Rune server stopped while this was running (app "
+                               "window closed, restart, or Rune rewrote its own "
+                               "backend) — Continue picks it up where it left off")
             # auto-archive: finished, not live, and past the window -> move it out
             # so the active list stays short. Runs the sweep for free on the poll.
             if (not o["live"] and o.get("status") in TERMINAL
@@ -503,14 +525,23 @@ def _plan_then_run(cid):
     _run(cid)   # same thread: staffing flows straight into execution
 
 
-def _worker(cid, role, context, cfg_dir):
-    """One role = one headless claude -p run under this run's account."""
-    prompt = role["mission"]
-    if context:
-        prompt += "\n\n## Output from roles you depend on:\n" + context[:6000]
+def _worker(cid, role, context, cfg_dir, resume_sid=""):
+    """One role = one headless claude -p run under this run's account.
+
+    resume_sid continues THAT claude session (its context, its files read, its
+    plan) instead of starting a fresh one — how a role that ran out of turns
+    picks up where it left off rather than starting the task over."""
+    if resume_sid:
+        prompt = CONTINUE_PROMPT
+    else:
+        prompt = role["mission"]
+        if context:
+            prompt += "\n\n## Output from roles you depend on:\n" + context[:6000]
     argv = ["claude", "-p", "--output-format", "json",
             "--max-turns", str(role["turns"]),
             "--model", role["model"], "--dangerously-skip-permissions"]
+    if resume_sid:
+        argv += ["--resume", resume_sid]
     env = dict(os.environ, MAESTRO_SID=cid)
     if cfg_dir:
         env["CLAUDE_CONFIG_DIR"] = cfg_dir
@@ -578,10 +609,16 @@ def _run(cid):
                  and all(roles[d]["status"] in ("done", "skipped")
                          for d in r["depends_on"] if d in roles)), None)
             if not runnable:
-                # anything still pending has a failed/blocked dependency
+                # anything still pending has a failed/blocked dependency — name it,
+                # so a blocked role never sits there without a reason
                 for r in o["roles"]:
                     if r["status"] == "pending":
                         r["status"] = "blocked"
+                        bad = [d for d in r["depends_on"] if d in roles
+                               and roles[d]["status"] not in ("done", "skipped")]
+                        r["detail"] = "blocked: %s didn't finish (%s)" % (
+                            ", ".join(bad) or "a dependency",
+                            ", ".join(roles[d]["status"] for d in bad) or "unfinished")
                 break
             role = runnable
             while True:  # redo loop
@@ -594,18 +631,56 @@ def _run(cid):
                                                        roles[d]["result"][:1500])
                                   for d in role["depends_on"] if roles[d].get("result"))
                 t0 = time.time()
-                w = _worker(cid, role, ctx, cfg_dir)
+                # a Continue on an exhausted role resumes its old claude session
+                # (context intact) instead of re-running the mission from zero
+                sid = role.pop("continue_from", "")
+                w = _worker(cid, role, "" if sid else ctx, cfg_dir, resume_sid=sid)
+                spend = w.get("total_cost_usd") or 0
+                sid = w.get("session_id") or sid
+                # ran out of turns => cut off mid-task, NOT finished. Continue the
+                # same session until it lands or the continue budget runs out.
+                cont = role.get("continues") or 0
+                while (w.get("subtype") == "error_max_turns" and sid
+                       and cont < MAX_CONTINUES):
+                    with LOCK:
+                        if LIVE.get(cid, {}).get("stop"):
+                            break
+                    cont += 1
+                    role["continues"] = cont
+                    role["session"] = sid
+                    _save(o)
+                    emit(cid, "role %s ran out of %d turns — auto-continuing the "
+                         "same session (%d/%d)" % (role["id"], role["turns"],
+                                                   cont, MAX_CONTINUES))
+                    w = _worker(cid, role, "", cfg_dir, resume_sid=sid)
+                    spend += w.get("total_cost_usd") or 0
+                    sid = w.get("session_id") or sid
+                role["session"] = sid
+                role["continues"] = cont
                 role["secs"] = round(time.time() - t0)
-                role["cost"] = round(w.get("total_cost_usd") or 0, 4)
+                role["cost"] = round(spend, 4)
                 o["cost"] = round(sum(r.get("cost") or 0 for r in o["roles"]), 4)
                 ran_out = w.get("subtype") == "error_max_turns"
                 role["result"] = str(w.get("result") or "")[:6000] or (
                     "(no final message — used all %d turns)" % role["turns"])
-                if w.get("is_error") and not ran_out:
+                if ran_out:
+                    # STILL unfinished after the continue budget. Park it with a
+                    # stated reason — never report half-done work as success.
+                    role["status"] = "exhausted"
+                    role["detail"] = (
+                        "ran out of turns: %d turn budget × %d run(s). The task was "
+                        "cut off, not finished. Continue resumes this same session."
+                        % (role["turns"], cont + 1))
+                    _save(o)
+                    emit(cid, "role %s EXHAUSTED: %s" % (role["id"], role["detail"]))
+                    break
+                if w.get("is_error"):
                     role["status"] = "failed"
                     # distinguish a usage/session-limit stop from a real failure:
                     # limits are transient — the operator just Continues later.
                     role["limit"] = bool(LIMIT_RE.search(role["result"]))
+                    role["detail"] = ("hit a usage/session limit — transient, Continue when it resets"
+                                      if role["limit"] else role["result"][:300])
                     _save(o)
                     emit(cid, "role %s %s: %s" % (role["id"],
                          "hit a limit" if role["limit"] else "FAILED", role["result"][:120]))
@@ -632,10 +707,24 @@ def _run(cid):
                 # redo: feedback becomes an addendum to the mission
                 role["mission"] += "\n\nOPERATOR FEEDBACK (address this): " + (feedback or "revise")
                 emit(cid, "role %s redo: %s" % (role["id"], (feedback or "")[:100]))
-        failed = [r for r in o["roles"] if r["status"] in ("failed", "blocked")]
-        o["status"] = "failed" if failed else "done"
+        # a mission is only "done" when every role actually finished. Exhausted
+        # roles are unfinished work, not success — they get their own status so
+        # the card says why and offers Continue instead of claiming completion.
+        stuck = [r for r in o["roles"] if r["status"] in ("failed", "blocked", "exhausted")]
+        if not stuck:
+            o["status"] = "done"
+            o["detail"] = ""
+        elif all(r["status"] == "exhausted" for r in stuck):
+            o["status"] = "exhausted"
+            o["detail"] = ("out of turns before finishing — Continue picks each role "
+                           "up in its own session, right where it stopped")
+        else:
+            o["status"] = "failed"
+            o["detail"] = "; ".join("%s: %s" % (r["id"], r.get("detail") or r["status"])
+                                    for r in stuck)[:300]
         _save(o)
-        emit(cid, "mission %s: %s ($%s)" % (o["status"], o["name"], o["cost"]))
+        emit(cid, "mission %s: %s ($%s)%s" % (o["status"], o["name"], o["cost"],
+                                              " — " + o["detail"] if o.get("detail") else ""))
         # 5. learn — but only when it's worth remembering (signal, not a log).
         # Trivial cheap successes are skipped so the brain stays high-signal.
         if _worth_remembering(o):
@@ -675,10 +764,18 @@ def resume(cid):
         return "mission file unreadable"
     reset = 0
     for r in o["roles"]:
-        if r["status"] in ("failed", "blocked", "working", "review"):
+        if r["status"] in ("failed", "blocked", "working", "review", "exhausted"):
+            # a role that was cut off mid-task still has its claude session: hand
+            # it back so it CONTINUES (context intact) instead of starting over.
+            # A role that genuinely failed re-runs fresh from its mission.
+            if r["status"] in ("exhausted", "working") and r.get("session"):
+                r["continue_from"] = r["session"]
+                r["continues"] = 0        # fresh continue budget for this attempt
+            else:
+                r["result"] = ""          # drop stale error text; re-run fresh
             r["status"] = "pending"
-            r["result"] = ""      # drop stale error text; the role re-runs fresh
             r.pop("limit", None)
+            r.pop("detail", None)
             reset += 1
     if not reset:
         return "nothing to resume — every role is already done or skipped"
@@ -737,4 +834,42 @@ if __name__ == "__main__":
     # archive age math: an 8-day-old run is past the 7-day window, a fresh one isn't
     old = {"updated": (datetime.datetime.now() - datetime.timedelta(days=8)).isoformat()}
     assert _age_days(old) >= AUTO_ARCHIVE_DAYS and _age_days({"updated": ""}) == 0.0
+
+    # ---- the regression that started all this: a role that burns its whole turn
+    # budget was reported as a SILENT SUCCESS on half-finished work. It must now
+    # auto-continue the same session, then park as "exhausted" with a reason.
+    import tempfile
+    CDIR = tempfile.mkdtemp()                      # run against a scratch dir
+    calls = []
+
+    def _worker(cid, role, context, cfg_dir, resume_sid=""):   # never runs claude
+        calls.append(resume_sid)
+        return {"is_error": True, "subtype": "error_max_turns", "result": "",
+                "session_id": "sess1", "total_cost_usd": 0.01}
+
+    def emit(*a, **kw):
+        pass
+
+    pulse.least_used = lambda: ""
+    role = {"id": "solo", "title": "T", "mission": "m", "model": "sonnet", "turns": 5,
+            "depends_on": [], "review": False, "status": "pending", "result": "",
+            "secs": 0, "cost": 0}
+    _save({"cid": "t1", "name": "t", "goal": "g", "roles": [role], "status": "running",
+           "cost": 0, "started": datetime.datetime.now().isoformat()})
+    LIVE["t1"] = {"thread": threading.current_thread(), "proc": None,
+                  "stop": False, "gate": {}}
+    _run("t1")
+    got = json.load(open(_path("t1"), encoding="utf-8"))
+    r = got["roles"][0]
+    assert r["status"] == "exhausted", "out of turns was reported as %r" % r["status"]
+    assert got["status"] == "exhausted" and r["detail"] and got["detail"]
+    assert calls == [""] + ["sess1"] * MAX_CONTINUES, calls   # continued, not restarted
+    assert r["cost"] == round(0.01 * (1 + MAX_CONTINUES), 4)  # every attempt billed
+    # Continue = resume that same claude session, not re-run the mission from zero
+    assert resume("t1") is None
+    with LOCK:
+        t = LIVE["t1"]["thread"]
+    t.join(timeout=10)
+    assert calls[1 + MAX_CONTINUES] == "sess1", "Continue restarted instead of resuming"
+    assert json.load(open(_path("t1"), encoding="utf-8"))["resumes"] == 1
     print("ceo.py OK — key present:", bool(chat._api_key()))

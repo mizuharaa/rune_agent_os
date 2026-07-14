@@ -4,6 +4,9 @@
 GET  /...                serves the repo root (dashboard + live state), no-store.
 GET  /api/instances      managed Claude Code windows Maestro launched, with liveness.
 GET  /api/integrations   configured MCPs, hooks, agents, skills.
+GET  /api/briefing       where you left off: commits (here + GitHub), the missions
+                         that ran and what's UNFINISHED, Hermes notes, calendar,
+                         queued directives. Reads disk only — always works offline.
 POST /api/message        queue a directive -> state/inbox.jsonl + wire.
 POST /api/spawn          launch a session on this repo:
                          mode "tab"        -> own titled console window (focusable/closable)
@@ -35,7 +38,9 @@ import uuid
 from ctypes import wintypes
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
+BOOT = time.time()  # this process's start — lets desktop.py detect a stale server
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "memory"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pipeline import vault_path  # single source of truth for the vault location
@@ -44,6 +49,7 @@ import orchestrator              # the conductor feedback loop
 import pulse                     # outside world: claude/codex usage, github, gmail, spotify
 import chat                      # dashboard assistant (Haiku/Sonnet over the Anthropic API)
 import ceo                       # command bar: prompt -> Haiku refine -> CEO plan -> roles
+import daily_briefing            # offline: where you left off + what to continue
 MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 INBOX = os.path.join(ROOT, "state", "inbox.jsonl")
 WINDOWS = os.path.join(ROOT, "state", "windows.json")
@@ -293,6 +299,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"keys": askpass.keys()})  # names only, never secrets
         if self.path == "/api/pulse":
             return self._json(200, pulse.get())
+        if self.path == "/api/briefing":
+            # recomputed fresh each request (cheap: git log + two small jsonl
+            # files) so it's always current and needs no cron to have run.
+            return self._json(200, daily_briefing.build())
         if self.path == "/api/version":
             # index.html mtime — an open window polls this to notice when Rune
             # has rewritten its own UI and offer a reload instead of going stale.
@@ -300,7 +310,11 @@ class Handler(SimpleHTTPRequestHandler):
                 mt = int(os.path.getmtime(os.path.join(ROOT, "dashboard", "index.html")))
             except OSError:
                 mt = 0
-            return self._json(200, {"v": mt})
+            # boot: this process's start time, so desktop.py can tell a route
+            # was added/changed in a .py file *after* the running server started
+            # (backend code doesn't hot-reload like index.html does) and knows
+            # to restart instead of silently reusing the stale process.
+            return self._json(200, {"v": mt, "boot": BOOT})
         return super().do_GET()
 
     def do_POST(self):

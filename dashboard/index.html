@@ -464,6 +464,7 @@
   .rstat.review{background:#fbeed8; color:#a86a12}
   .rstat.done{background:var(--green); color:#fff}
   .rstat.failed,.rstat.blocked{background:#f7e4e2; color:var(--red)}
+  .rstat.exhausted{background:#fbeed8; color:#a86a12}   /* cut off, not failed */
   .rstat.skipped{background:var(--canvas); color:var(--ink3); text-decoration:line-through}
   .rrow .rbd{flex:1; min-width:0}
   .rrow .rt{font-size:13px; font-weight:700}
@@ -838,6 +839,10 @@
         <div class="cmdflow" id="cmdflow"></div>
       </div>
       <div class="card" style="margin-bottom:14px">
+        <h3>Daily briefing <span class="tag" id="brieftag">today · offline</span></h3>
+        <div id="briefingbody" style="padding-top:12px"></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
         <h3>Running tasks <span class="tag">prompt → Haiku refine → brain recall → CEO staffs the roles</span></h3>
         <div id="ceoruns" style="padding-top:12px"></div>
       </div>
@@ -1101,7 +1106,7 @@ const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo
 const PIE=[GREEN, MID, MINT, "#b879a5", "#cec5cb", "#958a92"]; // pie chart exempt from 3-color cap
 const STAGES=["think","plan","build","review","test","ship"];
 const LIVE_MS=15*60*1000;
-const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],sshKeys:[],pulse:{}};
+const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],sshKeys:[],pulse:{},briefing:null};
 const CHG=new Set(["Edit","Write","MultiEdit","NotebookEdit","Bash"]);
 const dayKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const fmtTok=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":String(n||0);
@@ -1229,22 +1234,25 @@ async function cmdSend(){
 
 /* ---------- CEO missions: running tasks with expandable per-role status ---------- */
 const MOPEN=new Set();                      // expanded runs survive re-renders
-const RSTAT_ORDER={working:0,review:1,pending:2,blocked:3,failed:3,done:4,skipped:4};
+const RSTAT_ORDER={working:0,review:1,pending:2,blocked:3,failed:3,exhausted:3,done:4,skipped:4};
 function ceoCard(o,full){
   const planning=o.status==="planning";
   const segs=planning?`<i class="working" title="the CEO is staffing the roles"></i>`
-    :o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}"></i>`).join("");
-  const statPill=`<span class="pill ${["running","planning"].includes(o.status)?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
+    :o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked","exhausted"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}${r.detail?" — "+esc(r.detail):""}"></i>`).join("");
+  const statPill=`<span class="pill ${["running","planning"].includes(o.status)?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled","exhausted"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
+  /* why it stopped — a run that ends short must always state its reason */
+  const why=(!o.live&&o.detail)?`<div class="rm" style="padding:8px 10px;margin:8px 0;border-left:2px solid var(--warn,#c79a3a);color:var(--ink2)">${esc(o.detail)}</div>`:"";
   const roles=o.roles.map(r=>{
-    const label=r.status==="failed"&&r.limit?"limit":r.status;
+    const label=r.status==="failed"&&r.limit?"limit":r.status==="exhausted"?"out of turns":r.status;
     const acts=(r.status==="review"&&o.live)?`<div class="racts">
         <button class="btn line sm" data-ceo-act="approve" data-cid="${o.cid}" data-role="${r.id}">Approve</button>
         <button class="btn line sm" data-ceo-act="redo" data-cid="${o.cid}" data-role="${r.id}">Redo</button>
         <button class="btn line sm danger" data-ceo-act="skip" data-cid="${o.cid}" data-role="${r.id}">Skip</button></div>`:"";
-    const out=(r.result&&(full||["review","failed"].includes(r.status)))?`<div class="rout">${esc(r.result.slice(0,1800))}</div>`:"";
+    const out=(r.result&&(full||["review","failed","exhausted"].includes(r.status)))?`<div class="rout">${esc(r.result.slice(0,1800))}</div>`:"";
+    const rwhy=r.detail?`<div class="rm" style="color:var(--ink2)">${esc(r.detail)}</div>`:"";
     return`<div class="rrow"><span class="rstat ${esc(r.status)}">${esc(label)}</span>
-      <div class="rbd"><div class="rt">${esc(r.title)}<small>${esc(r.model)} · ${r.turns}t${r.secs?" · "+r.secs+"s":""}${r.cost?" · $"+r.cost:""}${r.review?" · gated":""}${r.limit?" · session limit — Continue when ready":""}${r.depends_on.length?" · after "+r.depends_on.join(","):""}</small></div>
-      ${full?`<div class="rm">${esc(r.mission.slice(0,300))}</div>`:""}${out}${acts}</div></div>`;
+      <div class="rbd"><div class="rt">${esc(r.title)}<small>${esc(r.model)} · ${r.turns}t${r.secs?" · "+r.secs+"s":""}${r.cost?" · $"+r.cost:""}${r.review?" · gated":""}${r.continues?" · continued "+r.continues+"×":""}${r.limit?" · session limit — Continue when ready":""}${r.depends_on.length?" · after "+r.depends_on.join(","):""}</small></div>
+      ${rwhy}${full?`<div class="rm">${esc(r.mission.slice(0,300))}</div>`:""}${out}${acts}</div></div>`;
   }).join("");
   const roleRows=planning
     ?`<div class="rrow"><span class="rstat working">planning</span>
@@ -1252,7 +1260,7 @@ function ceoCard(o,full){
         <div class="rm">Reading the brain and deciding the roster, models and effort. This takes a few seconds — the roles appear here as soon as they're set.</div></div></div>`
     :roles;
   const doneN=o.roles.filter(r=>["done","skipped"].includes(r.status)).length;
-  const resumable=!o.live&&(o.roles.some(r=>["failed","blocked"].includes(r.status))
+  const resumable=!o.live&&(o.roles.some(r=>["failed","blocked","exhausted"].includes(r.status))
     ||["failed","error","stalled","stopped","exhausted"].includes(o.status));
   const archiveBtn=`<button class="btn line sm" data-ceo-act="archive" data-cid="${o.cid}" data-role="" title="clear from the list (kept in state/ceo/archive, not deleted)">Archive</button>`;
   const ctl=o.live
@@ -1267,7 +1275,7 @@ function ceoCard(o,full){
       <span class="mbar">${segs}</span>
       <span class="mmeta">${planning?"staffing…":`${doneN}/${o.roles.length}`} · $${(o.cost||0).toFixed(2)}${o.resumes?" · resumed "+o.resumes+"×":""}${o.account?" · "+esc(o.account):""}</span>
       ${statPill}</summary>
-    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${roleRows}${ctl}</div></details>`;
+    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${why}${roleRows}${ctl}</div></details>`;
 }
 function renderCeo(){
   const runs=S.ceo.slice(0,8);
@@ -1312,14 +1320,15 @@ const jsonl=t=>t.split("\n").filter(l=>l.trim()).map(l=>{try{return JSON.parse(l
 async function poll(){
   if(S.paused){render();return}
   try{
-    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls,ceo,ver]=await Promise.all([
+    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls,ceo,ver,brf]=await Promise.all([
       jget("/state/events.jsonl"),jget("/skills/registry.json"),jget("/hermes/solved.jsonl"),
       jget("/state/approvals.json"),jget("/state/inbox.jsonl",1),jget("/memory/OBSIDIAN.md",1),
       jget("/api/instances",1),jget("/api/integrations",1),jget("/api/vault",1),
       jget("/api/orchestrations",1),jget("/api/ssh-creds",1),jget("/api/pulse",1),
-      jget("/api/ceo",1),jget("/api/version",1)]);
+      jget("/api/ceo",1),jget("/api/version",1),jget("/api/briefing",1)]);
     checkVersion(ver);            // self-modifying app: offer reload when the shell changes
     S.pulse=pls?JSON.parse(pls):{};
+    S.briefing=brf?JSON.parse(brf):null;
     S.events=jsonl(ev);S.skills=JSON.parse(reg);S.solved=jsonl(sol);
     S.approvals=JSON.parse(app);S.inbox=jsonl(inb);
     S.instances=(inst?JSON.parse(inst).windows:[])||[];S.integ=integ?JSON.parse(integ):null;
@@ -1755,6 +1764,7 @@ $("sktree").addEventListener("click",e=>{
 
 /* ---------- render ---------- */
 function render(){
+  renderBriefing();
   const ss=sessions(),live=ss.filter(s=>s.live);
   const liveAgents=ss.reduce((n,s)=>n+Math.max(0,s.agents.length-s.exits),0);
   const reg=S.skills||{goal:"–",skills:{}},sk=Object.entries(reg.skills||{});
@@ -1952,6 +1962,69 @@ $("q").addEventListener("input",renderHermes);
 $("topsearch").addEventListener("keydown",e=>{
   if(e.key==="Enter"){$("q").value=$("topsearch").value;location.hash="#/brain";renderHermes()}
 });
+
+/* ---------- daily briefing ------------------------------------------------
+   Where was I, and what continues? Every source is read from disk (git log,
+   the ceo/ run files, hermes notes, pulse's cached GitHub snapshot, a local
+   .ics) so this card is filled in the moment the client opens, offline. */
+function renderBriefing(){
+  const b=S.briefing;if(!$("briefingbody"))return;
+  if(!b){$("briefingbody").innerHTML=`<div class="none">briefing unavailable — server offline?</div>`;return}
+  $("brieftag").textContent=(b.window||"today")+" · offline";
+  const sec=(title,n,body)=>`<div style="margin-bottom:4px"><div class="s" style="margin-bottom:6px">${title}${n!==null?" — "+n:""}</div>${body}</div>`;
+  const row=(t,s)=>`<div class="lrow"><div class="bd"><div class="t">${t}</div><div class="s">${s}</div></div></div>`;
+  const none=t=>`<div class="none">${t}</div>`;
+
+  /* what stopped mid-flight, and why — the reason you open this card */
+  const cont=(b.continues||[]);
+  const contHtml=cont.length?cont.map(c=>row(
+    `${esc(c.name)} <span class="pill warn">${esc(c.status)}</span>`,
+    `${esc(c.why||"unfinished")} · ${c.roles.map(r=>esc(r.title)+" ("+esc(r.status)+")").join(", ")}
+     <button class="btn line sm" data-ceo-act="resume" data-cid="${c.cid}" data-role="" style="margin-left:6px">↻ Continue</button>`
+  )).join(""):none("nothing left hanging — you finished clean");
+
+  const commits=b.commits.length?b.commits.map(c=>
+    row(`<span class="mono">${esc(c.hash)}</span> ${esc(c.msg)}`, esc(rel(new Date(c.ts*1000).toISOString())))
+  ).join(""):none("no commits in this repo");
+
+  const gh=b.github||{};
+  const ghHtml=gh.error?none(esc(gh.error))
+    :(gh.commits||[]).length?gh.commits.map(c=>row(`<span class="mono">${esc(c.repo)}</span> ${esc(c.msg)}`,esc(rel(c.ts)))).join("")
+    :none("no commits pushed to your other repos");
+
+  const mem=(b.memory||[]);
+  const memHtml=mem.length?mem.slice(0,6).map(n=>row(esc(n.problem),
+    `<span class="mono">[${esc(n.id)}]</span> ${esc((n.solution||"").slice(0,110))}`)).join("")
+    :none("nothing new learned");
+
+  const cal=b.calendar||{};
+  const calHtml=cal.error?none(esc(cal.error))
+    :(cal.events||[]).length?cal.events.map(e=>row(esc(e.summary),
+       `${esc(e.date)} · ${esc(e.time)}${e.where?" · "+esc(e.where):""}`)).join("")
+    :none("nothing on the calendar");
+  const calTitle="Calendar"+(cal.source==="outlook"?" (Outlook"+(cal.stale?", cached":"")+")":cal.source==="ics"?" (.ics)":"");
+
+  const ses=(b.sessions||[]);
+  const sesHtml=ses.length?ses.slice(0,6).map(s=>row(
+    `${esc(s.name)} <span class="pill ${["failed","error","stalled","exhausted"].includes(s.status)?"warn":"idle"}">${esc(s.status)}</span>`,
+    `${s.cost?"$"+s.cost.toFixed(2)+" · ":""}${esc(s.detail||s.goal.slice(0,80))}`)).join("")
+    :none("no missions ran");
+
+  const pending=b.plans.filter(p=>!p.done);
+  const plans=pending.length?pending.map(p=>row(esc(p.text),`<span class="mono">[${esc(p.id)}]</span> ${esc(rel(p.ts))}`)).join("")
+    :none("no plans queued");
+
+  $("briefingbody").innerHTML=
+    sec("Pick back up",cont.length,contHtml)+
+    `<div class="grid cols-2">
+      <div>${sec("This repo",b.commit_count+" commit"+(b.commit_count===1?"":"s"),commits)}
+           ${sec("GitHub"+(gh.stale?" (cached)":""),gh.error?null:(gh.commits||[]).length,ghHtml)}
+           ${sec(calTitle,cal.error?null:(cal.events||[]).length,calHtml)}</div>
+      <div>${sec("Sessions",ses.length,sesHtml)}
+           ${sec("Memory",mem.length+" note"+(mem.length===1?"":"s"),memHtml)}
+           ${sec("Plans",pending.length+" pending",plans)}</div>
+    </div>`;
+}
 
 /* ---------- integrations ---------- */
 const II={

@@ -17,6 +17,7 @@ ponytail: Edge --app mode is the zero-dependency native-window path — Edge shi
 with Windows 11, reuses the exact dashboard, needs no build step. Upgrade to
 pywebview (pip) only for a true borderless window with Python<->JS calls.
 """
+import json
 import os
 import subprocess
 import sys
@@ -44,13 +45,40 @@ def find_browser():
     return None
 
 
+BACKEND_FILES = [os.path.join(HERE, "dashboard", n) for n in
+                 ("serve.py", "ceo.py", "chat.py", "orchestrator.py", "pulse.py", "askpass.py")
+                 ] + [os.path.join(HERE, "daily_briefing.py")]
+
+
 def port_alive():
-    """True if a Rune server is already answering on the port."""
+    """True if a Rune server is already answering on the port AND is running
+    current code. A server that started before the newest edit to any backend
+    .py file is stale: those routes don't hot-reload (unlike index.html), so a
+    naive '/' ping would happily reuse a process missing a just-added route
+    (see hermes note 6e781f0 — that's exactly how the briefing card went
+    offline). Treat a stale server as not-alive so main() kills and restarts it."""
     try:
         with urllib.request.urlopen(URL, timeout=1) as r:
-            return r.status == 200
-    except OSError:
+            if r.status != 200:
+                return False
+        with urllib.request.urlopen("http://127.0.0.1:%d/api/version" % PORT, timeout=1) as r:
+            boot = json.loads(r.read()).get("boot", 0)
+    except (OSError, ValueError):
         return False
+    newest = max((os.path.getmtime(f) for f in BACKEND_FILES if os.path.exists(f)), default=0)
+    return newest <= boot
+
+
+def live_missions():
+    """How many CEO missions are running RIGHT NOW in the server on the port.
+    Missions live in that process's threads, so killing it kills them mid-task
+    with nothing written down — the other half of 'it died and gave no reason'.
+    Nothing answering / can't tell => 0 (never block a restart on a guess)."""
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:%d/api/ceo" % PORT, timeout=2) as r:
+            return sum(1 for m in json.loads(r.read()).get("runs", []) if m.get("live"))
+    except (OSError, ValueError):
+        return 0
 
 
 def free_port():
@@ -126,6 +154,14 @@ def main():
     if port_alive():
         print("Rune is already serving on %d — opening the window." % PORT)
         server = None            # reuse it; don't spawn a duplicate, don't kill on exit
+    elif live_missions():
+        # the server is stale (Rune edited its own backend) but is RUNNING a
+        # mission. Restarting would kill it mid-task for no stated reason. Keep
+        # it: the missions finish, and the next launch picks up the new code.
+        n = live_missions()
+        print("Server on %d is running %d live mission(s) — keeping it (restart "
+              "would kill them). Relaunch once they finish to load new code." % (PORT, n))
+        server = None
     else:
         free_port()
         server = start_server()
@@ -134,8 +170,15 @@ def main():
     try:
         open_window(server)
     finally:
+        # closing the window must never kill a mission that's still working
         if server and server.poll() is None:
-            server.terminate()
+            n = live_missions()
+            if n:
+                print("Window closed, but %d mission(s) are still running — leaving "
+                      "the server up so they finish. Ctrl+C here to force-stop." % n)
+                server.wait()
+            else:
+                server.terminate()
 
 
 if __name__ == "__main__":

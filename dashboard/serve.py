@@ -4,6 +4,8 @@
 GET  /...                serves the repo root (dashboard + live state), no-store.
 GET  /api/instances      managed Claude Code windows Maestro launched, with liveness.
 GET  /api/integrations   configured MCPs, hooks, agents, skills.
+GET  /api/workflows      advisory workflow-coach suggestions (never execution).
+GET  /api/calendar       range-filtered last-good Outlook events.
 GET  /api/briefing       where you left off: commits (here + GitHub), the missions
                          that ran and what's UNFINISHED, Hermes notes, calendar,
                          queued directives. Reads disk only — always works offline.
@@ -16,6 +18,8 @@ POST /api/close  {sid}   taskkill that window's process tree.
 POST /api/orchestrate    start a conductor feedback loop (orchestrator.py).
 GET  /api/orchestrations loop states with per-round worker/critic logs.
 POST /api/orch-action    {oid,action:accept|revise|reject|stop[,feedback]}.
+POST /api/ceo-action     stop/resume/archive or resolve a gated CEO role.
+POST /api/briefing/run   run one stored priority (IDs + safe|skip mode only).
 GET  /api/ssh-creds      saved ssh credential KEYS (never secrets).
 POST /api/ssh-forget     {key} drop a saved ssh credential.
 
@@ -27,11 +31,13 @@ Usage: python dashboard/serve.py [port]     (default 8817)
 import collections
 import ctypes
 import datetime
+import importlib.util
 import json
 import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import urllib.parse
 import uuid
@@ -54,8 +60,46 @@ MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 INBOX = os.path.join(ROOT, "state", "inbox.jsonl")
 WINDOWS = os.path.join(ROOT, "state", "windows.json")
 LOGS = os.path.join(ROOT, "state", "spawn-logs")
+WORKFLOW_ANALYZER = os.path.join(
+    ROOT, "skills", "workflow-coach", "scripts", "analyze.py")
+_WORKFLOW_CACHE = {"mtime_ns": None, "payload": None}
 CREATE_NEW_CONSOLE = 0x00000010
 IS_WIN = sys.platform == "win32"
+_AUTO_SCHEDULER_LOCK = threading.Lock()
+_AUTO_SCHEDULER_THREAD = None
+
+
+def start_auto_scheduler(interval=60):
+    """Boot catch-up plus a lightweight 09:30/retry watcher.
+
+    Work is launched through the external ``scheduled`` CLI, so closing or
+    restarting the dashboard cannot kill an in-flight model call. The shared
+    filesystem locks and frozen source date make this safe alongside Windows
+    Task Scheduler.
+    """
+    global _AUTO_SCHEDULER_THREAD
+    with _AUTO_SCHEDULER_LOCK:
+        if _AUTO_SCHEDULER_THREAD and _AUTO_SCHEDULER_THREAD.is_alive():
+            return _AUTO_SCHEDULER_THREAD
+
+        def watch():
+            while True:
+                try:
+                    result = daily_briefing.ensure_scheduled_generation()
+                    if result.get("started"):
+                        emit(session="scheduler", event="briefing-scheduled",
+                             detail="catch-up queued for %s" % result.get("source_date"))
+                except Exception as exc:
+                    # The watcher is best-effort; durable attempt state and the
+                    # next tick retain recovery without taking down the server.
+                    emit(session="scheduler", event="briefing-scheduler-error",
+                         detail=("%s: %s" % (type(exc).__name__, exc))[:200])
+                time.sleep(max(15, int(interval)))
+
+        _AUTO_SCHEDULER_THREAD = threading.Thread(
+            target=watch, name="briefing-auto-scheduler", daemon=True)
+        _AUTO_SCHEDULER_THREAD.start()
+        return _AUTO_SCHEDULER_THREAD
 
 
 def short_path(p):
@@ -233,12 +277,42 @@ def integrations():
     return out
 
 
+def workflow_suggestions():
+    """Top read-only workflow-coach candidates, cached until the wire changes."""
+    events = os.path.join(ROOT, "state", "events.jsonl")
+    try:
+        mtime_ns = os.stat(events).st_mtime_ns
+        if (_WORKFLOW_CACHE["mtime_ns"] == mtime_ns
+                and _WORKFLOW_CACHE["payload"] is not None):
+            return _WORKFLOW_CACHE["payload"]
+        spec = importlib.util.spec_from_file_location(
+            "rune_dashboard_workflow_coach", WORKFLOW_ANALYZER)
+        if spec is None or spec.loader is None:
+            raise ImportError("workflow coach loader unavailable")
+        coach = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(coach)
+        report = coach.analyze_path(events)
+        payload = dict(report)
+        suggestions = list(report.get("suggestions") or [])
+        payload["total_suggestions"] = len(suggestions)
+        payload["suggestions"] = suggestions[:12]
+        _WORKFLOW_CACHE.update(mtime_ns=mtime_ns, payload=payload)
+        return payload
+    except (OSError, ImportError, ValueError) as exc:
+        return {
+            "suggestions": [], "total_suggestions": 0,
+            "advisory_only": True, "review_required": True, "executed": False,
+            "error": "workflow coach unavailable: %s" % str(exc)[:160],
+        }
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=ROOT, **kw)
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store")  # hermes c9d5a2f
+        self.send_header("X-Content-Type-Options", "nosniff")
         super().end_headers()
 
     def log_message(self, fmt, *args):
@@ -257,7 +331,62 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Location", location)
         self.end_headers()
 
+    def _request_path(self):
+        """Decoded URL path used for routing and static-file security checks."""
+        path = urllib.parse.urlparse(self.path).path
+        # SimpleHTTPRequestHandler decodes before opening a file. Decode to a
+        # fixed point here too so a double-encoded dot cannot bypass our guard.
+        for _ in range(4):
+            decoded = urllib.parse.unquote(path)
+            if decoded == path:
+                break
+            path = decoded
+        return path.replace("\\", "/")
+
+    def _static_denied(self, path):
+        """Expose only the small, explicit set of files the dashboard needs.
+
+        This process serves from the repository root, which also contains local
+        credentials and runtime state.  Windows normalises trailing dots/spaces
+        in path segments (``state.`` becomes ``state``), and ``:`` can address
+        an NTFS alternate data stream, so reject those spellings before applying
+        the allowlist.
+        """
+        parts = [part for part in path.split("/") if part]
+        if any(part.startswith(".") or part != part.rstrip(" .") or ":" in part
+               for part in parts):
+            return True
+        clean = "/" + "/".join(parts)
+        if clean.startswith("/api/") or clean == "/api":
+            return False
+        public = {
+            "/dashboard", "/dashboard/index.html", "/dashboard/lofi.jpg",
+            "/tokens.css",
+            "/state/events.jsonl", "/state/inbox.jsonl",
+            "/state/approvals.json", "/skills/registry.json",
+            "/hermes/solved.jsonl", "/memory/OBSIDIAN.md",
+        }
+        return clean.rstrip("/") not in public
+
+    def _origin_allowed(self):
+        """Allow same-server browser POSTs and non-browser local CLI clients."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return True
+        try:
+            parsed = urllib.parse.urlparse(origin)
+            host = (parsed.hostname or "").lower()
+            port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        except (TypeError, ValueError):
+            return False
+        return (parsed.scheme in ("http", "https")
+                and host in ("127.0.0.1", "localhost", "::1")
+                and port == self.server.server_port)
+
     def do_GET(self):
+        path = self._request_path()
+        if self._static_denied(path):
+            return self._json(404, {"error": "not found"})
         if self.path == "/api/spotify/login":
             # FIXED redirect URI (not Host-derived): Spotify requires the exact
             # string to be pre-registered, and loopback must be 127.0.0.1 (not
@@ -283,6 +412,8 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, doc)
         if self.path == "/api/integrations":
             return self._json(200, integrations())
+        if self.path == "/api/workflows":
+            return self._json(200, workflow_suggestions())
         if self.path == "/api/vault":
             return self._json(200, vault_tree())
         if self.path.startswith("/api/vault-note"):
@@ -299,15 +430,41 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"keys": askpass.keys()})  # names only, never secrets
         if self.path == "/api/pulse":
             return self._json(200, pulse.get())
-        if self.path == "/api/briefing":
-            # recomputed fresh each request (cheap: git log + two small jsonl
-            # files) so it's always current and needs no cron to have run.
-            return self._json(200, daily_briefing.build())
+        if path == "/api/briefing":
+            # A cheap read of the last atomically generated plan. Git/model work
+            # only happens in the explicit async generation endpoint.
+            return self._json(200, daily_briefing.dashboard_payload())
+        if path == "/api/briefing/job":
+            return self._json(200, daily_briefing.job_status())
+        if path == "/api/briefing/settings":
+            return self._json(200, daily_briefing.get_settings())
+        if path in ("/api/briefing/calendar", "/api/calendar"):
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            raw_start = (query.get("start") or query.get("from") or [""])[0]
+            raw_end = (query.get("end") or query.get("to") or [""])[0]
+            raw_days = (query.get("days") or [""])[0]
+            try:
+                day0 = datetime.date.fromisoformat(raw_start) if raw_start else None
+                if raw_end:
+                    day_end = datetime.date.fromisoformat(raw_end)
+                    base = day0 or datetime.datetime.now().astimezone().date()
+                    days = (day_end - base).days
+                else:
+                    days = int(raw_days) if raw_days else 92
+            except (TypeError, ValueError):
+                return self._json(400, {
+                    "error": "calendar range needs ISO start/end dates and an integer days value"})
+            if days < 0:
+                return self._json(400, {"error": "calendar end precedes start"})
+            return self._json(
+                200, daily_briefing.calendar_payload(day0=day0, days=min(days, 184)))
         if self.path == "/api/version":
             # index.html mtime — an open window polls this to notice when Rune
             # has rewritten its own UI and offer a reload instead of going stale.
             try:
-                mt = int(os.path.getmtime(os.path.join(ROOT, "dashboard", "index.html")))
+                mt = int(max(
+                    os.path.getmtime(os.path.join(ROOT, "dashboard", "index.html")),
+                    os.path.getmtime(os.path.join(ROOT, "tokens.css"))))
             except OSError:
                 mt = 0
             # boot: this process's start time, so desktop.py can tell a route
@@ -318,11 +475,17 @@ class Handler(SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
+        if not self._origin_allowed():
+            return self._json(403, {"error": "cross-origin POST denied"})
         try:
             n = int(self.headers.get("Content-Length") or 0)
+            if n < 0 or n > 1024 * 1024:
+                return self._json(413, {"error": "request body too large"})
             data = json.loads(self.rfile.read(n) or b"{}")
         except (ValueError, json.JSONDecodeError):
             return self._json(400, {"error": "bad json"})
+        if not isinstance(data, dict):
+            return self._json(400, {"error": "json body must be an object"})
         route = {
             "/api/message": self.api_message, "/api/spawn": self.api_spawn,
             "/api/focus": self.api_focus, "/api/close": self.api_close,
@@ -333,6 +496,10 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/skill": self.api_skill,
             "/api/ceo": self.api_ceo,
             "/api/ceo-action": self.api_ceo_action,
+            "/api/briefing/generate": self.api_briefing_generate,
+            "/api/briefing/agent": self.api_briefing_agent,
+            "/api/briefing/run": self.api_briefing_run,
+            "/api/briefing/settings": self.api_briefing_settings,
             "/api/spotify/ctl": self.api_spotify_ctl,
         }.get(self.path)
         if not route:
@@ -356,6 +523,94 @@ class Handler(SimpleHTTPRequestHandler):
     def api_spotify_ctl(self, data):
         out = pulse.spotify_ctl(str(data.get("action") or ""), data.get("pos_ms"))
         return self._json(200 if out.get("ok") else 502, out)
+
+    def api_briefing_generate(self, data):
+        """Queue plan-only generation and return before either model is called."""
+        roots = data.get("repo_roots")
+        try:
+            job = daily_briefing.start_generation(
+                date=str(data.get("date") or "yesterday"),
+                model=(str(data["model"]) if data.get("model") else None),
+                effort=(str(data["effort"]) if data.get("effort") else None),
+                more=bool(data.get("more")), force=bool(data.get("force")),
+                roots=roots)
+        except ValueError as exc:
+            return self._json(400, {"error": str(exc)})
+        except daily_briefing.GenerationBusy as exc:
+            return self._json(409, {"error": str(exc),
+                                    "job": daily_briefing.job_status()})
+        return self._json(202, {"ok": True, "job": job})
+
+    def api_briefing_agent(self, data):
+        required = ("batch_id", "priority_id", "agent_id")
+        if any(not data.get(key) for key in required):
+            return self._json(400, {"error": "batch_id, priority_id, and agent_id are required"})
+        try:
+            agent = daily_briefing.update_agent(
+                str(data["batch_id"]), str(data["priority_id"]), str(data["agent_id"]),
+                model=data.get("model"), effort=data.get("effort"))
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc).strip("'")})
+        except ValueError as exc:
+            return self._json(400, {"error": str(exc)})
+        except (daily_briefing.BriefingError, daily_briefing.GenerationBusy) as exc:
+            return self._json(409, {"error": str(exc)})
+        return self._json(200, {"ok": True, "agent": agent})
+
+    def api_briefing_run(self, data):
+        """Run one authoritative stored priority; never trust browser plan text."""
+        unknown = set(data) - {"batch_id", "priority_id", "rerun", "permission_mode"}
+        if unknown:
+            return self._json(400, {"error": "unsupported briefing run fields: %s" %
+                                    ", ".join(sorted(unknown))})
+        if not data.get("batch_id") or not data.get("priority_id"):
+            return self._json(400, {"error": "batch_id and priority_id are required"})
+        if "rerun" in data and not isinstance(data.get("rerun"), bool):
+            return self._json(400, {"error": "rerun must be true or false"})
+        permission_mode = data.get("permission_mode", "safe")
+        if permission_mode not in ("safe", "skip"):
+            return self._json(400, {"error": "permission_mode must be safe or skip"})
+        batch_id = str(data["batch_id"]).strip()
+        priority_id = str(data["priority_id"]).strip()
+        if len(batch_id) > 128 or len(priority_id) > 128:
+            return self._json(400, {"error": "briefing identifiers are too long"})
+        try:
+            spec = daily_briefing.execution_spec(batch_id, priority_id)
+            roles = (daily_briefing.direct_execution_roles(spec["priority"])
+                     if permission_mode == "skip" else None)
+        except KeyError as exc:
+            return self._json(404, {"error": str(exc).strip("'")})
+        except daily_briefing.GenerationBusy as exc:
+            return self._json(409, {"error": str(exc)})
+        except daily_briefing.BriefingError as exc:
+            return self._json(409, {"error": str(exc)})
+        out, err = ceo.start_briefing_mission(
+            spec["direct_prompt"] if permission_mode == "skip" else spec["prompt"],
+            spec["source"], spec["workdir"],
+            rerun=bool(data.get("rerun", False)),
+            permission_mode=permission_mode, roles=roles)
+        if err:
+            return self._json(502, {"error": err})
+        payload = dict(out)
+        payload.update(source=out.get("source") or spec["source"],
+                       workdir=out.get("workdir") or spec["workdir"],
+                       reused=bool(out.get("reused")))
+        if not payload["reused"]:
+            emit(session="operator", event="mission",
+                 detail=("[%s] briefing priority %s/%s: %s" %
+                         (payload.get("cid"), batch_id, priority_id,
+                          payload.get("name") or "CEO mission"))[:200])
+        return self._json(200, payload)
+
+    def api_briefing_settings(self, data):
+        patch = data.get("settings") if isinstance(data.get("settings"), dict) else data
+        try:
+            settings = daily_briefing.update_settings(patch)
+        except ValueError as exc:
+            return self._json(400, {"error": str(exc)})
+        except daily_briefing.GenerationBusy as exc:
+            return self._json(409, {"error": str(exc)})
+        return self._json(200, {"ok": True, "settings": settings})
 
     def api_ceo(self, data):
         """Command bar: prompt -> Haiku refine -> brain recall -> CEO plan -> roles.
@@ -409,7 +664,8 @@ class Handler(SimpleHTTPRequestHandler):
         # not just tools. Default = inherit the config model; pick a smaller model
         # for mechanical work, a bigger one only for hard reasoning.
         model = {"": "", "default": "", "haiku": "haiku", "sonnet": "sonnet",
-                 "opus": "opus"}.get(str(data.get("model", "")).lower(), "")
+                 "opus": "opus", "fable": "fable"}.get(
+                     str(data.get("model", "")).lower(), "")
         try:
             budget = max(1, min(100, int(data.get("budget") or 40)))
         except (TypeError, ValueError):
@@ -566,6 +822,7 @@ class Handler(SimpleHTTPRequestHandler):
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8817
     srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    start_auto_scheduler()
     print("Rune: http://127.0.0.1:%d/dashboard/" % port)
     print("serving %s (Ctrl+C to stop)" % ROOT)
     try:

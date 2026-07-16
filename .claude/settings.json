@@ -39,7 +39,8 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "python .claude/hooks/mirror.py" }
+          { "type": "command", "command": "python .claude/hooks/mirror.py" },
+          { "type": "command", "command": "python .claude/hooks/learn.py" }
         ]
       }
     ]

@@ -1,64 +1,163 @@
 # Rune — Agentic OS
 
-Claude Code as a personal AI operating system. One **conductor** that keeps
-memory fresh, reuses hard-won skills, spawns specialist agents only when
-needed, and never re-solves a solved problem. A rune doesn't play the
-instruments — it conducts the orchestra; that's the whole operating model.
-Rune is a **substrate** — other assistants/consumers run on top of it through
-the surfaces below; it knows nothing about them.
-
-Zero dependencies beyond Python 3 stdlib. MIT.
+Rune is a local control surface for memory, guarded automation, specialist
+agents, account health, Microsoft Calendar, and an executive daily briefing.
+It uses Python 3's standard library and binds its dashboard to `127.0.0.1`.
+MIT licensed.
 
 ## Quickstart
 
+```text
+python bootstrap.py
+python bootstrap.py boot
+python desktop.py
+# or: python dashboard/serve.py
 ```
-python bootstrap.py          # verify every layer (12 checks)
-python bootstrap.py boot     # run the session boot sequence
-python desktop.py            # Rune as a local app window (no browser chrome)
-python dashboard/serve.py    # or just the server -> http://127.0.0.1:8817/dashboard/
+
+Open `http://127.0.0.1:8817/dashboard/` when running the server directly.
+
+The dashboard starts with an operator overview:
+
+- **Mission activity** is a bounded, collapsible tray. Running work always
+  exposes Stop/Open; recoverable work exposes Continue; finished work can be
+  dismissed without moving the rest of the page.
+- **Microsoft Calendar** shows the next Outlook event on Overview and provides
+  full Month, Week, Day, and Agenda views on the Calendar route.
+- **Daily briefing** shows three specific, high-impact changes selected from
+  three different repositories.
+- **Automation radar** ranks review-first workflow suggestions from the same
+  deterministic coach available at `/api/workflows`.
+
+## Operator workbench
+
+Rune is organized around four operator verbs: launch, monitor, intervene, and
+recover. Mission state is never color-only, every overlay closes with Escape,
+and the global mission tray is internally scrollable instead of appending an
+unbounded conversation to the document. **Stop active** terminates running
+process trees; **Clear completed** only clears presentation state.
+
+The interface tokens and interaction contract live in `tokens.css` and
+`design.md`. The palette uses warm paper surfaces with high-contrast royal
+plum actions and separate success, retry, permission, and failure treatments.
+
+## Microsoft Calendar
+
+Rune uses Microsoft Graph device-code authentication with the delegated
+`Calendars.Read` scope. Add the public-client application id to the gitignored
+`state/pulse.json`:
+
+```json
+{
+  "outlook": {
+    "client_id": "<Azure application id>",
+    "tenant": "common",
+    "timezone": "SE Asia Standard Time"
+  }
+}
 ```
 
-`desktop.py` opens the console in a chromeless Edge/Chrome app window and shuts
-the server down when you close it — a local app, no tabs or address bar.
+Then sign in once and restart the dashboard:
 
-## Is it working? (the 60-second health check)
+```text
+python dashboard/pulse.py --outlook-login
+python dashboard/serve.py
+```
 
-1. `python bootstrap.py` — 12 PASS lines = every layer verified end to end.
-2. Open the console — the sidebar **System** card shows wire/guard state live,
-   and the dashboard's wire card ticks in real time: a stale clock = dead wire.
-3. From **Instances**, launch a window ("New window" opens a real
-   `claude --dangerously-skip-permissions` terminal on this repo). Within
-   seconds it appears under Managed windows with working Focus/Close — that's
-   the whole loop: spawn → hooks → wire → console.
-4. Ask the brain something it knows: type in the Brain search
-   (or `python hermes/hermes.py query "hook block tool call"`) — a HIT proves
-   the flywheel reads.
+The pulse refreshes Outlook in the background and atomically retains the last
+good calendar snapshot when a refresh fails. It keeps 35 days behind and 92
+days ahead, including event end times and source links. The same data powers
+the overview card, all four Calendar views, `/api/pulse`, and the range-aware
+`/api/calendar?start=YYYY-MM-DD&days=N` endpoint. Navigation outside the
+synced window stays honest: the UI shows a coverage notice rather than
+inventing empty availability.
 
-Open the folder in Claude Code and it becomes the conductor: `CLAUDE.md` is the
-boot sequence, `soul/soul.md` is the identity.
+## Recovery and workflow learning
 
-## The layers
+CEO planning and workers classify failures before acting. Transient transport
+or capacity failures retry with bounded, interruptible backoff. Missing
+credentials pause as `waiting_permission`. Ordinary task failures may receive
+at most two local, reversible fixer cycles, after which the original role must
+pass again as verification. Stops terminate the whole process tree on Windows
+and POSIX, and a late worker response cannot overwrite a stopped state.
 
-| Layer | Where | What |
+Automatic recovery never approves destructive, outward-facing, credential, or
+spending decisions. Completed roles and resumable worker sessions are retained
+across recovery and server restart. Only verified, nontrivial, secret-redacted
+repair evidence is eligible for a Hermes note.
+
+Two candidate skills support this loop:
+
+- `recovery-supervisor` explains and performs bounded mission recovery.
+- `workflow-coach` analyzes repeated actions, short sequences, and
+  failure/recovery patterns. Suggestions require at least three observations,
+  include evidence/confidence, and are always advisory-only.
+
+Run the coach directly with:
+
+```text
+python skills/workflow-coach/scripts/analyze.py
+python skills/workflow-coach/scripts/analyze.py --json
+```
+
+## Daily briefing
+
+The briefing analyzes the previous **local calendar day**. Git history from all
+branches, changed paths and stats, recent working-tree signals, and bounded
+TODO/README context are private evidence for planning. Raw evidence and commit
+messages are not persisted or rendered.
+
+Each generated batch contains exactly three priorities, one per repository.
+Every collapsed card shows the outcome and first move. **View more** reveals a
+short CEO plan, definition of done, and two to four animated role cards with a
+clear mission and deliverable. Agent cards are plans only; generation never
+executes or edits the selected repositories.
+
+Use Fable 5 or GPT-5.6 Sol for the brainstorm and choose an effort from `low`,
+`medium`, `high`, `xhigh`, or `max`. Each planned agent can then have its own
+model and effort changed from the card. **Generate 3 more** appends another
+validated batch without repeating an existing repository/title pair.
+
+An expanded priority has two deliberately separate execution controls.
+**Run this plan** keeps native permission handling and lets the CEO restaff the
+saved suggestions. **Run · skip permissions** asks for confirmation on every
+click, then runs the saved cards headlessly with their selected providers:
+Claude models receive `--dangerously-skip-permissions`, while GPT-5.6 Sol uses
+Codex with `--yolo`. This bypass applies to that run only. The server derives
+the provider, model, working directory, and command from the saved plan; the
+browser cannot submit them. Progress and Stop remain available in Mission
+Activity, and recovery workers never inherit the bypass.
+
+Run it on demand:
+
+```text
+briefing.cmd
+python daily_briefing.py scheduled
+python daily_briefing.py generate --date yesterday
+python daily_briefing.py generate --date yesterday --model gpt-5.6-sol --effort max
+python daily_briefing.py generate --date yesterday --more
+```
+
+The production schedule is **09:30 local time every day**, using Windows Task
+Scheduler to run `briefing.cmd`. The shared `scheduled` command freezes the
+source date belonging to the latest 09:30 cycle, so a delayed run cannot drift
+across midnight. The dashboard server also checks on boot and every minute for
+a missed cycle. Attempts are durable, failures keep the last good plan visible,
+and automatic retries wait 15 minutes. See `OPERATOR.md` for setup and
+verification.
+
+## Core layers
+
+| Layer | Location | Purpose |
 |---|---|---|
-| 0 Soul | `soul/soul.md` | Identity, mission, beliefs. Hand-edited only — the guard blocks automated writes. Drift tracked in `soul/CHANGELOG.md`. |
-| 1 Inventory | `CLAUDE.md` | The map + boot sequence every session runs. |
-| 2 Rules | `.claude/hooks/` | `guard.py` blocks gated actions (destructive deletes, deploys, external sends, spending, soul writes) unless `state/approvals.json` holds a token (`approve.py`). `mirror.py` mirrors every event to `state/events.jsonl` — the single wire. |
-| 3 Skills | `skills/` | `engine.py`: skills are **earned after 3 uses**, decay and archive when they stop serving the current `/goal`. Four real skills incl. `loop-engineering/loop.py`, a critic→doer loop with an iteration budget. |
-| 4 Agents | `.claude/agents/` | Nine specialists (ceo, eng-manager, designer, reviewer, qa-lead, security-officer, release-engineer, doc-engineer, hermes), spawn-on-demand via `/spawn` — minimum roster, collected reports, closed loops. Mission loop: `/office-hours → /plan-ceo-review → /plan-eng-review → build → /review → /qa → /ship` (ship ends with a mandatory Hermes reflect). |
-| 5 Wires | `memory/` | `OBSIDIAN.md` points at the vault; `pipeline.py` enforces source + freshness on every write (no naked facts) and deduplicates/consolidates/archives. |
-| Hermes | `hermes/` | The flywheel: `hermes.py note|query|stale`. Notes append to `solved.jsonl` AND mirror as markdown cards into the Obsidian vault (`Maestro/Hermes/` + auto-regenerated `_index.md` MOC). Query before hard work; note after. |
-| Console | `dashboard/` | Single-file vanilla HTML/CSS/JS + stdlib server, peach-sunset theme, left-navbar SPA. Overview (KPIs, activity chart, events donut, feed), **Instances** (launch + focus/close real Claude Code windows), Skills, Brain, **Brain Graph** (orbiting node view of Hermes), Integrations (MCPs/hooks/agents/skills), Audit, Guard. The launcher POSTs to `/api/spawn` — mode `tab` opens a real focusable terminal (via `conhost.exe`, foregrounded by pid), `background` runs headless; both take a **conscious model + turn budget**. Also `/api/message` (directive inbox), `/api/focus`, `/api/close`. Server binds 127.0.0.1 only — that is the security boundary. |
+| Identity | `soul/` | Hand-maintained mission and operating character. Automated writes are guarded. |
+| Rules | `.claude/hooks/` | Approval guard plus the append-only event wire. |
+| Skills | `skills/` | Earned capabilities, recovery guidance, and advisory workflow coaching. |
+| Agents | `.claude/agents/` | Specialist roster used only when work is deliberately delegated. |
+| Memory | `memory/`, `hermes/` | Obsidian pipeline and reusable solved-problem notes. |
+| Morning data | `dashboard/pulse.py`, `daily_briefing.py` | Calendar sync and the plan-only, cross-repository briefing. |
+| Console | `dashboard/` | High-contrast vanilla workbench with a Python stdlib API server and shared recovery runtime. |
 
-## The wire
-
-Everything observable flows through `state/events.jsonl`. Hooks write it
-automatically inside this repo; scripts and commands write it via
-`python .claude/hooks/mirror.py --stage build --detail "..."`. If it's not on
-the wire, it didn't happen.
-
-## Surface for consumers
-
-A consumer integrates by: reading/writing the wire (`mirror.py`), querying the
-flywheel (`hermes.py query`), recording skill use (`skills/engine.py use`), and
-respecting the guard. Nothing in AIOS may reference a consumer.
+Operational execution events still flow through `state/events.jsonl`. Briefing
+generation is intentionally separate: it persists its validated plan in
+`state/briefing.json` and does not manufacture execution events. An explicit
+Run action creates a normal tracked CEO mission and emits its usual activity.

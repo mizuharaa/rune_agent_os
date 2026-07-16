@@ -5,33 +5,35 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rune</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%235c1346'/%3E%3Ctext x='8' y='12' text-anchor='middle' font-family='Segoe UI,sans-serif' font-size='11' font-weight='800' fill='%23fff'%3ER%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/tokens.css">
 <script>try{document.documentElement.dataset.theme=localStorage.getItem("rune-theme")||"light"}catch(e){}</script>
 <style>
+  /* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 · genre: modern-minimal · macrostructure: Workbench · tone: technical-utilitarian · anchor: royal plum · contrast: pass (40–41) · nav: N3 · footer: none · honest/chrome/icons/mobile: pass · user-preserved brand override: gradient wordmark and playback/route motion */
   :root{
-    --canvas:#f5f0ed; --card:#ffffff; --paper:#fffdf9; --line:#e8dfe5; --line2:#dbcfd7;
-    --ink:#21151d; --ink2:#6a5c66; --ink3:#a2989f;
-    --green:#5c1346; --green-deep:#2f0d25; --green-dark:#280e20;
-    --mint:#dca9cd; --mint-soft:#efddea; --green-mid:#7c1e60;
-    --red:#d05043;
-    --claude:#d97757;
-    --field:var(--field); --aside:rgba(255,255,255,.9);
-    --grid:rgba(92,19,70,.025); --grid2:rgba(92,19,70,.018);
-    --mono:"Cascadia Mono",Consolas,monospace;
-    --shadow:0 1px 2px rgba(33,21,29,.04), 0 6px 18px -8px rgba(33,21,29,.10);
-    --lift:0 2px 4px rgba(33,21,29,.06), 0 16px 34px -12px rgba(33,21,29,.18);
-    --r:18px; --route-x:24px;
+    --canvas:var(--rune-paper); --card:var(--rune-paper-raised); --paper:var(--rune-paper-2);
+    --line:var(--rune-rule); --line2:var(--rune-rule-strong);
+    --ink:var(--rune-ink); --ink2:var(--rune-ink-2); --ink3:var(--rune-muted);
+    --green:var(--rune-accent); --green-deep:var(--rune-accent-active); --green-dark:var(--rune-accent-active);
+    --mint:var(--rune-paper-3); --mint-soft:var(--rune-accent-soft); --green-mid:var(--rune-accent-hover);
+    --red:var(--rune-danger); --claude:var(--rune-warning);
+    --field:var(--rune-paper-2); --aside:color-mix(in oklch,var(--rune-paper-raised) 94%,transparent);
+    --success:var(--rune-success); --success-soft:var(--rune-success-soft);
+    --warning:var(--rune-warning); --warning-soft:var(--rune-warning-soft);
+    --info:var(--rune-info); --info-soft:var(--rune-info-soft);
+    --recovery:var(--rune-warning); --recovery-soft:var(--rune-warning-soft);
+    --focus:var(--rune-focus); --focus-gap:var(--rune-paper-raised);
+    --grid:color-mix(in oklch,var(--rune-accent) 3%,transparent); --grid2:color-mix(in oklch,var(--rune-accent) 2%,transparent);
+    --mono:var(--rune-font-mono);
+    --shadow:var(--rune-shadow-float); --lift:var(--rune-shadow-overlay);
+    --radius-sm:var(--rune-radius-sm); --radius-md:var(--rune-radius-md); --radius-lg:var(--rune-radius-lg); --radius-pill:var(--rune-radius-pill);
+    --r:var(--radius-lg); --route-x:24px;
+    --z-base:1; --z-raised:var(--rune-z-nav); --z-dropdown:var(--rune-z-tray); --z-sticky:var(--rune-z-tray); --z-modal:var(--rune-z-overlay); --z-toast:var(--rune-z-toast); --z-tooltip:calc(var(--rune-z-toast) + 10);
+    --ease-out:var(--rune-ease-emphasized); --speed-fast:var(--rune-duration-fast); --speed:var(--rune-duration-normal);
   }
   /* dark theme — same plum family, accents lifted for contrast on dark canvas */
   html[data-theme="dark"]{
-    --canvas:#151016; --card:#1f1722; --paper:#1b141e; --line:#2f2434; --line2:#3d2e43;
-    --ink:#f1e9ef; --ink2:#b7a8b4; --ink3:#80707d;
-    --green:#c25d9e; --green-deep:#8e3a72; --green-dark:#231120;
-    --mint:#e2a9cf; --mint-soft:#3a1c30; --green-mid:#d67fbb;
-    --red:#e0685b;
-    --field:#251b29; --aside:rgba(24,17,26,.92);
-    --grid:rgba(214,127,187,.03); --grid2:rgba(214,127,187,.02);
-    --shadow:0 1px 2px rgba(0,0,0,.25), 0 6px 18px -8px rgba(0,0,0,.5);
-    --lift:0 2px 4px rgba(0,0,0,.3), 0 16px 34px -12px rgba(0,0,0,.65);
+    --aside:color-mix(in oklch,var(--rune-paper-raised) 94%,transparent);
+    --grid:color-mix(in oklch,var(--rune-accent) 3%,transparent); --grid2:color-mix(in oklch,var(--rune-accent) 2%,transparent);
   }
   /* account cards stay white in dark mode (they're brand cards) — re-scope the
      palette locally so their text keeps light-theme inks and stays readable */
@@ -45,6 +47,7 @@
   html[data-theme="dark"] .captrack{background:repeating-linear-gradient(45deg,#241a29 0 4px,#31243a 4px 6px)}
   *{box-sizing:border-box; margin:0; padding:0}
   html{scroll-behavior:smooth}
+  html,body{overflow-x:clip}
   body{background:var(--canvas); color:var(--ink); min-height:100vh;
     background-image:
       linear-gradient(var(--grid) 1px,transparent 1px),
@@ -52,8 +55,9 @@
     background-size:28px 28px,28px 28px;
     font:14px/1.5 "Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
     transition:background-color .25s ease, color .25s ease}
-  button{font:inherit; cursor:pointer; border:none; background:none; color:inherit}
+  button{font:inherit; cursor:pointer; border:none; background:none; color:inherit; white-space:nowrap}
   input,textarea,select{font:inherit; color:var(--ink)}
+  :where(a,button,input,textarea,select,summary,[tabindex]):focus-visible{outline:3px solid var(--focus);outline-offset:2px;box-shadow:0 0 0 1px var(--focus-gap)}
   .mono{font-family:var(--mono)}
   a{color:var(--green); text-decoration:none}
   /* ============ shell ============ */
@@ -185,7 +189,7 @@
   .btn.line:hover{border-color:var(--green); color:var(--green)}
   .btn.sm{padding:6px 13px; font-size:12.5px}
   .btn.danger:hover{border-color:var(--red); color:var(--red)}
-  .btn[disabled]{opacity:.5; pointer-events:none}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
   /* ============ grid & cards ============ */
   section.page{display:none; animation:fade .25s ease}
   section.page.show{display:block}
@@ -210,7 +214,7 @@
   /* corner circle button */
   .cbtn{position:absolute; top:14px; right:14px; width:32px; height:32px; border-radius:50%;
     border:1.5px solid var(--line2); display:grid; place-items:center; color:var(--ink2);
-    background:var(--card); transition:all .15s}
+    background:var(--card); transition:background-color .15s,border-color .15s,color .15s}
   .cbtn svg{width:13px; height:13px; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round}
   .cbtn:hover{background:var(--green); border-color:var(--green); color:#fff}
   /* ============ stat cards ============ */
@@ -235,7 +239,7 @@
   .chead h3{margin:0}
   .cnav{margin-left:auto; display:flex; gap:8px}
   .cnavb{width:32px; height:32px; border-radius:50%; border:1.5px solid var(--line2);
-    display:grid; place-items:center; color:var(--ink2); background:var(--card); transition:all .15s}
+    display:grid; place-items:center; color:var(--ink2); background:var(--card); transition:background-color .15s,border-color .15s,color .15s}
   .cnavb:hover{background:var(--green); border-color:var(--green); color:#fff}
   .cnavb svg{width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round}
   .ctrack{display:flex; align-items:flex-start; gap:14px; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:none; padding-bottom:2px}
@@ -755,6 +759,326 @@
     .fxcard{transform:none!important}
     .motion-ready .reveal{opacity:1}
   }
+  /* ============ morning briefing: calendar + three focused priorities ============ */
+  .sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;
+    overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+  .morning-stack{display:grid;gap:14px;margin-bottom:14px;min-width:0}
+  .calendar-overview{padding:0;overflow:hidden}
+  .cal-overview-head{display:flex;align-items:center;gap:10px;padding:15px 18px 12px;border-bottom:1px solid var(--line);min-width:0}
+  .cal-overview-head h3{min-width:0}
+  .calbrand{width:31px;height:31px;border-radius:10px;display:grid;place-items:center;flex:none;
+    color:var(--green);background:var(--mint-soft)}
+  .calbrand svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .calstate{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font:700 10.5px/1 var(--mono);
+    color:var(--green);background:var(--mint-soft);border-radius:99px;padding:5px 9px;white-space:nowrap}
+  .calstate::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .calstate.stale{color:#9a681a;background:#fbeed8}.calstate.error{color:var(--red);background:#f7e4e2}
+  .cal-overview-body{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:20px;padding:16px 18px 18px;min-width:0}
+  .calnext{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:13px;min-width:0}
+  .caldate{width:58px;min-height:58px;border-radius:14px;display:grid;place-items:center;align-content:center;
+    background:var(--green);color:#fff;line-height:1;text-align:center;flex:none}
+  .caldate b{font:800 18px/1 var(--mono)}.caldate span{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;color:#ead6e4}
+  .calcopy{min-width:0}.calcopy .eyebrow{font:700 10px/1.3 var(--mono);color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+  .calcopy .event-title{font-size:15px;font-weight:760;letter-spacing:-.01em;overflow-wrap:anywhere}
+  .calcopy .event-meta{font-size:12px;color:var(--ink2);margin-top:3px;overflow-wrap:anywhere}
+  .cal-sync-error{font-size:11px;color:var(--red);line-height:1.4;margin-top:5px;overflow-wrap:anywhere}
+  .calempty{font-size:13px;color:var(--ink2);line-height:1.5;overflow-wrap:anywhere}
+  .cal-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+  .calcount{font:650 11px/1.35 var(--mono);color:var(--ink3);text-align:right;max-width:150px}
+  .cal-time{width:auto;min-width:58px;padding:0 8px;font-size:10px;white-space:nowrap}
+
+  .briefing-shell{padding:0;overflow:hidden}
+  .brief-head{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;padding:17px 18px 14px;border-bottom:1px solid var(--line);min-width:0}
+  .brief-title{min-width:210px;flex:1}.brief-title h3{font-size:16px}.brief-title p{font-size:12px;color:var(--ink2);margin-top:3px;max-width:580px}
+  .brief-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  .brief-schedule{display:inline-flex;align-items:center;gap:6px;font:700 10.5px/1 var(--mono);color:var(--green);
+    background:var(--mint-soft);border-radius:99px;padding:6px 10px;white-space:nowrap}
+  .brief-schedule svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .brief-schedule[data-tone="good"]{color:var(--success);background:var(--success-soft)}
+  .brief-schedule[data-tone="wait"],.brief-schedule[data-tone="warn"]{color:var(--warning);background:var(--warning-soft)}
+  .brief-schedule[data-tone="bad"]{color:var(--red);background:var(--rune-danger-soft)}
+  .brief-schedule[data-tone="offline"]{color:var(--ink2);background:var(--canvas)}
+  .brief-status{font-size:11px;color:var(--ink3);max-width:310px;text-align:right;overflow-wrap:anywhere}
+  .brief-status[data-tone="good"]{color:var(--success)}.brief-status[data-tone="wait"],.brief-status[data-tone="warn"]{color:var(--warning)}
+  .brief-status[data-tone="bad"]{color:var(--red)}.brief-status[data-tone="offline"]{color:var(--ink2)}
+  .brief-health{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;
+    padding:10px 18px 10px 21px;border-bottom:1px solid var(--line);background:var(--card);min-width:0;overflow:hidden}
+  .brief-health::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--green);transition:background-color .2s ease}
+  .brief-health[data-tone="good"]::before{background:var(--success)}.brief-health[data-tone="wait"]::before,.brief-health[data-tone="warn"]::before{background:var(--warning)}
+  .brief-health[data-tone="bad"]::before{background:var(--red)}.brief-health[data-tone="offline"]::before{background:var(--ink3)}
+  .brief-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}
+  .brief-health-item{display:grid;gap:3px;min-width:0;padding:1px 14px;border-left:1px solid var(--line)}
+  .brief-health-item:first-child{padding-left:0;border-left:0}.brief-health-item>span{font:750 9px/1.2 var(--mono);letter-spacing:.065em;text-transform:uppercase;color:var(--ink3)}
+  .brief-health-item>b{font-size:11.5px;line-height:1.35;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brief-health-item>small{min-height:12px;font:650 9.5px/1.25 var(--mono);color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brief-check{flex:none;white-space:nowrap}.brief-check svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .brief-check.checking{color:var(--green);border-color:color-mix(in srgb,var(--green) 45%,var(--line2))}
+  .brief-controls{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;padding:12px 18px;background:var(--paper);border-bottom:1px solid var(--line);min-width:0}
+  .brief-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .brief-field span{font-size:9.5px;font-weight:750;letter-spacing:.07em;text-transform:uppercase;color:var(--ink3)}
+  .brief-field select,.agent-field select{border:1px solid var(--line2);border-radius:9px;background:var(--field,var(--card));
+    padding:6px 28px 6px 9px;outline:none;max-width:100%;font-size:12px}
+  .brief-field select:focus-visible,.agent-field select:focus-visible{border-color:var(--green);box-shadow:0 0 0 3px var(--mint-soft)}
+  .brief-spend{margin-left:auto;align-self:center;font:650 9.5px/1.35 var(--mono);color:var(--ink3);white-space:nowrap}
+  .brief-generate{white-space:nowrap}
+  .brief-generate .spin{display:none;width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%}
+  .brief-generate.busy .spin{display:inline-block;animation:briefspin .8s linear infinite}
+  @keyframes briefspin{to{transform:rotate(360deg)}}
+  .briefing-body{padding:16px 18px 18px;min-width:0}
+  .brief-notice{border:1px dashed var(--line2);border-radius:14px;padding:20px;text-align:center;color:var(--ink2);font-size:13px;line-height:1.55}
+  .brief-notice b{display:block;color:var(--ink);font-size:14px;margin-bottom:3px}.brief-notice.error{border-color:#e5b6b0;background:#fff8f7;color:var(--red)}
+  html[data-theme="dark"] .brief-notice.error{background:#2b1a1b}
+  .priority-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:12px;min-width:0}
+  .priority-card{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:15px;background:var(--card);min-width:0;overflow:hidden;
+    box-shadow:0 1px 2px rgba(33,21,29,.025);transition:border-color .18s,box-shadow .2s,transform .2s}
+  .priority-card:hover{border-color:rgba(124,30,96,.3);box-shadow:var(--shadow);transform:translateY(-1px)}
+  .priority-main{display:flex;flex:1;flex-direction:column;padding:15px;min-width:0}
+  .priority-top{display:flex;align-items:center;gap:8px;min-width:0;margin-bottom:10px}
+  .priority-rank{width:29px;height:29px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--green);color:#fff;font:800 12px/1 var(--mono)}
+  .repo-pill{min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 10.5px/1 var(--mono);
+    color:var(--green);background:var(--mint-soft);border-radius:99px;padding:5px 9px}
+  .priority-state{margin-left:auto;flex:none;font:750 9.5px/1 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--ink3)}
+  .priority-title{font-size:15px;font-weight:780;line-height:1.35;letter-spacing:-.015em;overflow-wrap:anywhere;margin-bottom:8px}
+  .priority-why{font-size:12px;color:var(--ink2);line-height:1.5;overflow-wrap:anywhere;margin-bottom:9px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .priority-fact{display:grid;grid-template-columns:68px minmax(0,1fr);gap:7px;font-size:11.5px;line-height:1.45;padding:7px 0;border-top:1px dashed var(--line);min-width:0}
+  .priority-fact b{color:var(--ink3);font-size:9.5px;letter-spacing:.05em;text-transform:uppercase}.priority-fact span{overflow-wrap:anywhere}
+  .priority-toggle{margin-top:auto;padding-top:12px;display:inline-flex;align-items:center;gap:7px;align-self:flex-start;color:var(--green);font-size:12px;font-weight:750}
+  .priority-toggle svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .18s}
+  .priority-toggle[aria-expanded="true"] svg{transform:rotate(180deg)}
+  .priority-detail{border-top:1px solid var(--line);padding:15px;background:var(--paper);min-width:0}
+  .ceo-plan{display:grid;gap:11px;min-width:0}.ceo-plan h4{font-size:12px;font-weight:800;letter-spacing:.055em;text-transform:uppercase;color:var(--green)}
+  .plan-summary{font-size:12.5px;color:var(--ink2);line-height:1.55;overflow-wrap:anywhere}
+  .plan-steps{padding-left:19px;color:var(--ink2);font-size:12px;line-height:1.5}.plan-steps li{padding:2px 0;overflow-wrap:anywhere}
+  .done-box{border-left:3px solid var(--green);background:var(--card);border-radius:0 10px 10px 0;padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--ink2);overflow-wrap:anywhere}
+  .done-box b{display:block;color:var(--ink);font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+  .agent-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:9px;margin-top:2px;min-width:0}
+  .agent-card{border:1px solid var(--line);border-radius:13px;background:var(--card);padding:12px;min-width:0;position:relative;overflow:hidden}
+  .agent-head{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:9px;align-items:center;min-width:0}
+  .agent-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:var(--green);background:var(--mint-soft)}
+  .agent-icon svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .agent-role{font-size:12.5px;font-weight:780;line-height:1.25;overflow-wrap:anywhere}
+  .agent-status{font:800 9px/1 var(--mono);letter-spacing:.04em;text-transform:uppercase;color:var(--green);background:var(--mint-soft);border-radius:99px;padding:4px 7px;white-space:nowrap}
+  .agent-status.working,.agent-status.running{color:#fff;background:var(--green)}.agent-status.failed,.agent-status.blocked,.agent-status.error{color:var(--red);background:#f7e4e2}
+  .agent-desc{font-size:11.5px;line-height:1.48;color:var(--ink2);margin-top:9px;overflow-wrap:anywhere}
+  .agent-deliverable{font-size:10.5px;line-height:1.45;color:var(--ink3);margin-top:6px;overflow-wrap:anywhere}.agent-deliverable b{color:var(--ink2)}
+  .agent-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px;min-width:0}
+  .agent-field{display:flex;flex-direction:column;gap:3px;min-width:0}.agent-field span{font-size:8.5px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+  .agent-field select{width:100%;padding-top:5px;padding-bottom:5px;font-size:10.5px}
+  .agent-card.saving::after{content:"saving";position:absolute;inset:0;display:grid;place-items:center;background:color-mix(in srgb,var(--card) 86%,transparent);
+    color:var(--green);font:800 10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+  .plan-runbar{position:relative;display:flex;align-items:center;gap:14px;justify-content:space-between;overflow:hidden;
+    border:1px solid color-mix(in srgb,var(--green) 28%,var(--line));border-radius:14px;padding:12px 13px;
+    background:linear-gradient(112deg,color-mix(in srgb,var(--mint-soft) 82%,var(--card)),var(--card) 62%);min-width:0}
+  .plan-runbar::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--green)}
+  .plan-run-copy{display:grid;gap:3px;min-width:0;padding-left:3px}.plan-run-copy b{font-size:12px;line-height:1.3;color:var(--ink)}
+  .plan-run-copy span{font-size:10.5px;line-height:1.4;color:var(--ink2);overflow-wrap:anywhere}
+  .plan-run-state{display:inline-flex;align-items:center;gap:6px;width:max-content;font:800 9px/1 var(--mono);
+    letter-spacing:.055em;text-transform:uppercase;color:var(--green)}
+  .plan-run-state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .plan-runbar[data-tone="bad"]{border-color:#e5b6b0;background:linear-gradient(112deg,#fff3f1,var(--card) 66%)}
+  .plan-runbar[data-tone="bad"] .plan-run-state{color:var(--red)}
+  html[data-theme="dark"] .plan-runbar[data-tone="bad"]{background:linear-gradient(112deg,#2b1a1b,var(--card) 66%)}
+  .plan-runbar[data-tone="warn"] .plan-run-state{color:#9a681a}.plan-runbar[data-tone="good"] .plan-run-state{color:#36734d}
+  .plan-run-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:none;min-width:0}
+  .plan-run-button{flex:none;justify-content:center;min-width:132px}.plan-run-button svg{transition:transform .18s ease}
+  .plan-run-button:hover:not(:disabled) svg{transform:translateX(2px)}
+  .btn.line.plan-run-skip{justify-content:center;color:var(--red);border-color:color-mix(in oklch,var(--red) 55%,var(--line2));background:color-mix(in oklch,var(--rune-danger-soft) 42%,var(--card))}
+  .plan-run-skip:hover:not(:disabled){color:var(--red);border-color:var(--red);background:var(--rune-danger-soft)}
+  .plan-run-skip:active:not(:disabled){transform:translateY(1px)}
+  .plan-run-error{margin-top:-4px;color:var(--red);font-size:10.5px;line-height:1.4;overflow-wrap:anywhere}
+  .brief-completed{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--paper);overflow:hidden}
+  .brief-completed>summary{list-style:none;display:flex;align-items:center;gap:9px;min-height:44px;padding:9px 12px;cursor:pointer;color:var(--ink)}
+  .brief-completed>summary::-webkit-details-marker{display:none}.brief-completed>summary:hover{background:var(--canvas)}
+  .brief-completed-title{font-size:12.5px;font-weight:780;min-width:0;flex:1}.brief-completed-count{font:750 9.5px/1 var(--mono);color:var(--success);background:var(--success-soft);border-radius:var(--radius-pill);padding:5px 8px;white-space:nowrap}
+  .brief-completed-chev{width:14px;height:14px;flex:none;color:var(--ink3);transition:transform var(--speed-fast) var(--ease-out)}
+  .brief-completed-chev svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}.brief-completed[open] .brief-completed-chev{transform:rotate(90deg)}
+  .brief-completed-list{display:grid;border-top:1px solid var(--line)}
+  .brief-completed-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px 14px;padding:10px 12px;border-top:1px dashed var(--line);min-width:0;background:var(--card)}
+  .brief-completed-row:first-child{border-top:0}.brief-completed-copy{min-width:0}.brief-completed-copy b{display:block;font-size:12px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brief-completed-copy span{display:block;margin-top:3px;font:650 9.5px/1.35 var(--mono);color:var(--ink3);overflow-wrap:anywhere}
+  .brief-completed-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap}
+  .brief-feedback{min-height:18px;padding:0 18px 12px;color:var(--ink3);font-size:11px;text-align:right}
+  .brief-feedback.error{color:var(--red)}
+  @media (prefers-reduced-motion:no-preference){
+    .priority-detail:not([hidden]) .agent-card{animation:agentup .32s cubic-bezier(.2,.75,.25,1) both}
+    .priority-detail:not([hidden]) .agent-card:nth-child(2){animation-delay:45ms}
+    .priority-detail:not([hidden]) .agent-card:nth-child(3){animation-delay:90ms}
+    .priority-detail:not([hidden]) .agent-card:nth-child(4){animation-delay:135ms}
+    .plan-runbar[data-tone="live"] .plan-run-state::before{animation:runpulse 1.6s ease-in-out infinite}
+    .brief-check.checking svg{animation:briefspin .8s linear infinite}
+    .brief-health[data-tone="wait"]::before{animation:healthpulse 2.2s ease-in-out infinite}
+    @keyframes agentup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    @keyframes runpulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--green) 12%,transparent)}}
+    @keyframes healthpulse{50%{opacity:.48}}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .brief-generate .spin,.brief-check svg,.brief-health::before,.priority-detail .agent-card{animation:none!important}
+    .priority-card,.priority-toggle svg{transition:none}
+  }
+  @media (max-width:1180px){.priority-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media (min-width:981px){.priority-card.expanded{grid-column:1/-1}.priority-card.expanded .priority-main{flex:none}}
+  @media (max-width:980px){
+    .brief-status{text-align:left}.brief-meta{justify-content:flex-start}
+    .plan-runbar{align-items:stretch;flex-direction:column}.plan-run-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+    .plan-run-actions .btn{min-width:0;padding-left:12px;padding-right:12px;font-size:12px}
+  }
+  @media (max-width:680px){
+    .cal-overview-body{grid-template-columns:1fr;gap:13px}.cal-actions{justify-content:flex-start}.calcount{text-align:left;max-width:none}
+    .brief-head,.brief-controls,.briefing-body{padding-left:14px;padding-right:14px}.brief-health{grid-template-columns:1fr;padding-left:17px;padding-right:14px}.brief-title{min-width:0;flex-basis:100%}
+    .brief-health-item{padding-left:10px;padding-right:10px}.brief-check{width:100%;justify-content:center}
+    .brief-meta{width:100%}.brief-controls{display:grid;grid-template-columns:1fr 1fr}.brief-spend{grid-column:1/-1;margin-left:0}.brief-generate{grid-column:1/-1;width:100%;justify-content:center;margin-left:0}
+    .priority-grid{grid-template-columns:1fr}.agent-controls{grid-template-columns:1fr}.priority-fact{grid-template-columns:58px minmax(0,1fr)}
+    .plan-run-actions{grid-template-columns:1fr}.plan-run-actions .btn{width:100%;min-height:44px}
+  }
+  @media (max-width:460px){
+    .topbar{gap:8px}.topbar .search{order:1;flex-basis:calc(100% - 46px);min-width:0}.topbar .spacer{display:none}
+    .topstat{max-width:calc(100vw - 28px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cmdwrap{min-width:0}.cmdbar{gap:7px;padding-left:11px}.cmdbar .spark{display:none}.cmdgo{padding:9px 10px;font-size:12px}.cmddrop{width:31px}
+    .titlerow .spacer{display:none}.titlerow .btn{margin-left:0}.cal-overview-head{padding-left:14px;padding-right:14px}.cal-overview-body{padding:14px}
+    .calstate{font-size:9px}.caldate{width:52px;min-height:54px}.brief-health-grid{grid-template-columns:1fr}.brief-health-item{padding:7px 0;border-left:0;border-top:1px solid var(--line)}.brief-health-item:first-child{padding-top:0;border-top:0}.brief-controls{grid-template-columns:1fr}.brief-field{width:100%}.brief-generate{grid-column:1}
+    .priority-main,.priority-detail{padding:13px}.priority-title{font-size:14px}.brief-schedule{white-space:normal}
+  }
+
+  /* ============ operator workbench revamp: hierarchy, mission tray, recovery ============ */
+  :where(button,input,textarea,select):disabled{opacity:.55;cursor:not-allowed}
+  button:active:not(:disabled){filter:brightness(.94)}
+  :where(h1,h2,h3,h4,h5,h6){min-width:0;overflow-wrap:anywhere}
+  .card{border-color:var(--line);border-radius:var(--radius-lg);box-shadow:none}
+  .card:hover{border-color:var(--line2)}
+  .titlerow h1{font-family:var(--rune-font-display);font-weight:800}
+  .cmdwrap{max-width:900px;margin-bottom:22px}
+  .cmdtray[hidden]{display:none}
+  .cmdtray{position:fixed;left:272px;right:24px;bottom:18px;z-index:calc(var(--z-modal) + 1);max-width:900px;margin-inline:auto;
+    background:var(--card);border:1px solid var(--line2);border-radius:var(--radius-lg);box-shadow:var(--lift);overflow:hidden}
+  .cmdtray-head{display:flex;align-items:center;gap:8px;min-height:50px;padding:7px 9px 7px 14px;background:var(--paper);border-bottom:1px solid var(--line)}
+  .cmdtray.collapsed .cmdtray-head{border-bottom:0}
+  .cmdtray-title{display:flex;align-items:center;gap:9px;min-width:0;flex:1;text-align:left;font-weight:760}
+  .cmdtray-title svg{width:17px;height:17px;fill:none;stroke:var(--green);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .cmdtray-title .label{overflow:hidden;text-overflow:ellipsis}
+  .cmdtray-count{font:750 10px/1 var(--mono);color:var(--green);background:var(--mint-soft);border-radius:var(--radius-pill);padding:5px 8px}
+  .cmdtray-actions{display:flex;align-items:center;gap:6px;flex:none}
+  .cmdtray-icon{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:var(--radius-md);color:var(--ink2);background:var(--card)}
+  .cmdtray-icon:hover{border-color:var(--line2);color:var(--green)}
+  .cmdtray-icon svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform var(--speed) var(--ease-out)}
+  .cmdtray.collapsed .cmdtray-icon[data-cmd-collapse] svg{transform:rotate(180deg)}
+  .cmdflow{display:flex;flex-direction:column;gap:9px;max-height:min(42vh,480px);overflow-y:auto;overscroll-behavior:contain;padding:10px;background:var(--canvas);scrollbar-gutter:stable}
+  .cmdtray.collapsed .cmdflow{display:none}
+  .cmdmission{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius-md);min-width:0}
+  .cmdmission[data-state="failed"],.cmdmission[data-state="error"]{border-color:var(--red);background:var(--rune-danger-soft)}
+  .cmdmission[data-state="waiting_permission"]{border-color:var(--warning);background:var(--warning-soft)}
+  .cmdmission[data-state="retrying"],.cmdmission[data-state="repairing"]{border-color:var(--recovery);background:var(--recovery-soft)}
+  .cmdmission-copy{min-width:0}.cmdmission-prompt{font-size:13px;font-weight:760;line-height:1.4;overflow-wrap:anywhere}
+  .cmdmission-reply{font-size:12px;color:var(--ink2);line-height:1.48;margin-top:4px;overflow-wrap:anywhere}
+  .cmdmission-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px;font:650 10px/1.35 var(--mono);color:var(--ink3)}
+  .cmdmission-state{display:inline-flex;align-items:center;gap:5px;border-radius:var(--radius-pill);padding:4px 7px;background:var(--paper);color:var(--ink2);text-transform:lowercase}
+  .cmdmission-state::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .cmdmission-state.live{color:var(--info);background:var(--info-soft)}
+  .cmdmission-state.good{color:var(--success);background:var(--success-soft)}
+  .cmdmission-state.warn{color:var(--warning);background:var(--warning-soft)}
+  .cmdmission-state.bad{color:var(--red);background:var(--rune-danger-soft)}
+  .cmdmission-controls{display:flex;align-items:flex-start;justify-content:flex-end;gap:6px;flex-wrap:wrap;max-width:310px}
+  .cmdmission-empty{padding:20px;text-align:center;color:var(--ink2);font-size:13px}
+  .mrun summary{min-height:52px}
+  .mquickstop{flex:none;border:1px solid var(--red);color:var(--red);background:var(--card);border-radius:var(--radius-md);padding:5px 9px;font-size:11.5px;font-weight:720}
+  .mquickstop:hover{background:var(--rune-danger-soft)}
+  .mbar i.review{background:var(--warning)}
+  .mbar i.recovery{background:var(--recovery)}
+  .rstat.review,.rstat.waiting_permission,.rstat.waiting-permission{background:var(--warning-soft);color:var(--warning)}
+  .rstat.retrying,.rstat.repairing,.rstat.recovering{background:var(--recovery-soft);color:var(--recovery)}
+  .rstat.done{background:var(--success);color:var(--rune-on-accent)}
+  .rstat.failed,.rstat.blocked,.rstat.error{background:var(--rune-danger-soft);color:var(--red)}
+  .rstat.exhausted{background:var(--warning-soft);color:var(--warning)}
+  .recovery-log{margin:8px 0 4px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;background:var(--paper)}
+  .recovery-log h4{padding:8px 10px;border-bottom:1px solid var(--line);font:800 10px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--recovery)}
+  .recovery-entry{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;padding:8px 10px;border-top:1px dashed var(--line);font-size:11px;color:var(--ink2)}
+  .recovery-entry:first-of-type{border-top:0}.recovery-entry time{font-family:var(--mono);color:var(--ink3);white-space:nowrap}.recovery-entry span{overflow-wrap:anywhere}
+  .mission-history{margin-top:13px;border:1px solid var(--line2);border-radius:var(--radius-md);background:var(--paper);overflow:hidden}
+  .mission-history>summary{list-style:none;display:flex;align-items:center;gap:9px;min-height:48px;padding:8px 12px;cursor:pointer}
+  .mission-history>summary::-webkit-details-marker{display:none}.mission-history>summary:hover{background:var(--canvas)}
+  .mission-history-title{min-width:0;flex:1}.mission-history-title b{display:block;font-size:13px}.mission-history-title span{display:block;margin-top:2px;font-size:10.5px;color:var(--ink3);overflow-wrap:anywhere}
+  .mission-history-count{font:750 9.5px/1 var(--mono);color:var(--success);background:var(--success-soft);border-radius:var(--radius-pill);padding:5px 8px;white-space:nowrap}
+  .mission-history-chev{width:14px;height:14px;color:var(--ink3);flex:none;transition:transform var(--speed-fast) var(--ease-out)}.mission-history-chev svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}.mission-history[open] .mission-history-chev{transform:rotate(90deg)}
+  .mission-history-list{border-top:1px solid var(--line);padding:9px;background:var(--canvas)}.mission-history-list .mrun:last-child{margin-bottom:0}
+  .delivery-pipeline{margin:10px 0 3px;border:1px solid var(--line2);border-radius:var(--radius-md);background:var(--paper);overflow:hidden}
+  .delivery-head{display:flex;align-items:flex-start;gap:10px;padding:10px 11px;border-bottom:1px solid var(--line);min-width:0}.delivery-head-copy{min-width:0;flex:1}.delivery-head-copy b{display:block;font-size:12px}.delivery-head-copy span{display:block;margin-top:2px;font-size:10.5px;line-height:1.4;color:var(--ink2);overflow-wrap:anywhere}
+  .delivery-state{font:750 9px/1 var(--mono);color:var(--green);background:var(--mint-soft);border-radius:var(--radius-pill);padding:5px 7px;white-space:nowrap}.delivery-state.good{color:var(--success);background:var(--success-soft)}.delivery-state.warn{color:var(--warning);background:var(--warning-soft)}.delivery-state.bad{color:var(--red);background:var(--rune-danger-soft)}
+  .delivery-steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));min-width:0}.delivery-step{position:relative;display:flex;flex-direction:column;gap:7px;min-width:0;padding:10px;border-left:1px solid var(--line)}.delivery-step:first-child{border-left:0}
+  .delivery-step-top{display:flex;align-items:center;gap:7px;min-width:0}.delivery-dot{width:17px;height:17px;display:grid;place-items:center;flex:none;border:1px solid var(--line2);border-radius:50%;font:800 8px/1 var(--mono);color:var(--ink3);background:var(--card)}.delivery-step-name{font-size:11px;font-weight:780;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.delivery-step-detail{min-height:28px;font-size:9.5px;line-height:1.4;color:var(--ink3);overflow-wrap:anywhere}
+  .delivery-step[data-tone="good"] .delivery-dot{border-color:var(--success);color:var(--rune-on-accent);background:var(--success)}.delivery-step[data-tone="live"] .delivery-dot{border-color:var(--green);color:var(--green);background:var(--mint-soft)}.delivery-step[data-tone="warn"] .delivery-dot{border-color:var(--warning);color:var(--warning);background:var(--warning-soft)}.delivery-step[data-tone="bad"] .delivery-dot{border-color:var(--red);color:var(--red);background:var(--rune-danger-soft)}
+  .delivery-step .btn{width:100%;justify-content:center;margin-top:auto;padding-inline:8px}.delivery-blocked{padding:8px 11px;border-top:1px solid var(--line);font-size:10.5px;line-height:1.45;color:var(--warning);background:var(--warning-soft);overflow-wrap:anywhere}.delivery-blocked.bad{color:var(--red);background:var(--rune-danger-soft)}
+
+  /* ============ automation radar: suggestions backed by live evidence ============ */
+  .automation-radar{padding:0;overflow:hidden;margin-bottom:14px}
+  .radar-head{display:flex;align-items:flex-start;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line)}
+  .radar-head-copy{min-width:0;flex:1}.radar-head-copy h3{font-size:16px}.radar-head-copy p{font-size:12px;color:var(--ink2);margin-top:3px}
+  .radar-scan{font:700 10px/1 var(--mono);color:var(--info);background:var(--info-soft);border-radius:var(--radius-pill);padding:6px 9px;white-space:nowrap}
+  .radar-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0}
+  .radar-item{display:flex;flex-direction:column;gap:8px;padding:15px 18px;border-left:1px solid var(--line);min-width:0}
+  .radar-item:first-child{border-left:0}.radar-kicker{font:800 9.5px/1.2 var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--info)}
+  .radar-item.recovery .radar-kicker{color:var(--recovery)}.radar-item.skill .radar-kicker{color:var(--warning)}
+  .radar-title{font-size:13.5px;font-weight:760;line-height:1.35;overflow-wrap:anywhere}.radar-evidence{font-size:11.5px;color:var(--ink2);line-height:1.5;overflow-wrap:anywhere}
+  .radar-action{margin-top:auto;align-self:flex-start}.radar-empty{padding:18px;color:var(--ink2);font-size:13px}
+
+  /* ============ calendar work surface ============ */
+  .calendar-card{padding:0;overflow:hidden}
+  .calendar-toolbar{display:grid;grid-template-columns:auto minmax(160px,1fr) auto;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid var(--line);background:var(--paper)}
+  .calendar-nav,.calendar-views{display:flex;align-items:center;gap:5px;min-width:0}
+  .calendar-nav button,.calendar-views button{min-height:36px;border:1px solid var(--line);background:var(--card);color:var(--ink2);border-radius:var(--radius-md);padding:6px 10px;font-size:12px;font-weight:700}
+  .calendar-nav .cal-arrow{width:36px;padding:0;display:grid;place-items:center}.calendar-nav svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+  .calendar-nav button:hover,.calendar-views button:hover{border-color:var(--line2);color:var(--ink)}
+  .calendar-views button[aria-selected="true"]{background:var(--green);border-color:var(--green);color:var(--rune-on-accent)}
+  .calendar-period{text-align:center;font:800 16px/1.3 var(--rune-font-display);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .calendar-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;min-width:0;min-height:520px}
+  #calendarbody{min-width:0;padding:14px;border-right:1px solid var(--line)}
+  .cal-side{padding:15px;background:var(--paper);min-width:0}.cal-side h3{font-size:14px;margin-bottom:4px}.cal-side-date{font-size:11px;color:var(--ink3);margin-bottom:12px}
+  .cal-weekdays,.cal-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));min-width:0}
+  .cal-weekdays{border:1px solid var(--line);border-bottom:0;background:var(--paper)}
+  .cal-weekdays span{text-align:center;padding:7px 3px;font:750 9.5px/1 var(--mono);color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;border-left:1px solid var(--line)}
+  .cal-weekdays span:first-child{border-left:0}
+  .cal-month-grid{border-top:1px solid var(--line);border-left:1px solid var(--line)}
+  .cal-day{min-width:0;min-height:108px;text-align:left;white-space:normal;padding:7px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card);color:var(--ink);overflow:hidden}
+  .cal-day:hover{background:var(--paper)}.cal-day.outside{background:var(--canvas);color:var(--ink3)}.cal-day.selected{box-shadow:inset 0 0 0 2px var(--green);background:var(--mint-soft)}
+  .cal-day.today .cal-day-num{background:var(--green);color:var(--rune-on-accent)}
+  .cal-day-num{display:grid;place-items:center;width:25px;height:25px;border-radius:var(--radius-pill);font:750 11px/1 var(--mono);margin-bottom:5px}
+  .cal-day-events{display:flex;flex-direction:column;gap:3px;min-width:0}.cal-chip{display:block;min-width:0;padding:3px 5px;border-radius:var(--radius-sm);background:var(--info-soft);color:var(--info);font-size:9.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cal-chip.all-day{background:var(--mint-soft);color:var(--green)}.cal-more{font:700 9px/1.2 var(--mono);color:var(--ink3);padding-left:4px}
+  .cal-week-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line);min-width:0}
+  .cal-week-day{min-width:0;min-height:400px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--card)}
+  .cal-week-head{display:block;width:100%;white-space:normal;text-align:center;padding:10px 4px;border-bottom:1px solid var(--line);font-size:11px;font-weight:760}.cal-week-head.today{color:var(--green);background:var(--mint-soft)}
+  .cal-week-events{display:flex;flex-direction:column;gap:6px;padding:7px}.cal-event{display:block;white-space:normal;text-align:left;border:1px solid var(--line);border-radius:var(--radius-md);background:var(--card);padding:8px;min-width:0}
+  .cal-event:hover{border-color:var(--line2);background:var(--paper)}.cal-event-time{display:block;font:750 9.5px/1.2 var(--mono);color:var(--green);margin-bottom:3px}.cal-event-title{display:block;font-size:11.5px;font-weight:730;line-height:1.35;overflow-wrap:anywhere}.cal-event-place{display:block;font-size:10.5px;color:var(--ink3);margin-top:3px;overflow-wrap:anywhere}
+  .cal-day-view,.cal-agenda{max-width:760px;margin:0 auto}.cal-day-view h2{font-size:17px;margin-bottom:11px}.cal-agenda-group{margin-bottom:18px}.cal-agenda-date{position:sticky;top:0;z-index:var(--z-base);padding:7px 4px;background:var(--canvas);font-size:12px;font-weight:800}
+  .cal-agenda-row{display:grid;grid-template-columns:70px minmax(0,1fr) auto;align-items:start;gap:10px;padding:10px 4px;border-top:1px solid var(--line)}.cal-agenda-time{font:700 10.5px/1.4 var(--mono);color:var(--green)}.cal-agenda-copy b{display:block;font-size:12.5px}.cal-agenda-copy span{font-size:11px;color:var(--ink3)}.cal-source{font-size:11px;font-weight:750}
+  .cal-side .cal-event{margin-bottom:7px}.cal-side>.cal-source,.cal-day-view>.cal-source{display:inline-block;margin:-2px 0 12px 8px}.cal-empty{display:grid;place-items:center;min-height:220px;padding:24px;text-align:center;color:var(--ink2);font-size:13px}
+  .cal-coverage{margin-bottom:10px;border:1px solid var(--warning);border-radius:var(--radius-md);background:var(--warning-soft);color:var(--warning);padding:9px 11px;font-size:11.5px;line-height:1.45}
+
+  .chathead .headacts{display:flex;align-items:center;gap:4px;margin-left:auto}.chathead .clear{color:var(--rune-on-accent);border:1px solid color-mix(in oklch,var(--rune-on-accent) 40%,transparent);border-radius:var(--radius-md);padding:5px 8px;font-size:10.5px;font-weight:700}.chathead .x{margin-left:0}
+  #toast{z-index:var(--z-toast)}#chatpanel{z-index:var(--z-modal)}#chatfab{z-index:var(--z-sticky)}.cmdpop{z-index:var(--z-dropdown)}
+
+  @media (max-width:1100px){
+    .calendar-layout{grid-template-columns:1fr}.cal-side{border-top:1px solid var(--line)}#calendarbody{border-right:0}
+    .radar-grid{grid-template-columns:1fr 1fr}.radar-item:nth-child(3){grid-column:1/-1;border-left:0;border-top:1px solid var(--line)}
+  }
+  @media (max-width:880px){.cmdtray{left:14px;right:14px}.calendar-toolbar{grid-template-columns:1fr auto}.calendar-period{grid-column:1/-1;grid-row:1;text-align:left}.calendar-nav{grid-row:2}.calendar-views{grid-row:2;justify-content:flex-end}}
+  @media (max-width:720px){
+    .calendar-card{border-radius:var(--radius-md)}.calendar-toolbar{display:flex;flex-wrap:wrap}.calendar-period{order:-1;width:100%;text-align:left}.calendar-nav{flex:1}.calendar-views{width:100%;display:grid;grid-template-columns:repeat(4,1fr)}
+    .cal-week-grid{grid-template-columns:1fr}.cal-week-day{min-height:0}.cal-week-head{text-align:left}.cal-week-events:empty{display:none}
+    .radar-grid{grid-template-columns:1fr}.radar-item,.radar-item:nth-child(3){grid-column:auto;border-left:0;border-top:1px solid var(--line)}.radar-item:first-child{border-top:0}
+    .delivery-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.delivery-step:nth-child(3){border-left:0;border-top:1px solid var(--line)}.delivery-step:nth-child(4){border-top:1px solid var(--line)}
+  }
+  @media (max-width:40rem){
+    :where(button,input,textarea,select,summary,a.btn,[role="tab"]){min-height:44px}
+    :where(.tbtn,.cbtn,.cmdtray-icon,.calendar-nav .cal-arrow){min-width:44px;min-height:44px}
+    .cmdtray{left:8px;right:8px;bottom:8px;max-height:62vh}.cmdflow{max-height:calc(62vh - 58px)}.cmdtray-head{align-items:flex-start;flex-wrap:wrap}.cmdtray-title{min-height:40px}.cmdtray-actions{width:100%;justify-content:flex-end}.cmdtray-actions .btn{flex:1}
+    .cmdmission{grid-template-columns:1fr}.cmdmission-controls{justify-content:flex-start;max-width:none}.cmdmission-controls .btn{flex:1}
+    .brief-completed-row{grid-template-columns:1fr}.brief-completed-actions{display:grid;grid-template-columns:1fr 1fr;justify-content:stretch}.brief-completed-actions .btn{width:100%;justify-content:center}
+    .mrun summary{gap:7px}.mrun .mbar,.mrun .mmeta{display:none}.mquickstop{min-width:auto;min-height:40px}
+    .cal-month-grid,.cal-weekdays{grid-template-columns:repeat(7,minmax(0,1fr))}.cal-day{min-height:58px;padding:4px 2px;text-align:center}.cal-day-num{margin:0 auto}.cal-day-events{align-items:center}.cal-chip{width:6px;height:6px;border-radius:50%;padding:0;font-size:0}.cal-more{font-size:0;padding:0}.cal-more::after{content:"+";font-size:9px}.cal-weekdays span{font-size:8px;padding-inline:0}
+    #calendarbody{padding:8px}.cal-side{padding:12px}.cal-agenda-row{grid-template-columns:58px minmax(0,1fr)}.cal-source{grid-column:2}
+    .chathead .clear{min-height:36px}
+  }
+  @media (max-width:420px){.delivery-steps{grid-template-columns:1fr}.delivery-step,.delivery-step:nth-child(3),.delivery-step:nth-child(4){border-left:0;border-top:1px solid var(--line)}.delivery-step:first-child{border-top:0}.delivery-step{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center}.delivery-step-detail{grid-column:1/-1;min-height:0}.delivery-step .btn{width:auto;min-width:94px}.delivery-head{align-items:center}}
+  @media (max-width:360px){.calendar-views button{padding-inline:5px;font-size:11px}.cmdtray-actions .btn{font-size:11px;padding-inline:7px}.brief-completed-actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -767,6 +1091,7 @@
     <div class="navlab">Menu</div>
     <nav id="nav">
       <a href="#/overview" data-s="overview"><svg viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>Dashboard</a>
+      <a href="#/calendar" data-s="calendar"><svg viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>Calendar<span class="bub" id="n-cal">0</span></a>
       <a href="#/instances" data-s="instances"><svg viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg>Agent console<span class="bub" id="n-inst">0</span></a>
       <a href="#/skills" data-s="skills"><svg viewBox="0 0 24 24"><line x1="6" x2="6" y1="3" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>Skill tree<span class="bub" id="n-skill">0</span></a>
       <a href="#/brain" data-s="brain"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/></svg>Brain<span class="bub" id="n-brain">0</span></a>
@@ -836,16 +1161,63 @@
             <div class="pnote">Auto routes per prompt: pure questions get a chat answer; real work runs <b>solo</b> — one Claude Code session with full tools that actually does it, no subagents; only genuinely big jobs go to the CEO roster.</div>
           </div>
         </div>
-        <div class="cmdflow" id="cmdflow"></div>
       </div>
-      <div class="card" style="margin-bottom:14px">
-        <h3>Daily briefing <span class="tag" id="brieftag">today · offline</span></h3>
-        <div id="briefingbody" style="padding-top:12px"></div>
+      <div class="morning-stack">
+        <article class="card calendar-overview" aria-labelledby="calendar-overview-title">
+          <div class="cal-overview-head">
+            <span class="calbrand" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 10h18"/></svg></span>
+            <h3 id="calendar-overview-title">Microsoft Calendar</h3>
+            <span class="calstate" id="caloverviewstate">syncing</span>
+          </div>
+          <div class="cal-overview-body" id="calendaroverview" aria-live="polite"></div>
+        </article>
+
+        <section class="card briefing-shell" aria-labelledby="briefing-title">
+          <div class="brief-head">
+            <div class="brief-title"><h3 id="briefing-title">Daily briefing</h3>
+              <p>Three high-impact changes across your repositories. Evidence stays under the hood.</p></div>
+            <div class="brief-meta">
+              <span class="brief-schedule" id="brieftag"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>09:30 daily · yesterday</span>
+              <span class="brief-status" id="briefstatus" role="status" aria-live="polite" aria-atomic="true">loading the latest briefing</span>
+            </div>
+          </div>
+          <div class="brief-health" id="briefhealth" data-tone="offline" aria-label="Briefing freshness" aria-busy="false">
+            <div class="brief-health-grid">
+              <div class="brief-health-item"><span>Plan day</span><b id="briefday">Checking…</b><small id="briefdaysub"></small></div>
+              <div class="brief-health-item"><span>Last attempt</span><b id="briefattempt">Checking…</b><small id="briefattemptsub"></small></div>
+              <div class="brief-health-item"><span>Next refresh</span><b id="briefnext">Checking…</b><small id="briefcountdown" data-brief-due="" data-brief-state=""></small></div>
+            </div>
+            <button class="btn line sm brief-check" id="brief-check" type="button" title="Check the saved briefing status without starting a model run">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M19 12a7 7 0 1 1-2-5"/></svg><span>Check now</span></button>
+          </div>
+          <div class="brief-controls" aria-label="Briefing generation controls">
+            <label class="brief-field"><span>Brainstorm with</span>
+              <select id="brief-model" aria-label="Briefing generation model">
+                <option value="fable" selected>Fable 5</option>
+                <option value="gpt-5.6-sol">GPT-5.6 Sol</option>
+              </select></label>
+            <label class="brief-field"><span>Effort</span>
+              <select id="brief-effort" aria-label="Briefing generation effort">
+                <option value="high">High</option>
+                <option value="max" selected>Max</option>
+                <option value="xhigh">X-high</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select></label>
+            <span class="brief-spend" id="briefspend">Generate starts a model run</span>
+            <button class="btn solid brief-generate" id="brief-generate" type="button"><span class="spin" aria-hidden="true"></span><span>Generate 3 more</span></button>
+          </div>
+          <div class="briefing-body" id="briefingbody" aria-live="polite" aria-busy="false"></div>
+          <div class="brief-feedback" id="brieffeedback" role="status" aria-live="polite"></div>
+        </section>
       </div>
-      <div class="card" style="margin-bottom:14px">
-        <h3>Running tasks <span class="tag">prompt → Haiku refine → brain recall → CEO staffs the roles</span></h3>
-        <div id="ceoruns" style="padding-top:12px"></div>
-      </div>
+      <section class="card automation-radar" aria-labelledby="radar-title">
+        <div class="radar-head">
+          <div class="radar-head-copy"><h3 id="radar-title">Automation radar</h3><p>Review-first workflow suggestions derived from the live wire, skill coverage, and mission recovery.</p></div>
+          <span class="radar-scan" id="radarscan">scanning evidence</span>
+        </div>
+        <div id="automationradar" aria-live="polite"></div>
+      </section>
       <div class="grid cols-4" id="kpis" style="margin-bottom:14px"></div>
       <div class="ccarousel" style="margin-bottom:14px">
         <div class="chead"><h3>Accounts <span class="tag">Claude · Codex · mail · code</span></h3>
@@ -880,6 +1252,31 @@
           <h3>Latest changes <span class="tag">what actually changed</span></h3>
           <button class="cbtn" data-go="#/audit" title="open"><svg viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></button>
           <div id="recentchanges"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CALENDAR ============ -->
+    <section class="page" id="p-calendar">
+      <div class="titlerow"><div><h1>Calendar</h1><div class="sub" id="calsub">Microsoft Outlook — meetings and events.</div></div></div>
+      <div class="card calendar-card">
+        <div class="calendar-toolbar">
+          <div class="calendar-nav" aria-label="Calendar date navigation">
+            <button type="button" class="cal-arrow" data-cal-nav="prev" aria-label="Previous period"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+            <button type="button" data-cal-nav="today"><span class="btn-label">Today</span></button>
+            <button type="button" class="cal-arrow" data-cal-nav="next" aria-label="Next period"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></button>
+          </div>
+          <h2 class="calendar-period" id="calendarperiod">This month</h2>
+          <div class="calendar-views" role="tablist" aria-label="Calendar view">
+            <button type="button" role="tab" data-cal-view="month" aria-controls="calendarbody" aria-selected="true">Month</button>
+            <button type="button" role="tab" data-cal-view="week" aria-controls="calendarbody" aria-selected="false">Week</button>
+            <button type="button" role="tab" data-cal-view="day" aria-controls="calendarbody" aria-selected="false">Day</button>
+            <button type="button" role="tab" data-cal-view="agenda" aria-controls="calendarbody" aria-selected="false">Agenda</button>
+          </div>
+        </div>
+        <div class="calendar-layout">
+          <div id="calendarbody" role="tabpanel" tabindex="0"></div>
+          <aside class="cal-side" id="calendarside" aria-label="Selected day"></aside>
         </div>
       </div>
     </section>
@@ -1081,8 +1478,22 @@
         <div class="card dirs"><h3>Open approval tokens</h3><div id="tokens"></div></div>
       </div>
     </section>
-  </div>
 </div>
+</div>
+<section class="cmdtray" id="cmdtray" aria-label="Mission activity" hidden>
+  <div class="cmdtray-head">
+    <button type="button" class="cmdtray-title" data-cmd-collapse aria-expanded="true" aria-controls="cmdflow">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h3l2-6 4 12 2-6h5"/></svg>
+      <span class="label">Mission activity</span><span class="cmdtray-count" id="cmdtraycount" role="status" aria-live="polite" aria-atomic="true">0 active</span>
+    </button>
+    <div class="cmdtray-actions">
+      <button type="button" class="btn line sm danger" id="cmdstopactive">Stop active</button>
+      <button type="button" class="btn line sm" id="cmdclear">Clear completed</button>
+      <button type="button" class="cmdtray-icon" data-cmd-collapse aria-label="Collapse mission activity" aria-expanded="true" aria-controls="cmdflow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+  </div>
+  <div class="cmdflow" id="cmdflow" role="log" aria-label="Recent missions" aria-live="off"></div>
+</section>
 <div id="toast"></div>
 
 <button id="chatfab" title="Ask Rune"><svg viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z"/><path d="M8 12h8M8 9h5"/></svg></button>
@@ -1090,7 +1501,7 @@
   <div class="chathead">
     <div class="av"><svg viewBox="0 0 24 24" id="chatspark"></svg></div>
     <div><b>Ask Rune</b><small>the software · the brain · anything</small></div>
-    <button class="x" id="chatclose" aria-label="close">×</button>
+    <div class="headacts"><button class="clear" id="chatclear" type="button">Clear</button><button class="x" id="chatclose" aria-label="close">×</button></div>
   </div>
   <div class="chatlog" id="chatlog"></div>
   <div class="chatin">
@@ -1106,9 +1517,15 @@ const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo
 const PIE=[GREEN, MID, MINT, "#b879a5", "#cec5cb", "#958a92"]; // pie chart exempt from 3-color cap
 const STAGES=["think","plan","build","review","test","ship"];
 const LIVE_MS=15*60*1000;
-const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],sshKeys:[],pulse:{},briefing:null};
+const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],ceoHistory:[],sshKeys:[],pulse:{},briefing:null,briefingLoaded:false,workflows:null};
+const BRIEF={open:new Set(),overrides:new Map(),saving:new Set(),runs:new Map(),busy:false,error:"",feedback:"",
+  fetching:false,fetchPromise:null,fetchError:"",lastCheckedAt:0,lastGoodCheckAt:0,nextFetchAt:0,requestSeq:0,lastJobId:"",lastJobState:"",completedOpen:false};
+const DELIVERY={busy:new Set(),historyOpen:true};
+const BRIEF_REFRESH_IDLE_MS=30000,BRIEF_REFRESH_LIVE_MS=2500,BRIEF_REFRESH_RETRY_MS=10000;
 const CHG=new Set(["Edit","Write","MultiEdit","NotebookEdit","Bash"]);
 const dayKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const CAL={view:"month",cursor:new Date(),selected:dayKey(new Date()),remote:null,loading:false,error:"",rangeStart:"",rangeEnd:"",loadedAt:0};
+try{const savedCalendarView=localStorage.getItem("rune-calendar-view");if(["month","week","day","agenda"].includes(savedCalendarView))CAL.view=savedCalendarView}catch(_){ }
 const fmtTok=n=>n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"k":String(n||0);
 const rel=ts=>{if(!ts)return"–";const s=Math.max(0,(Date.now()-Date.parse(ts))/1000);
   return s<60?Math.floor(s)+"s ago":s<3600?Math.floor(s/60)+"m ago":s<86400?Math.floor(s/3600)+"h ago":Math.floor(s/86400)+"d ago"};
@@ -1176,7 +1593,8 @@ function renderPerf(){
 }
 
 /* ---------- command bar: prompt -> Haiku refine -> brain recall -> CEO ---------- */
-const CMD={busy:false};
+const CMD={busy:false,items:[],collapsed:false,seq:0};
+const CMD_MAX=10;
 const CMD_EX=[
   "Go through the codebase of this repo and map its architecture into the brain…",
   "Find every TODO and half-finished idea in the workspace and rank them by impact…",
@@ -1196,8 +1614,49 @@ function cmdType(){
   else if(cmdDel&&cmdPos<=0){cmdDel=false;cmdI=(cmdI+1)%CMD_EX.length;wait=600}
   setTimeout(cmdType,wait);
 }
-function cmdMsg(role,html){const d=document.createElement("div");d.className="cmdmsg "+role;
-  d.innerHTML=html;$("cmdflow").appendChild(d);return d}
+const CMD_LIVE=new Set(["planning","running","working","pending","review","retrying","repairing","recovering","waiting_permission","waiting-permission"]);
+const CMD_RECOVERABLE=new Set(["failed","error","stalled","stopped","exhausted","blocked"]);
+const CMD_SUCCESS=new Set(["done","completed","success","succeeded","skipped"]);
+function cmdMissionInfo(item){
+  const run=item.cid?[...S.ceo,...S.ceoHistory].find(entry=>String(entry.cid)===String(item.cid)):null;
+  if(run&&run.status)item.status=String(run.status).toLowerCase();
+  const status=String((run&&run.status)||item.status||"planning").toLowerCase();
+  return{run,status,live:!!(run&&run.live)||CMD_LIVE.has(status),recoverable:CMD_RECOVERABLE.has(status)};
+}
+function cmdTone(status){
+  if(CMD_SUCCESS.has(status))return"good";
+  if(["failed","error","stalled","blocked","stopped"].includes(status))return"bad";
+  if(["review","waiting_permission","waiting-permission","retrying","repairing","recovering","exhausted"].includes(status))return"warn";
+  return CMD_LIVE.has(status)?"live":"";
+}
+function renderCmdTray(){
+  const tray=$("cmdtray"),flow=$("cmdflow");if(!tray||!flow)return;
+  const durableSuccess=new Set(S.ceoHistory.filter(run=>CMD_SUCCESS.has(String(run.status||"").toLowerCase())).map(run=>String(run.cid||"")));
+  CMD.items=CMD.items.filter(item=>!(item.cid&&durableSuccess.has(String(item.cid))&&CMD_SUCCESS.has(cmdMissionInfo(item).status)));
+  const completed=CMD.items.filter(item=>!item.cid&&CMD_SUCCESS.has(cmdMissionInfo(item).status)),remove=new Set(completed.slice(0,Math.max(0,completed.length-CMD_MAX)).map(item=>item.id));
+  if(remove.size)CMD.items=CMD.items.filter(item=>!remove.has(item.id));
+  tray.hidden=!CMD.items.length;tray.classList.toggle("collapsed",CMD.collapsed);
+  tray.querySelectorAll("[data-cmd-collapse]").forEach(button=>button.setAttribute("aria-expanded",String(!CMD.collapsed)));
+  const info=CMD.items.map(item=>({item,...cmdMissionInfo(item)}));
+  const active=info.filter(entry=>entry.live),attention=info.filter(entry=>["review","waiting_permission","waiting-permission","failed","error","stalled","blocked","exhausted"].includes(entry.status));
+  const countText=attention.length?`${active.length} active · ${attention.length} need you`:`${active.length} active`;
+  if($("cmdtraycount").textContent!==countText)$("cmdtraycount").textContent=countText;
+  $("cmdstopactive").disabled=!active.some(entry=>entry.item.cid);
+  $("cmdclear").disabled=!info.some(entry=>!entry.item.cid&&CMD_SUCCESS.has(entry.status));
+  const html=info.map(({item,run,status,live,recoverable})=>{
+    const route=run&&run.route?run.route:item.route,meta=[item.meta,item.cid?`id ${item.cid}`:""].filter(Boolean).join(" · ");
+    const stop=live&&item.cid?`<button type="button" class="btn line sm danger" data-ceo-act="stop" data-cid="${esc(item.cid)}" data-role="">Stop</button>`:"";
+    const resume=!live&&recoverable&&item.cid?`<button type="button" class="btn solid sm" data-ceo-act="resume" data-cid="${esc(item.cid)}" data-role="">Continue</button>`:"";
+    const open=item.cid?`<button type="button" class="btn line sm" data-go="#/instances">Open</button>`:"";
+    const dismiss=!live?`<button type="button" class="btn line sm" data-cmd-dismiss="${esc(item.id)}">Dismiss</button>`:"";
+    return`<article class="cmdmission" data-state="${esc(status)}" data-cmd-id="${esc(item.id)}">
+      <div class="cmdmission-copy"><div class="cmdmission-prompt">${esc(item.text)}</div><div class="cmdmission-reply">${esc(item.reply||"Preparing the mission…")}</div>
+      <div class="cmdmission-meta"><span class="cmdmission-state ${cmdTone(status)}">${esc(status.replaceAll("_"," ").replaceAll("-"," "))}</span>${meta?`<span>${esc(meta)}</span>`:""}${route?`<span>${esc(route)}</span>`:""}</div></div>
+      <div class="cmdmission-controls">${stop}${resume}${open}${dismiss}</div>
+    </article>`;
+  }).join("");
+  const sig=JSON.stringify([html,CMD.collapsed]);if(flow.dataset.sig!==sig){flow.innerHTML=html;flow.dataset.sig=sig;if(!CMD.collapsed)flow.scrollTop=flow.scrollHeight}
+}
 // Run-it dropdown overrides — "auto" everywhere means the CEO decides per prompt
 function cmdOpts(){return{mode:$("cmd-mode").value,refine:$("cmd-refine").value,model:$("cmd-model").value,
   effort:$("cmd-effort").value,account:$("cmd-account").value,gate:$("cmd-gate").checked}}
@@ -1206,76 +1665,72 @@ function cmdTuned(){const o=cmdOpts();
 async function cmdSend(){
   const inp=$("cmdinput"),text=inp.value.trim();
   if(!text||CMD.busy)return;
+  const item={id:`cmd-${Date.now()}-${++CMD.seq}`,text,status:"planning",reply:"Refining the prompt, querying the brain, and staffing the mission…",meta:"",cid:"",route:""};
+  CMD.items.push(item);CMD.collapsed=false;renderCmdTray();
   CMD.busy=true;$("cmdgo").disabled=true;inp.value="";
   $("cmdpop").classList.remove("open");$("cmdbarbox").classList.remove("optsopen");
-  cmdMsg("u",esc(text));
-  const th=cmdMsg("a",`<span class="dots"><i></i><i></i><i></i></span> refining the prompt, querying the brain, staffing the mission…`);
   try{
     const j=await post("/api/ceo",{text,opts:cmdOpts()});
+    item.cid=String(j.cid||j.id||"");item.route=j.route||j.kind||"";
     if(j.kind==="answer"){
-      // pure question: chat-only reply, no tools, no agents
-      th.innerHTML=`${esc(j.reply)}<div class="brief">answered from knowledge · ${esc(j.model||"cheap model")} · no tools, no agents</div>`;
+      item.status="done";item.reply=j.reply||"Answered.";item.meta=`${j.model||"knowledge"} · no tools or agents`;
     }else if(j.route==="solo"){
-      // one Claude Code session with full tools — it's doing the work now
-      const r=(j.roles||[])[0]||{};
-      th.innerHTML=`Running it now in Claude Code — <b>one agent, no subagents</b>.
-        <a href="#/instances">watch it →</a>
-        <div class="brief">${esc(r.model||"sonnet")} · ${r.turns||40} turns · full tools in this repo${j.recall?" · brain recall folded in":""}</div>`;
+      const role=(j.roles||[])[0]||{};item.status="running";
+      item.reply="Running in Claude Code with one agent and full tools in this repository.";
+      item.meta=`${role.model||"agent"} · ${role.turns||40} turns${j.recall?" · brain recall included":""}`;
     }else{
-      // staffing runs on the server; the mission card below fills in as it plans
-      th.innerHTML=`<b>${esc(j.name||"Mission")}</b> — the CEO is staffing the roles.
-        <a href="#/instances">watch it →</a>
-        <div class="brief">${esc((j.refined||j.goal||"").slice(0,240))}</div>`;
+      item.status="planning";item.reply=`${j.name||"Mission"} — the CEO is staffing the roles.`;
+      item.meta=String(j.refined||j.goal||"").slice(0,180);
     }
-    poll();
-  }catch(e){th.innerHTML="⚠ "+esc(e.message)}
-  CMD.busy=false;$("cmdgo").disabled=false;
+    renderCmdTray();poll();
+  }catch(error){item.status="failed";item.reply=error.message||"Mission launch failed.";renderCmdTray()}
+  finally{CMD.busy=false;$("cmdgo").disabled=false}
 }
 
 /* ---------- CEO missions: running tasks with expandable per-role status ---------- */
 const MOPEN=new Set();                      // expanded runs survive re-renders
-const RSTAT_ORDER={working:0,review:1,pending:2,blocked:3,failed:3,exhausted:3,done:4,skipped:4};
-function ceoCard(o,full){
-  const planning=o.status==="planning";
-  const segs=planning?`<i class="working" title="the CEO is staffing the roles"></i>`
-    :o.roles.map(r=>`<i class="${r.status==="done"?"done":r.status==="working"?"working":r.status==="review"?"review":["failed","blocked","exhausted"].includes(r.status)?"bad":""}" title="${esc(r.id)}: ${esc(r.status)}${r.detail?" — "+esc(r.detail):""}"></i>`).join("");
-  const statPill=`<span class="pill ${["running","planning"].includes(o.status)?"live":o.status==="review"?"warn":o.status==="done"?"idle":["failed","error","stalled","exhausted"].includes(o.status)?"warn":"idle"}">${esc(o.status)}</span>`;
-  /* why it stopped — a run that ends short must always state its reason */
-  const why=(!o.live&&o.detail)?`<div class="rm" style="padding:8px 10px;margin:8px 0;border-left:2px solid var(--warn,#c79a3a);color:var(--ink2)">${esc(o.detail)}</div>`:"";
-  const roles=o.roles.map(r=>{
-    const label=r.status==="failed"&&r.limit?"limit":r.status==="exhausted"?"out of turns":r.status;
-    const acts=(r.status==="review"&&o.live)?`<div class="racts">
-        <button class="btn line sm" data-ceo-act="approve" data-cid="${o.cid}" data-role="${r.id}">Approve</button>
-        <button class="btn line sm" data-ceo-act="redo" data-cid="${o.cid}" data-role="${r.id}">Redo</button>
-        <button class="btn line sm danger" data-ceo-act="skip" data-cid="${o.cid}" data-role="${r.id}">Skip</button></div>`:"";
-    const out=(r.result&&(full||["review","failed","exhausted"].includes(r.status)))?`<div class="rout">${esc(r.result.slice(0,1800))}</div>`:"";
-    const rwhy=r.detail?`<div class="rm" style="color:var(--ink2)">${esc(r.detail)}</div>`:"";
-    return`<div class="rrow"><span class="rstat ${esc(r.status)}">${esc(label)}</span>
-      <div class="rbd"><div class="rt">${esc(r.title)}<small>${esc(r.model)} · ${r.turns}t${r.secs?" · "+r.secs+"s":""}${r.cost?" · $"+r.cost:""}${r.review?" · gated":""}${r.continues?" · continued "+r.continues+"×":""}${r.limit?" · session limit — Continue when ready":""}${r.depends_on.length?" · after "+r.depends_on.join(","):""}</small></div>
-      ${rwhy}${full?`<div class="rm">${esc(r.mission.slice(0,300))}</div>`:""}${out}${acts}</div></div>`;
+const RSTAT_ORDER={working:0,running:0,retrying:0,repairing:0,recovering:0,review:1,waiting_permission:1,"waiting-permission":1,pending:2,blocked:3,failed:3,error:3,exhausted:3,done:4,skipped:4};
+function recoveryEntries(source){
+  if(!source||typeof source!=="object")return[];
+  const values=[source.recovery_history,source.recoveryHistory,source.recoveries,source.recovery&&source.recovery.history];
+  return values.flatMap(value=>Array.isArray(value)?value:[]).slice(-5);
+}
+function recoveryLog(source,title="Recovery history"){
+  const entries=recoveryEntries(source);if(!entries.length)return"";
+  const rows=entries.map((entry,index)=>{
+    if(typeof entry==="string")return`<div class="recovery-entry"><time>#${index+1}</time><span>${esc(entry)}</span></div>`;
+    entry=entry&&typeof entry==="object"?entry:{};
+    const when=pick(entry.at,entry.ts,entry.time,entry.created_at,`#${index+1}`),detail=pick(entry.detail,entry.message,entry.action,entry.result,entry.status,"Recovery attempt recorded");
+    return`<div class="recovery-entry"><time>${esc(typeof when==="number"?rel(new Date(when*1000).toISOString()):String(when))}</time><span>${esc(detail)}</span></div>`;
   }).join("");
-  const roleRows=planning
-    ?`<div class="rrow"><span class="rstat working">planning</span>
-        <div class="rbd"><div class="rt">The CEO is staffing the roles…</div>
-        <div class="rm">Reading the brain and deciding the roster, models and effort. This takes a few seconds — the roles appear here as soon as they're set.</div></div></div>`
-    :roles;
-  const doneN=o.roles.filter(r=>["done","skipped"].includes(r.status)).length;
-  const resumable=!o.live&&(o.roles.some(r=>["failed","blocked","exhausted"].includes(r.status))
-    ||["failed","error","stalled","stopped","exhausted"].includes(o.status));
-  const archiveBtn=`<button class="btn line sm" data-ceo-act="archive" data-cid="${o.cid}" data-role="" title="clear from the list (kept in state/ceo/archive, not deleted)">Archive</button>`;
-  const ctl=o.live
-    ?`<button class="btn line sm danger" data-ceo-act="stop" data-cid="${o.cid}" data-role="" style="margin-top:10px">Stop mission</button>`
-    :`<div style="display:flex;align-items:center;gap:11px;margin-top:10px;flex-wrap:wrap">
-        ${resumable?`<button class="btn solid sm" data-ceo-act="resume" data-cid="${o.cid}" data-role="">↻ Continue where it left off</button>`:""}
-        ${archiveBtn}
-        <span class="rm" style="margin:0;color:var(--ink3)">${resumable?`re-runs the ${o.roles.length-doneN} unfinished role${o.roles.length-doneN===1?"":"s"}, keeps the ${doneN} done`:"finished — archive to free up space"}</span></div>`;
-  return`<details class="mrun" data-cid="${o.cid}" ${MOPEN.has(o.cid)?"open":""}>
-    <summary><span class="chev"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span>
-      <span class="mname" title="${esc(o.goal)}">${esc(o.name)}</span>
-      <span class="mbar">${segs}</span>
-      <span class="mmeta">${planning?"staffing…":`${doneN}/${o.roles.length}`} · $${(o.cost||0).toFixed(2)}${o.resumes?" · resumed "+o.resumes+"×":""}${o.account?" · "+esc(o.account):""}</span>
-      ${statPill}</summary>
-    <div class="mbody">${full?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(o.refined||o.goal)}</div>`:""}${why}${roleRows}${ctl}</div></details>`;
+  return`<section class="recovery-log"><h4>${esc(title)}</h4>${rows}</section>`;
+}
+function ceoCard(o,full){
+  o=o&&typeof o==="object"?o:{};const roleList=Array.isArray(o.roles)?o.roles:[],status=String(o.status||"pending").toLowerCase();
+  const planning=status==="planning",recovering=["retrying","repairing","recovering"].includes(status),waiting=["review","waiting_permission","waiting-permission"].includes(status);
+  const segs=planning||(!roleList.length&&recovering)?`<i class="${recovering?"recovery":"working"}" title="${recovering?"Recovery is in progress":"The CEO is staffing the roles"}"></i>`
+    :roleList.map(role=>{const rs=String(role.status||"pending").toLowerCase(),cls=rs==="done"?"done":["working","running"].includes(rs)?"working":["review","waiting_permission","waiting-permission"].includes(rs)?"review":["retrying","repairing","recovering"].includes(rs)?"recovery":["failed","blocked","error","exhausted"].includes(rs)?"bad":"";return`<i class="${cls}" title="${esc(role.id||role.title||"role")}: ${esc(rs)}${role.detail?" — "+esc(role.detail):""}"></i>`}).join("");
+  const pillClass=["running","planning","working"].includes(status)?"live":waiting||recovering?"warn":status==="done"?"idle":["failed","error","stalled","exhausted","blocked"].includes(status)?"warn":"idle";
+  const statPill=`<span class="pill ${pillClass}">${esc(status.replaceAll("_"," ").replaceAll("-"," "))}</span>`;
+  const why=(!o.live&&o.detail)?`<div class="rm" style="padding:8px 10px;margin:8px 0;border-left:2px solid var(--warning);color:var(--ink2)">${esc(o.detail)}</div>`:"";
+  const roles=roleList.map(role=>{
+    role=role&&typeof role==="object"?role:{};const rs=String(role.status||"pending").toLowerCase();
+    const label=rs==="failed"&&role.limit?"limit":rs==="exhausted"?"out of turns":rs.replaceAll("_"," ").replaceAll("-"," ");
+    const gated=["review","waiting_permission","waiting-permission"].includes(rs)&&o.live;
+    const acts=gated?`<div class="racts"><button class="btn line sm" data-ceo-act="approve" data-cid="${esc(o.cid||"")}" data-role="${esc(role.id||"")}">Approve</button><button class="btn line sm" data-ceo-act="redo" data-cid="${esc(o.cid||"")}" data-role="${esc(role.id||"")}">Redo</button><button class="btn line sm danger" data-ceo-act="skip" data-cid="${esc(o.cid||"")}" data-role="${esc(role.id||"")}">Skip</button></div>`:"";
+    const showResult=full||["review","waiting_permission","waiting-permission","failed","error","exhausted"].includes(rs),result=String(role.result||"");
+    const output=result&&showResult?`<div class="rout">${esc(result.slice(0,1800))}</div>`:"";
+    const dependencies=Array.isArray(role.depends_on)?role.depends_on:[],modelMeta=[role.model,role.turns!=null?`${role.turns}t`:"",role.secs?`${role.secs}s`:"",role.cost?`$${role.cost}`:"",role.review?"gated":"",role.continues?`continued ${role.continues}×`:"",dependencies.length?`after ${dependencies.join(",")}`:""].filter(Boolean).join(" · ");
+    return`<div class="rrow"><span class="rstat ${esc(rs)}">${esc(label)}</span><div class="rbd"><div class="rt">${esc(role.title||role.id||"Role")}${modelMeta?`<small>${esc(modelMeta)}</small>`:""}</div>${role.detail?`<div class="rm">${esc(role.detail)}</div>`:""}${full&&role.mission?`<div class="rm">${esc(String(role.mission).slice(0,300))}</div>`:""}${output}${recoveryLog(role,"Role recovery")}${acts}</div></div>`;
+  }).join("");
+  const roleRows=planning?`<div class="rrow"><span class="rstat working">planning</span><div class="rbd"><div class="rt">The CEO is staffing the roles…</div><div class="rm">Reading the brain and selecting the roster, models, and effort.</div></div></div>`
+    :recovering&&!roles?`<div class="rrow"><span class="rstat ${esc(status)}">${esc(status)}</span><div class="rbd"><div class="rt">The recovery harness is working</div><div class="rm">The retry or safe repair is recorded here as it progresses.</div></div></div>`:roles;
+  const doneN=roleList.filter(role=>["done","skipped"].includes(String(role.status||"").toLowerCase())).length;
+  const resumable=!o.live&&(roleList.some(role=>CMD_RECOVERABLE.has(String(role.status||"").toLowerCase()))||CMD_RECOVERABLE.has(status));
+  const archive=`<button class="btn line sm" data-ceo-act="archive" data-cid="${esc(o.cid||"")}" data-role="" title="Archive this mission without deleting its files">Archive</button>`;
+  const controls=o.live?"":`<div style="display:flex;align-items:center;gap:11px;margin-top:10px;flex-wrap:wrap">${resumable?`<button class="btn solid sm" data-ceo-act="resume" data-cid="${esc(o.cid||"")}" data-role="">Continue</button>`:""}${archive}<span class="rm" style="margin:0;color:var(--ink3)">${resumable?`Retries only the ${Math.max(0,roleList.length-doneN)} unfinished role${roleList.length-doneN===1?"":"s"}.`:"Finished — archive when the record is no longer needed."}</span></div>`;
+  const quick=o.live?`<button type="button" class="mquickstop" data-ceo-act="stop" data-cid="${esc(o.cid||"")}" data-role="">Stop</button>`:"";
+  return`<details class="mrun" data-cid="${esc(o.cid||"")}" ${MOPEN.has(o.cid)?"open":""}><summary><span class="chev"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></span><span class="mname" title="${esc(o.goal||o.name||"Mission")}">${esc(o.name||o.goal||"Mission")}</span><span class="mbar">${segs}</span><span class="mmeta">${planning?"staffing…":`${doneN}/${roleList.length}`} · $${Number(o.cost||0).toFixed(2)}${o.resumes?` · resumed ${o.resumes}×`:""}${o.account?` · ${esc(o.account)}`:""}</span>${quick}${statPill}</summary><div class="mbody">${full&&pick(o.refined,o.goal)?`<div class="rm" style="padding:8px 0 4px;color:var(--ink2)">${esc(pick(o.refined,o.goal))}</div>`:""}${why}${roleRows||`<div class="none">Waiting for role details.</div>`}${recoveryLog(o)}${controls}</div></details>`;
 }
 function renderCeo(){
   const runs=S.ceo.slice(0,8);
@@ -1292,10 +1747,16 @@ document.addEventListener("toggle",e=>{const d=e.target.closest?.(".mrun");if(!d
 
 /* ---------- chat assistant ---------- */
 const CHAT={open:false,busy:false,history:[]};
-function chatToggle(v){CHAT.open=(v===undefined)?!CHAT.open:v;
+function chatToggle(v){const wasOpen=CHAT.open;CHAT.open=(v===undefined)?!CHAT.open:v;
   $("chatpanel").classList.toggle("open",CHAT.open);
   if(CHAT.open){$("chatinput").focus();
-    if(!CHAT.history.length)chatAdd("a","Hi — I'm your Rune assistant. Ask me about the software, the brain, or anything else.");}}
+    if(!CHAT.history.length&&!$("chatlog").children.length)chatAdd("a","Hi — I'm your Rune assistant. Ask me about the software, the brain, or anything else.");}
+  else if(wasOpen)$("chatfab").focus({preventScroll:true});}
+function chatClear(){
+  if(CHAT.busy){toast("Wait for the current reply before clearing chat.",true);return}
+  CHAT.history=[];$("chatlog").replaceChildren();
+  if(CHAT.open)chatAdd("a","Chat cleared. What should we work through next?");
+}
 function chatAdd(role,text,think){const log=$("chatlog");
   const d=document.createElement("div");d.className="msg "+role+(think?" think":"");
   d.innerHTML=`<span class="who">${role==="u"?"you":"rune"}</span>${esc(text)}`;
@@ -1317,23 +1778,65 @@ async function chatSend(){
 /* ---------- data ---------- */
 async function jget(p,opt){const r=await fetch(p,{cache:"no-store"});if(!r.ok){if(opt)return"";throw new Error(p)}return r.text()}
 const jsonl=t=>t.split("\n").filter(l=>l.trim()).map(l=>{try{return JSON.parse(l)}catch(e){return null}}).filter(Boolean);
-async function poll(){
+function syncBriefingJob(payload){
+  const job=payload&&payload.job&&typeof payload.job==="object"?payload.job:{};
+  const id=String(job.id||""),state=String(job.status||"idle").toLowerCase();
+  const changed=!!id&&id===BRIEF.lastJobId&&state!==BRIEF.lastJobState;
+  if(changed&&state==="done"){
+    BRIEF.error="";BRIEF.feedback=job.unchanged?"Briefing was already current — no new plan was generated.":"Briefing generation completed successfully.";
+  }else if(changed&&state==="error"){
+    BRIEF.error=clipText(job.error||"Briefing generation failed.",300);BRIEF.feedback="The latest attempt failed; the last successful plan is still shown.";
+  }
+  if(id){BRIEF.lastJobId=id;BRIEF.lastJobState=state}
+}
+function refreshBriefingData(options={}){
+  const force=!!options.force,now=Date.now();
+  if(BRIEF.fetchPromise)return BRIEF.fetchPromise;
+  if(!force&&BRIEF.nextFetchAt&&now<BRIEF.nextFetchAt)return Promise.resolve({ok:true,skipped:true});
+  const seq=++BRIEF.requestSeq;BRIEF.fetching=true;
+  BRIEF.fetchPromise=(async()=>{
+    try{
+      const raw=await jget("/api/briefing"),payload=JSON.parse(raw);
+      if(!payload||typeof payload!=="object"||Array.isArray(payload))throw new Error("invalid briefing response");
+      if(seq!==BRIEF.requestSeq)return{ok:false,stale:true};
+      syncBriefingJob(payload);S.briefing=payload;S.briefingLoaded=true;
+      BRIEF.fetchError="";BRIEF.lastCheckedAt=BRIEF.lastGoodCheckAt=Date.now();
+      const jobState=String((payload.job&&payload.job.status)||"").toLowerCase(),freshState=String((payload.freshness&&payload.freshness.state)||"").toLowerCase();
+      const live=["queued","running","generating","planning"].includes(jobState)||freshState==="generating";
+      BRIEF.nextFetchAt=Date.now()+(live?BRIEF_REFRESH_LIVE_MS:BRIEF_REFRESH_IDLE_MS);
+      return{ok:true,payload};
+    }catch(error){
+      if(seq===BRIEF.requestSeq){
+        S.briefingLoaded=true;BRIEF.fetchError=error&&error.message?error.message:"Could not reach the briefing service.";
+        BRIEF.lastCheckedAt=Date.now();BRIEF.nextFetchAt=Date.now()+BRIEF_REFRESH_RETRY_MS;
+      }
+      return{ok:false,error};
+    }finally{
+      if(seq===BRIEF.requestSeq){BRIEF.fetching=false;BRIEF.fetchPromise=null}
+    }
+  })();
+  return BRIEF.fetchPromise;
+}
+async function poll(options={}){
   if(S.paused){render();return}
   try{
-    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls,ceo,ver,brf]=await Promise.all([
+    const [ev,reg,sol,app,inb,obs,inst,integ,vlt,orc,shk,pls,ceo,ver,wfl]=await Promise.all([
       jget("/state/events.jsonl"),jget("/skills/registry.json"),jget("/hermes/solved.jsonl"),
       jget("/state/approvals.json"),jget("/state/inbox.jsonl",1),jget("/memory/OBSIDIAN.md",1),
       jget("/api/instances",1),jget("/api/integrations",1),jget("/api/vault",1),
       jget("/api/orchestrations",1),jget("/api/ssh-creds",1),jget("/api/pulse",1),
-      jget("/api/ceo",1),jget("/api/version",1),jget("/api/briefing",1)]);
+      jget("/api/ceo",1),jget("/api/version",1),jget("/api/workflows",1),
+      refreshBriefingData({force:!!options.forceBriefing})]);
     checkVersion(ver);            // self-modifying app: offer reload when the shell changes
     S.pulse=pls?JSON.parse(pls):{};
-    S.briefing=brf?JSON.parse(brf):null;
+    S.workflows=wfl?JSON.parse(wfl):null;
     S.events=jsonl(ev);S.skills=JSON.parse(reg);S.solved=jsonl(sol);
     S.approvals=JSON.parse(app);S.inbox=jsonl(inb);
     S.instances=(inst?JSON.parse(inst).windows:[])||[];S.integ=integ?JSON.parse(integ):null;
     S.orchs=orc?(JSON.parse(orc).orchestrations||[]):[];
-    S.ceo=ceo?(JSON.parse(ceo).runs||[]):[];
+    const ceoEnvelope=ceo?JSON.parse(ceo):{};
+    S.ceo=Array.isArray(ceoEnvelope.runs)?ceoEnvelope.runs:[];
+    S.ceoHistory=Array.isArray(ceoEnvelope.history)?ceoEnvelope.history:[];
     S.sshKeys=shk?(JSON.parse(shk).keys||[]):[];
     if(vlt){try{S.vaultData=JSON.parse(vlt)}catch(e){}}
     S.vault=(S.vaultData&&S.vaultData.vault)||(obs.split("\n").find(l=>l.toLowerCase().startsWith("vault:"))||"vault: ?").split(":").slice(1).join(":").trim();
@@ -1765,6 +2268,10 @@ $("sktree").addEventListener("click",e=>{
 /* ---------- render ---------- */
 function render(){
   renderBriefing();
+  renderCalendarOverview();
+  renderCalendar();
+  renderAutomationRadar();
+  renderCmdTray();
   const ss=sessions(),live=ss.filter(s=>s.live);
   const liveAgents=ss.reduce((n,s)=>n+Math.max(0,s.agents.length-s.exits),0);
   const reg=S.skills||{goal:"–",skills:{}},sk=Object.entries(reg.skills||{});
@@ -1782,6 +2289,8 @@ function render(){
   $("n-inst").textContent=aliveInst.length;$("n-skill").textContent=earned+"/"+sk.length;
   $("n-brain").textContent=S.solved.length;$("n-audit").textContent=S.events.length;
   $("n-int").textContent=S.integ?(S.integ.mcp.length+S.integ.agents.length):0;
+  {const upcoming=calendarUpcoming(calendarData());
+   $("n-cal").textContent=upcoming.length;}
   $("subline").textContent=`${live.length} live session${live.length===1?"":"s"} · ${liveAgents} agent${liveAgents===1?"":"s"} in the field · goal: ${reg.goal||"–"}`;
 
   // KPIs — day-scoped stats, first card dark (reference pattern)
@@ -1963,68 +2472,590 @@ $("topsearch").addEventListener("keydown",e=>{
   if(e.key==="Enter"){$("q").value=$("topsearch").value;location.hash="#/brain";renderHermes()}
 });
 
-/* ---------- daily briefing ------------------------------------------------
-   Where was I, and what continues? Every source is read from disk (git log,
-   the ceo/ run files, hermes notes, pulse's cached GitHub snapshot, a local
-   .ics) so this card is filled in the moment the client opens, offline. */
-function renderBriefing(){
-  const b=S.briefing;if(!$("briefingbody"))return;
-  if(!b){$("briefingbody").innerHTML=`<div class="none">briefing unavailable — server offline?</div>`;return}
-  $("brieftag").textContent=(b.window||"today")+" · offline";
-  const sec=(title,n,body)=>`<div style="margin-bottom:4px"><div class="s" style="margin-bottom:6px">${title}${n!==null?" — "+n:""}</div>${body}</div>`;
-  const row=(t,s)=>`<div class="lrow"><div class="bd"><div class="t">${t}</div><div class="s">${s}</div></div></div>`;
-  const none=t=>`<div class="none">${t}</div>`;
+/* ---------- daily briefing + calendar ---------------------------------
+   The API keeps evidence private. The dashboard only renders three decisions,
+   their plan, and the people/model settings needed to carry them out. */
+const pick=(...values)=>values.find(v=>v!==undefined&&v!==null&&String(v).trim()!=="")??"";
+const clipText=(value,max=240)=>{const text=String(value??"").replace(/\s+/g," ").trim();return text.length>max?text.slice(0,max-1).trimEnd()+"…":text};
+const list=value=>Array.isArray(value)?value:[];
+const safeToken=value=>String(value||"item").replace(/[^a-z0-9_-]+/gi,"-").replace(/^-+|-+$/g,"")||"item";
 
-  /* what stopped mid-flight, and why — the reason you open this card */
-  const cont=(b.continues||[]);
-  const contHtml=cont.length?cont.map(c=>row(
-    `${esc(c.name)} <span class="pill warn">${esc(c.status)}</span>`,
-    `${esc(c.why||"unfinished")} · ${c.roles.map(r=>esc(r.title)+" ("+esc(r.status)+")").join(", ")}
-     <button class="btn line sm" data-ceo-act="resume" data-cid="${c.cid}" data-role="" style="margin-left:6px">↻ Continue</button>`
-  )).join(""):none("nothing left hanging — you finished clean");
-
-  const commits=b.commits.length?b.commits.map(c=>
-    row(`<span class="mono">${esc(c.hash)}</span> ${esc(c.msg)}`, esc(rel(new Date(c.ts*1000).toISOString())))
-  ).join(""):none("no commits in this repo");
-
-  const gh=b.github||{};
-  const ghHtml=gh.error?none(esc(gh.error))
-    :(gh.commits||[]).length?gh.commits.map(c=>row(`<span class="mono">${esc(c.repo)}</span> ${esc(c.msg)}`,esc(rel(c.ts)))).join("")
-    :none("no commits pushed to your other repos");
-
-  const mem=(b.memory||[]);
-  const memHtml=mem.length?mem.slice(0,6).map(n=>row(esc(n.problem),
-    `<span class="mono">[${esc(n.id)}]</span> ${esc((n.solution||"").slice(0,110))}`)).join("")
-    :none("nothing new learned");
-
-  const cal=b.calendar||{};
-  const calHtml=cal.error?none(esc(cal.error))
-    :(cal.events||[]).length?cal.events.map(e=>row(esc(e.summary),
-       `${esc(e.date)} · ${esc(e.time)}${e.where?" · "+esc(e.where):""}`)).join("")
-    :none("nothing on the calendar");
-  const calTitle="Calendar"+(cal.source==="outlook"?" (Outlook"+(cal.stale?", cached":"")+")":cal.source==="ics"?" (.ics)":"");
-
-  const ses=(b.sessions||[]);
-  const sesHtml=ses.length?ses.slice(0,6).map(s=>row(
-    `${esc(s.name)} <span class="pill ${["failed","error","stalled","exhausted"].includes(s.status)?"warn":"idle"}">${esc(s.status)}</span>`,
-    `${s.cost?"$"+s.cost.toFixed(2)+" · ":""}${esc(s.detail||s.goal.slice(0,80))}`)).join("")
-    :none("no missions ran");
-
-  const pending=b.plans.filter(p=>!p.done);
-  const plans=pending.length?pending.map(p=>row(esc(p.text),`<span class="mono">[${esc(p.id)}]</span> ${esc(rel(p.ts))}`)).join("")
-    :none("no plans queued");
-
-  $("briefingbody").innerHTML=
-    sec("Pick back up",cont.length,contHtml)+
-    `<div class="grid cols-2">
-      <div>${sec("This repo",b.commit_count+" commit"+(b.commit_count===1?"":"s"),commits)}
-           ${sec("GitHub"+(gh.stale?" (cached)":""),gh.error?null:(gh.commits||[]).length,ghHtml)}
-           ${sec(calTitle,cal.error?null:(cal.events||[]).length,calHtml)}</div>
-      <div>${sec("Sessions",ses.length,sesHtml)}
-           ${sec("Memory",mem.length+" note"+(mem.length===1?"":"s"),memHtml)}
-           ${sec("Plans",pending.length+" pending",plans)}</div>
-    </div>`;
+function briefingEnvelope(){return S.briefing&&typeof S.briefing==="object"?S.briefing:{}}
+function briefingDocument(){const envelope=briefingEnvelope(),nested=envelope.briefing;return nested&&typeof nested==="object"?nested:envelope}
+const BRIEF_FRESH_STATES=new Set(["fresh","awaiting_schedule","generating","overdue","failed","failed_last_good","missing"]);
+function briefingExpectedSourceDate(){
+  const envelope=briefingEnvelope(),doc=briefingDocument(),fresh=envelope.freshness||doc.freshness||{},date=new Date();date.setDate(date.getDate()-1);
+  return String(pick(fresh.expected_source_date,dayKey(date)));
 }
+function briefingHasCurrentPrimary(){
+  const doc=briefingDocument();
+  return String(doc.source_date||"")===briefingExpectedSourceDate()&&list(doc.batches).some(batch=>String(batch.kind||"primary")==="primary");
+}
+function briefingLocalDue(scheduleAt,dayOffset=0){
+  const match=String(scheduleAt||"09:30").match(/^(\d{1,2}):(\d{2})/),date=new Date();
+  date.setHours(match?Math.min(23,+match[1]):9,match?Math.min(59,+match[2]):30,0,0);date.setDate(date.getDate()+dayOffset);return date;
+}
+function briefingFreshness(){
+  const envelope=briefingEnvelope(),doc=briefingDocument(),raw=(envelope.freshness&&typeof envelope.freshness==="object"?envelope.freshness:
+    doc.freshness&&typeof doc.freshness==="object"?doc.freshness:{}),job=envelope.job&&typeof envelope.job==="object"?envelope.job:{};
+  const expected=String(pick(raw.expected_source_date,briefingExpectedSourceDate())),actual=String(pick(raw.actual_source_date,doc.source_date,""));
+  const scheduleAt=String(pick(raw.schedule_at,"09:30")),fallbackDue=briefingLocalDue(scheduleAt),now=Date.now();
+  const dueAt=String(pick(raw.due_at,fallbackDue.toISOString()));
+  let fallbackNext=briefingLocalDue(scheduleAt);if(fallbackNext.getTime()<=now)fallbackNext.setDate(fallbackNext.getDate()+1);
+  const nextDueAt=String(pick(raw.next_due_at,fallbackNext.toISOString()));
+  const jobState=String(pick(job.status,"idle")).toLowerCase(),hasPlan=list(doc.batches).length>0;
+  let state=String(raw.state||"").toLowerCase();
+  if(["queued","running","generating","planning"].includes(jobState))state="generating";
+  else if(jobState==="error")state=hasPlan?"failed_last_good":"failed";
+  else if(!BRIEF_FRESH_STATES.has(state)){
+    const dueMs=Date.parse(dueAt);
+    state=!hasPlan?"missing":actual&&actual===expected?"fresh":Number.isFinite(dueMs)&&now<=dueMs+20*60*1000?"awaiting_schedule":"overdue";
+  }
+  const underlyingState=state;if(BRIEF.fetchError)state="offline";
+  const lastSuccessAt=String(pick(raw.last_success_at,doc.generated_at,list(doc.batches).at(-1)?.generated_at,""));
+  const liveJob=jobState!=="idle"&&jobState!=="";
+  const lastAttemptAt=String(pick(liveJob?pick(job.finished_at,job.started_at,job.requested_at):"",raw.last_attempt_at,""));
+  const lastAttemptStatus=String(pick(liveJob?jobState:"",raw.last_attempt_status,lastSuccessAt?"success":"")).toLowerCase();
+  const retryAt=String(pick(raw.retry_at,""));
+  return{state,underlyingState,expected,actual,dueAt,nextDueAt,scheduleAt,timezone:String(raw.timezone||doc.source_window?.timezone||"local time"),
+    autoCatchup:!!raw.auto_catchup,lastSuccessAt,lastAttemptAt,lastAttemptStatus,lastAttemptError:String(pick(raw.last_attempt_error,raw.last_error,job.error,"")),retryAt,hasPlan,
+    displayDueAt:["failed","failed_last_good"].includes(underlyingState)?retryAt||nextDueAt:["awaiting_schedule","overdue","generating"].includes(underlyingState)?dueAt:nextDueAt};
+}
+function briefingDayLabel(value,expected){
+  if(!value)return"No saved plan";const date=new Date(value+"T12:00:00");if(Number.isNaN(date.getTime()))return value;
+  const label=new Intl.DateTimeFormat(undefined,{weekday:"short",day:"numeric",month:"short"}).format(date);
+  return value===expected?`Yesterday · ${label}`:label;
+}
+function briefingMoment(value){
+  const date=new Date(value);if(!value||Number.isNaN(date.getTime()))return"Not reported";
+  const today=dayKey(new Date()),tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+  const prefix=dayKey(date)===today?"Today":dayKey(date)===dayKey(tomorrow)?"Tomorrow":new Intl.DateTimeFormat(undefined,{day:"numeric",month:"short"}).format(date);
+  return`${prefix} · ${new Intl.DateTimeFormat(undefined,{hour:"2-digit",minute:"2-digit"}).format(date)}`;
+}
+function briefingCountdown(value,state){
+  const due=Date.parse(value);if(!Number.isFinite(due))return"Schedule not reported";const diff=due-Date.now(),abs=Math.abs(diff);
+  if(abs<60000)return"due now";const amount=abs<3600000?`${Math.ceil(abs/60000)}m`:abs<86400000?`${Math.ceil(abs/3600000)}h`:`${Math.ceil(abs/86400000)}d`;
+  return diff>0?`in ${amount}`:["overdue","failed","failed_last_good"].includes(state)?`${amount} overdue`:`${amount} ago`;
+}
+function briefingAttemptView(meta){
+  const status=meta.lastAttemptStatus,label=["queued","running","generating","planning"].includes(status)?"Running":
+    ["error","failed"].includes(status)?"Failed":["done","completed","success","succeeded"].includes(status)?"Succeeded":status?status.replaceAll("_"," "):"No attempt yet";
+  const at=meta.lastAttemptAt||meta.lastSuccessAt,main=at?`${label} · ${briefingMoment(at)}`:label;
+  const sub=["error","failed"].includes(status)&&meta.lastSuccessAt?`Last success · ${briefingMoment(meta.lastSuccessAt)}`:
+    meta.lastAttemptError?clipText(meta.lastAttemptError,100):meta.lastSuccessAt?`Last success · ${briefingMoment(meta.lastSuccessAt)}`:"No successful briefing yet";
+  return{main,sub};
+}
+function briefingHealthCopy(meta,count){
+  const plan=briefingDayLabel(meta.actual,meta.expected),countText=`${count} priorit${count===1?"y":"ies"}`;
+  if(meta.state==="offline")return{tone:"offline",status:`Live status unavailable · showing ${plan}`,tag:`${meta.scheduleAt} daily · status offline`};
+  if(meta.state==="generating")return{tone:"wait",status:"Brainstorming three focused changes…",tag:`${meta.scheduleAt} daily · refreshing now`};
+  if(meta.state==="fresh")return{tone:"good",status:`Fresh · covers yesterday · ${countText}`,tag:`Next · ${briefingMoment(meta.nextDueAt)}`};
+  if(meta.state==="awaiting_schedule")return{tone:"wait",status:`Awaiting scheduled refresh · showing ${plan} until then`,tag:`Due · ${briefingMoment(meta.dueAt)}`};
+  if(meta.state==="overdue")return{tone:"warn",status:`Refresh overdue · showing ${plan}`,tag:`${meta.scheduleAt} refresh overdue`};
+  if(meta.state==="failed_last_good")return{tone:"bad",status:`Latest attempt failed · showing last good ${plan}`,tag:`Retry · ${briefingMoment(meta.retryAt||meta.nextDueAt)}`};
+  if(meta.state==="failed")return{tone:"bad",status:"Latest attempt failed · no saved briefing yet",tag:`Retry · ${briefingMoment(meta.retryAt||meta.nextDueAt)}`};
+  return{tone:"warn",status:"No briefing generated yet",tag:`Next · ${briefingMoment(meta.displayDueAt)}`};
+}
+
+function normalizeAgent(raw,index,task){
+  raw=raw&&typeof raw==="object"?raw:{};
+  const role=clipText(pick(raw.role,raw.title,raw.name,`Agent ${index+1}`),60);
+  const id=String(pick(raw.id,raw.agent_id,raw.role_id,safeToken(role)+"-"+(index+1)));
+  const key=task.key+"|"+id,override=BRIEF.overrides.get(key)||{};
+  return{
+    id,key,role,icon:String(pick(raw.icon,raw.kind,role)),
+    description:clipText(pick(raw.mission,raw.description,raw.task,raw.what,"Own this part of the plan."),280),
+    deliverable:clipText(pick(raw.deliverable,raw.output,raw.definition_of_done,"A reviewable result."),180),
+    model:String(pick(override.model,raw.model,"fable")).toLowerCase(),
+    effort:String(pick(override.effort,raw.effort,"high")).toLowerCase(),
+    status:String(pick(raw.status,"planned")).toLowerCase()
+  };
+}
+
+function normalizePriority(raw,index,batch={}){
+  raw=raw&&typeof raw==="object"?raw:{};
+  const repoRaw=pick(raw.repo,raw.repository,raw.project,raw.repo_name,raw.repo_id,"Repository");
+  const repo=typeof repoRaw==="object"?pick(repoRaw.name,repoRaw.id,repoRaw.path,"Repository"):repoRaw;
+  const id=String(pick(raw.id,raw.priority_id,raw.task_id,`priority-${index+1}`));
+  const batchId=String(pick(batch.id,raw.batch_id,"legacy"));
+  const key=batchId+"|"+id;
+  const planRaw=pick(raw.ceo_plan,raw.plan,raw.ceo,{})||{};
+  const plan=typeof planRaw==="object"?planRaw:{};
+  const rawSteps=list(pick(plan.steps,plan.actions,raw.steps,raw.actions,[]));
+  const steps=rawSteps.map(step=>clipText(typeof step==="object"?pick(step.title,step.text,step.action,step.description):step,220)).filter(Boolean);
+  const task={
+    id,key,batchId,batchKind:String(pick(batch.kind,raw.batch_kind,"primary")),
+    rank:Number.isFinite(+raw.rank)?+raw.rank:index+1,
+    repo:clipText(repo,90),
+    title:clipText(pick(raw.title,raw.task,raw.goal,raw.change,"Untitled priority"),110),
+    why:clipText(pick(raw.reason,raw.why,raw.why_now,raw.rationale,raw.impact,"This is the highest-leverage next move."),260),
+    outcome:clipText(pick(raw.outcome,raw.expected_outcome,raw.result,"A concrete, verified improvement."),220),
+    firstMove:clipText(pick(raw.first_move,raw.next_action,raw.first_step,raw.action,"Confirm scope and start with a failing check."),220),
+    status:String(pick(raw.status,"planned")).toLowerCase(),
+    planSummary:clipText(pick(plan.summary,plan.description,raw.plan_summary,"The CEO has split this outcome into checkable work."),260),
+    steps,
+    done:clipText(pick(plan.definition_of_done,plan.done,raw.definition_of_done,raw.done,"The outcome is verified and reviewable."),260),
+    execution:raw.execution&&typeof raw.execution==="object"?raw.execution:null
+  };
+  const agents=list(pick(raw.agents,raw.roles,plan.agents,plan.roles,raw.delegation,[]));
+  task.agents=agents.map((agent,agentIndex)=>normalizeAgent(agent,agentIndex,task));
+  return task;
+}
+
+function briefingPriorities(){
+  const doc=briefingDocument(),envelope=briefingEnvelope(),batches=list(doc.batches);
+  const flat=[];
+  if(batches.length){batches.forEach(batch=>list(pick(batch.priorities,batch.tasks,[])).forEach(raw=>flat.push({raw,batch})));}
+  else list(pick(doc.priorities,doc.tasks,envelope.priorities,envelope.tasks,[])).forEach(raw=>flat.push({raw,batch:{id:pick(raw.batch_id,"legacy"),kind:"primary"}}));
+  return flat.map((entry,index)=>{
+    const task=normalizePriority(entry.raw,index,entry.batch);
+    task.rank=index+1;task.sourceDate=String(doc.source_date||"");
+    return task;
+  });
+}
+
+const BRIEF_DONE=new Set(["done","completed","success","succeeded","skipped"]);
+function briefingRunSource(run){
+  if(!run||typeof run!=="object")return{};
+  const source=run.source||(run.opts&&run.opts.source);
+  return source&&typeof source==="object"?source:{};
+}
+function briefingLinkedRun(task){
+  return S.ceo.find(run=>{
+    const source=briefingRunSource(run),kind=String(source.kind||"").toLowerCase();
+    return ["daily_briefing","daily-briefing","briefing"].includes(kind)
+      &&String(pick(source.batch_id,source.batchId,""))===task.batchId
+      &&String(pick(source.priority_id,source.priorityId,""))===task.id
+      &&(!source.source_date||!task.sourceDate||String(source.source_date)===task.sourceDate);
+  })||null;
+}
+function briefingTaskSaving(task){return task.agents.some(agent=>BRIEF.saving.has(agent.key))}
+function briefingRunView(task){
+  const local=BRIEF.runs.get(task.key)||{},linked=briefingLinkedRun(task);
+  const run=linked||local.run||null,cid=String(pick(run&&run.cid,local.cid,task.execution&&task.execution.cid,""));
+  const status=String(pick(run&&run.status,local.status,task.execution&&task.execution.status,"")).toLowerCase();
+  const permissionMode=String(pick(run&&run.permission_mode,run&&run.execution&&run.execution.permission_mode,local.permissionMode,task.execution&&task.execution.permission_mode,"safe")).toLowerCase();
+  const skippedPermissions=permissionMode==="skip";
+  const saving=briefingTaskSaving(task);
+  if(local.state==="launching")return{action:"wait",label:"Starting\u2026",state:"Starting",tone:"live",disabled:true,cid,run,
+    headline:skippedPermissions?"Starting headless plan execution":"Handing the saved plan to the CEO",hint:skippedPermissions?"Permission prompts are skipped; saved models auto-route to Claude or Codex for this run.":"Resolving the target repository and starting the mission harness.",error:""};
+  if(run||cid){
+    if(["waiting_permission","waiting-permission","review"].includes(status))return{action:"open",label:"Review permission",state:"Needs you",tone:"warn",disabled:false,cid,run,
+      headline:"The mission is waiting for you",hint:"Open Mission Activity to approve, revise, stop, or continue the work.",error:""};
+    if(CMD_RECOVERABLE.has(status))return{action:"open",label:"Open recovery",state:status||"Needs recovery",tone:"bad",disabled:false,cid,run,
+      headline:"The harness caught an interruption",hint:"Open Mission Activity to inspect the feedback loop and continue safely.",error:""};
+    if(BRIEF_DONE.has(status))return{action:"rerun",label:"Run again",state:"Completed",tone:"good",disabled:saving,cid,run,
+      headline:"This plan has a completed attempt",hint:saving?"Wait for the agent settings to finish saving.":"Open the finished mission from Activity, or run a fresh attempt.",error:""};
+    return{action:"open",label:"Open activity",state:status||"Running",tone:"live",disabled:false,cid,run,
+      headline:"The CEO mission is in progress",hint:skippedPermissions?"Headless run: prompts skipped; saved models auto-routed to Claude or Codex.":"Track agents, stop the process, or respond to permission requests in Mission Activity.",error:""};
+  }
+  if(local.state==="error")return{action:"launch",label:"Retry launch",state:"Launch failed",tone:"bad",disabled:saving,cid:"",run:null,
+    headline:"The plan did not start",hint:saving?"Wait for the agent settings to finish saving.":"Nothing is running. Retry when you are ready.",error:clipText(local.error,240)};
+  return{action:"launch",label:"Run this plan",state:"Ready",tone:"",disabled:saving,cid:"",run:null,
+    headline:"Apply this CEO plan",hint:saving?"Wait for the agent settings to finish saving.":"Runs local work through the mission harness; protected or outward actions still pause for you.",error:""};
+}
+function trackBriefingMission(task,run){
+  const cid=String(run&&pick(run.cid,run.id,""));if(!cid)return;
+  let item=CMD.items.find(entry=>String(entry.cid)===cid);
+  if(!item){item={id:`brief-${safeToken(task.key)}-${cid}`,text:task.title,status:"planning",reply:"The CEO is staffing the saved briefing plan\u2026",meta:"",cid,route:"delegate"};CMD.items.push(item)}
+  const status=String(pick(run.status,item.status,"planning")).toLowerCase();
+  const permissionMode=String(pick(run.permission_mode,run.permissionMode,run.execution&&run.execution.permission_mode,run.opts&&run.opts.permission_mode,"safe")).toLowerCase();
+  item.text=task.title;item.cid=cid;item.status=status;item.route=pick(run.route,item.route,"delegate");
+  item.reply=BRIEF_DONE.has(status)?"Daily briefing plan completed.":CMD_RECOVERABLE.has(status)?"The run stopped with recovery details available.":
+    ["waiting_permission","waiting-permission","review"].includes(status)?"The mission needs an operator decision.":"Executing the saved Daily Briefing priority through the CEO harness.";
+  item.meta=`Daily briefing \u00b7 ${task.repo}${permissionMode==="skip"?" \u00b7 headless \u00b7 prompts skipped \u00b7 Claude/Codex auto-route":""}`;CMD.collapsed=false;renderCmdTray();
+}
+function openBriefingMission(task,view){
+  const run=view.run||{cid:view.cid,status:view.state,route:"delegate"};trackBriefingMission(task,run);
+  location.hash="#/instances";
+}
+async function runBriefingPriority(task,permissionMode="safe"){
+  permissionMode=permissionMode==="skip"?"skip":"safe";
+  const view=briefingRunView(task);
+  if(view.action==="wait"||view.disabled)return;
+  if(view.action==="open"){openBriefingMission(task,view);return}
+  const rerun=view.action==="rerun";
+  if(permissionMode==="skip"){
+    if(!confirm("Run this plan headlessly without permission prompts? Rune will auto-route each saved model to Claude (--dangerously-skip-permissions) or Codex (--yolo). This applies only to this run."))return;
+  }else if(rerun&&!confirm("Run this completed Daily Briefing plan again as a new mission?"))return;
+  BRIEF.runs.set(task.key,{state:"launching",status:"starting",cid:"",error:"",permissionMode});
+  $("briefingbody").dataset.sig="";renderBriefing();
+  try{
+    const result=await post("/api/briefing/run",{batch_id:task.batchId,priority_id:task.id,rerun,permission_mode:permissionMode});
+    const cid=String(pick(result.cid,result.id,""));
+    const actualMode=String(pick(result.permission_mode,result.execution&&result.execution.permission_mode,result.reused?"safe":permissionMode)).toLowerCase()==="skip"?"skip":"safe";
+    const trackedRun={...result,permission_mode:actualMode};
+    BRIEF.runs.set(task.key,{state:"launched",status:String(pick(result.status,"planning")).toLowerCase(),cid,error:"",permissionMode:actualMode,run:trackedRun});
+    trackBriefingMission(task,trackedRun);
+    toast(result.reused?"This plan already has a mission \u2014 linked its existing activity.":actualMode==="skip"?"Plan started headlessly \u2014 permission prompts skipped; saved Claude/Codex models auto-routed.":"Daily Briefing plan started in Mission Activity.");
+    poll();
+  }catch(error){
+    BRIEF.runs.set(task.key,{state:"error",status:"failed",cid:"",error:error.message||"Mission launch failed.",permissionMode});
+    toast("Plan could not start: "+(error.message||"unknown error"),true);
+  }finally{$("briefingbody").dataset.sig="";renderBriefing()}
+}
+
+function modelOptions(selected){
+  const options=[["fable","Fable 5"],["gpt-5.6-sol","GPT-5.6 Sol"],["opus","Opus"],["sonnet","Sonnet"],["haiku","Haiku"]];
+  return options.map(([value,label])=>`<option value="${value}"${selected===value?" selected":""}>${label}</option>`).join("");
+}
+function effortOptions(selected){
+  const options=[["low","Low"],["medium","Medium"],["high","High"],["xhigh","X-high"],["max","Max"]];
+  return options.map(([value,label])=>`<option value="${value}"${selected===value?" selected":""}>${label}</option>`).join("");
+}
+function roleIcon(role,hint){
+  const type=(String(hint||"")+" "+String(role||"")).toLowerCase();
+  let paths;
+  if(/search|research|analyst|discover/.test(type))paths='<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/>';
+  else if(/shield|security|risk|guard/.test(type))paths='<path d="M12 3 4.5 6v5.5c0 4.5 3 7.5 7.5 9.5 4.5-2 7.5-5 7.5-9.5V6L12 3Z"/><path d="m9 12 2 2 4-5"/>';
+  else if(/check|review|test|qa|verify/.test(type))paths='<path d="M9 11 12 14 20 6"/><path d="M20 12a8 8 0 1 1-4.5-7.2"/>';
+  else if(/design|visual|ux|ui/.test(type))paths='<path d="m14 4 6 6L10 20H4v-6L14 4Z"/><path d="m12 6 6 6M4 20l5-2"/>';
+  else if(/data|database/.test(type))paths='<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>';
+  else if(/ship|deploy|ops|release/.test(type))paths='<path d="M12 3c4 2 6 5 6 9l-6 4-6-4c0-4 2-7 6-9Z"/><circle cx="12" cy="10" r="2"/><path d="m8 15-2 5 6-2 6 2-2-5"/>';
+  else if(/docs|writer|document/.test(type))paths='<path d="M6 3h8l4 4v14H6Z"/><path d="M14 3v5h5M9 12h6M9 16h6"/>';
+  else if(/brain|strategy|plan|lead|ceo/.test(type))paths='<path d="M9 5a3 3 0 0 0-5 2v2a3 3 0 0 0 0 6v1a3 3 0 0 0 5 2M15 5a3 3 0 0 1 5 2v2a3 3 0 0 1 0 6v1a3 3 0 0 1-5 2M9 5v14M15 5v14M9 9h2M13 15h2"/>';
+  else paths='<path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14"/>';
+  return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
+}
+
+function agentCard(agent,task){
+  const statusClass=safeToken(agent.status),saving=BRIEF.saving.has(agent.key);
+  return `<article class="agent-card${saving?" saving":""}" data-agent-card="${esc(agent.key)}">
+    <div class="agent-head"><span class="agent-icon">${roleIcon(agent.role,agent.icon)}</span>
+      <div><div class="agent-role" title="${esc(agent.role)}">${esc(agent.role)}</div></div>
+      <span class="agent-status ${statusClass}">${esc(agent.status)}</span></div>
+    <p class="agent-desc">${esc(agent.description)}</p>
+    <p class="agent-deliverable"><b>Deliverable:</b> ${esc(agent.deliverable)}</p>
+    <div class="agent-controls">
+      <label class="agent-field"><span>Model</span><select aria-label="Model for ${esc(agent.role)}" data-agent-field="model" data-task-key="${esc(task.key)}" data-agent-key="${esc(agent.key)}" data-batch-id="${esc(task.batchId)}" data-priority-id="${esc(task.id)}" data-agent-id="${esc(agent.id)}" data-saved-value="${esc(agent.model)}"${saving?" disabled":""}>${modelOptions(agent.model)}</select></label>
+      <label class="agent-field"><span>Effort</span><select aria-label="Effort for ${esc(agent.role)}" data-agent-field="effort" data-task-key="${esc(task.key)}" data-agent-key="${esc(agent.key)}" data-batch-id="${esc(task.batchId)}" data-priority-id="${esc(task.id)}" data-agent-id="${esc(agent.id)}" data-saved-value="${esc(agent.effort)}"${saving?" disabled":""}>${effortOptions(agent.effort)}</select></label>
+    </div></article>`;
+}
+
+function priorityCard(task,index){
+  const open=BRIEF.open.has(task.key),detailId=`brief-detail-${safeToken(task.key)}-${index}`;
+  const steps=task.steps.length?`<ol class="plan-steps">${task.steps.map(step=>`<li>${esc(step)}</li>`).join("")}</ol>`:"";
+  const agents=task.agents.length?`<div class="agent-grid">${task.agents.map(agent=>agentCard(agent,task)).join("")}</div>`:
+    '<div class="brief-notice">Agent delegation will appear with the next generated plan.</div>';
+  const run=briefingRunView(task),runError=run.error?`<div class="plan-run-error" role="alert">${esc(run.error)}</div>`:"";
+  const canLaunch=run.action==="launch"||run.action==="rerun";
+  const skipButton=canLaunch?`<button class="btn line danger plan-run-skip" type="button" data-brief-run="${esc(task.key)}" data-brief-action="${esc(run.action)}" data-brief-permission-mode="skip"${run.disabled?" disabled":""}>Run \u00b7 skip permissions</button>`:"";
+  const runbar=`<div class="plan-runbar" data-tone="${esc(run.tone)}" aria-live="polite">
+    <div class="plan-run-copy"><span class="plan-run-state">${esc(run.state)}</span><b>${esc(run.headline)}</b><span>${esc(run.hint)}</span></div>
+    <div class="plan-run-actions"><button class="btn solid plan-run-button" type="button" data-brief-run="${esc(task.key)}" data-brief-action="${esc(run.action)}" data-brief-permission-mode="safe"${run.disabled?" disabled":""}>
+      <span>${esc(run.label)}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>${skipButton}</div></div>${runError}`;
+  return `<article class="priority-card${open?" expanded":""}">
+    <div class="priority-main">
+      <div class="priority-top"><span class="priority-rank">${task.rank}</span><span class="repo-pill" title="${esc(task.repo)}">${esc(task.repo)}</span><span class="priority-state">${esc(task.status)}</span></div>
+      <h4 class="priority-title">${esc(task.title)}</h4><p class="priority-why">${esc(task.why)}</p>
+      <div class="priority-fact"><b>Outcome</b><span>${esc(task.outcome)}</span></div>
+      <div class="priority-fact"><b>First move</b><span>${esc(task.firstMove)}</span></div>
+      <button class="priority-toggle" type="button" data-brief-toggle="${esc(task.key)}" aria-expanded="${open}" aria-controls="${detailId}">
+        <span>${open?"View less":"View more"}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="priority-detail" id="${detailId}"${open?"":" hidden"}>
+      <div class="ceo-plan"><h4>CEO plan</h4><p class="plan-summary">${esc(task.planSummary)}</p>${steps}
+        <div class="done-box"><b>Definition of done</b>${esc(task.done)}</div>${agents}${runbar}</div>
+    </div></article>`;
+}
+
+function renderBriefing(){
+  const body=$("briefingbody");if(!body)return;
+  const envelope=briefingEnvelope(),doc=briefingDocument(),tasks=briefingPriorities(),job=envelope.job||doc.job||{};
+  const jobState=String(pick(job.status,doc.status,"idle")).toLowerCase();
+  const freshness=briefingFreshness(),health=briefingHealthCopy(freshness,tasks.length);
+  const generating=BRIEF.busy||freshness.underlyingState==="generating"||["queued","running","generating","planning"].includes(jobState);
+  const apiError=clipText(pick(BRIEF.error,jobState==="error"?job.error:"",envelope.error,doc.error),300);
+  const settings=envelope.settings||doc.settings||doc.generator||{};
+  if(!$("brief-model").dataset.seeded){
+    if(["fable","gpt-5.6-sol"].includes(settings.model))$("brief-model").value=settings.model;
+    if(["low","medium","high","xhigh","max"].includes(settings.effort))$("brief-effort").value=settings.effort;
+    $("brief-model").dataset.seeded=$("brief-effort").dataset.seeded="1";
+  }
+  const tag=$("brieftag"),status=$("briefstatus"),healthBar=$("briefhealth"),attempt=briefingAttemptView(freshness);
+  tag.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/></svg>${esc(health.tag)}`;tag.dataset.tone=health.tone;
+  status.textContent=health.status;status.dataset.tone=health.tone;status.title=freshness.lastAttemptError||health.status;
+  healthBar.dataset.tone=health.tone;healthBar.setAttribute("aria-busy",String(BRIEF.fetching));
+  $("briefday").textContent=briefingDayLabel(freshness.actual,freshness.expected);
+  $("briefdaysub").textContent=freshness.actual?`${freshness.autoCatchup?"Catch-up on · ":"Evidence · "}${freshness.timezone}`:`Expected ${briefingDayLabel(freshness.expected,freshness.expected)}`;
+  $("briefattempt").textContent=attempt.main;$("briefattempt").title=freshness.lastAttemptError||attempt.main;
+  $("briefattemptsub").textContent=attempt.sub;$("briefattemptsub").title=freshness.lastAttemptError||attempt.sub;
+  $("briefnext").textContent=briefingMoment(freshness.displayDueAt);
+  const countdown=$("briefcountdown");countdown.dataset.briefDue=freshness.displayDueAt||"";countdown.dataset.briefState=freshness.underlyingState;countdown.textContent=briefingCountdown(freshness.displayDueAt,freshness.underlyingState);
+  const check=$("brief-check");check.disabled=BRIEF.fetching;check.classList.toggle("checking",BRIEF.fetching);check.querySelector("span").textContent=BRIEF.fetching?"Checking…":"Check now";
+  const generate=$("brief-generate"),label=generate.querySelector("span:last-child"),hasCurrent=briefingHasCurrentPrimary();
+  generate.disabled=generating;generate.classList.toggle("busy",generating);
+  label.textContent=generating?"Generating…":hasCurrent?"Generate 3 more":"Generate briefing";
+  $("briefspend").textContent=generating?"Model run in progress":hasCurrent?"Adds 3 priorities · model run":"Creates a saved plan · model run";
+  generate.title=hasCurrent?"Spend a model run to brainstorm three additional priorities":"Spend a model run to generate the saved briefing plan";
+  body.setAttribute("aria-busy",String(generating));
+  const healthError=freshness.state==="offline"?`Live check failed: ${BRIEF.fetchError}. ${BRIEF.lastGoodCheckAt?`Last connected ${rel(new Date(BRIEF.lastGoodCheckAt).toISOString())}.`:"The saved plan remains visible."}`:
+    ["failed","failed_last_good"].includes(freshness.state)&&freshness.lastAttemptError?`Latest attempt failed: ${clipText(freshness.lastAttemptError,240)}`:"";
+  $("brieffeedback").textContent=BRIEF.feedback||healthError;
+  $("brieffeedback").classList.toggle("error",!!apiError||!!healthError);
+
+  let html;
+  if(!S.briefingLoaded&&!S.briefing)html='<div class="brief-notice"><b>Loading your briefing</b>Reading the latest plan from disk.</div>';
+  else if(freshness.state==="offline"&&!tasks.length)html='<div class="brief-notice error"><b>Briefing status is offline</b>The live check failed. Check again without starting a model run.</div>';
+  else if(freshness.underlyingState==="failed"&&!tasks.length)html=`<div class="brief-notice error"><b>The first briefing attempt failed</b>${esc(freshness.lastAttemptError||"Automatic retry is scheduled.")}</div>`;
+  else if(apiError&&!tasks.length)html=`<div class="brief-notice error"><b>Briefing needs attention</b>${esc(apiError)}</div>`;
+  else if(!tasks.length)html='<div class="brief-notice"><b>No priorities yet</b>Generate the first three changes from yesterday’s work. Nothing runs automatically.</div>';
+  else html=`<div class="priority-grid">${tasks.map(priorityCard).join("")}</div>`;
+
+  const signature=JSON.stringify({html,open:[...BRIEF.open],saving:[...BRIEF.saving],runs:[...BRIEF.runs]});
+  if(body.dataset.sig===signature)return;
+  const active=document.activeElement,focus=active&&body.contains(active)&&active.matches("[data-agent-field]")?
+    {agent:active.dataset.agentKey,field:active.dataset.agentField}:null;
+  body.innerHTML=html;body.dataset.sig=signature;
+  if(focus)requestAnimationFrame(()=>{const target=[...body.querySelectorAll("[data-agent-field]")].find(node=>node.dataset.agentKey===focus.agent&&node.dataset.agentField===focus.field);if(target)target.focus()});
+}
+
+function normalizeCalendarEvent(raw){
+  raw=raw&&typeof raw==="object"?raw:{};
+  const start=raw.start&&typeof raw.start==="object"?pick(raw.start.dateTime,raw.start.date):raw.start;
+  const end=raw.end&&typeof raw.end==="object"?pick(raw.end.dateTime,raw.end.date):raw.end;
+  const allDay=!!pick(raw.is_all_day,raw.isAllDay,raw.all_day,false);
+  let date=String(pick(raw.start_date,raw.date,start&&String(start).slice(0,10),""));
+  let time=String(pick(raw.start_time,raw.time,start&&String(start).includes("T")?String(start).slice(11,16):"",allDay?"all-day":"all-day"));
+  if(allDay||time==="00:00"&&allDay)time="all-day";
+  const link=String(pick(raw.web_link,raw.webLink,raw.link,""));
+  return{id:String(pick(raw.id,raw.event_id,`${date}-${time}-${pick(raw.summary,raw.subject,raw.title,"event")}`)),date,time,
+    endDate:String(pick(raw.end_date,end&&String(end).slice(0,10),date)),endTime:String(pick(raw.end_time,end&&String(end).includes("T")?String(end).slice(11,16):"")),allDay,
+    summary:clipText(pick(raw.summary,raw.subject,raw.title,"Untitled event"),180),where:clipText(pick(raw.where,raw.location?.displayName,raw.location,""),160),webLink:/^https?:\/\//i.test(link)?link:""};
+}
+async function loadCalendarRange(force=false){
+  if(CAL.loading)return;const fresh=Date.now()-CAL.loadedAt<10*60*1000;
+  if(!force&&fresh&&CAL.rangeStart)return;
+  const start=new Date();start.setHours(0,0,0,0);start.setDate(start.getDate()-35);const end=new Date(start);end.setDate(end.getDate()+127);
+  CAL.loading=true;CAL.error="";renderCalendar();
+  try{
+    const response=await fetch(`/api/calendar?start=${encodeURIComponent(dayKey(start))}&days=127`,{cache:"no-store"});
+    if(!response.ok)throw new Error(`Calendar request failed (${response.status})`);
+    const payload=await response.json();CAL.remote=payload&&typeof payload==="object"?payload:{events:[]};CAL.loadedAt=Date.now();CAL.rangeStart=dayKey(start);CAL.rangeEnd=dayKey(end);
+  }catch(error){CAL.error=error.message||"Calendar sync failed."}
+  finally{CAL.loading=false;renderCalendarOverview();renderCalendar()}
+}
+function calendarData(){
+  if(CAL.remote&&Array.isArray(CAL.remote.events))return{events:CAL.remote.events.map(normalizeCalendarEvent),source:"outlook",stale:!!CAL.remote.stale,error:"",syncError:clipText(pick(CAL.remote.refresh_error,CAL.remote.sync_error,CAL.remote.error,CAL.error),220),asof:Number(CAL.remote.asof||0)};
+  const pulse=S.pulse&&typeof S.pulse==="object"?S.pulse:{},live=pulse.outlook&&typeof pulse.outlook==="object"?pulse.outlook:{};
+  const envelope=briefingEnvelope(),doc=briefingDocument(),fallback=pick(envelope.calendar,doc.calendar,{})||{};
+  const asof=Number(pick(live.asof,pulse.asof,0)),aged=asof>0&&Date.now()/1000-asof>3600;
+  if(Array.isArray(live.events))return{events:live.events.map(normalizeCalendarEvent),source:"outlook",stale:!!live.stale||aged||!!live.error||!!live.refresh_error||!!CAL.error,error:"",syncError:clipText(pick(CAL.error,live.refresh_error,live.error),220),asof};
+  if(Array.isArray(fallback.events))return{events:fallback.events.map(normalizeCalendarEvent),source:fallback.source||"outlook",stale:true,error:"",syncError:clipText(pick(CAL.error,live.refresh_error,live.error,fallback.error),220),asof:Number(fallback.asof||0)};
+  return{events:[],source:"outlook",stale:false,error:clipText(pick(CAL.error,live.refresh_error,live.error,fallback.error,S.briefingLoaded?"Microsoft Calendar is not connected":""),220),syncError:"",asof:0};
+}
+function calendarStamp(event){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(event.date))return Number.POSITIVE_INFINITY;
+  if(event.time==="all-day"||!/^\d{1,2}:\d{2}/.test(event.time))return new Date(event.date+"T00:00:00").getTime();
+  return new Date(event.date+"T"+event.time.slice(0,5)+":00").getTime();
+}
+function calendarUpcoming(cal){
+  const today=dayKey(new Date()),now=Date.now();
+  return list(cal&&cal.events).filter(event=>event.date>today||(event.date===today&&(event.time==="all-day"||calendarStamp(event)>=now-60000)))
+    .sort((a,b)=>calendarStamp(a)-calendarStamp(b));
+}
+function calendarLongDate(date){
+  const parsed=new Date(date+"T00:00:00");
+  return Number.isNaN(parsed.getTime())?date:parsed.toLocaleDateString(undefined,{weekday:"long",month:"short",day:"numeric"});
+}
+function renderCalendarOverview(){
+  const body=$("calendaroverview"),state=$("caloverviewstate");if(!body||!state)return;
+  const cal=calendarData(),upcoming=calendarUpcoming(cal),next=upcoming[0];
+  state.className="calstate"+(cal.error||cal.syncError?" error":cal.stale?" stale":"");
+  state.textContent=cal.error||cal.syncError?"sync error":cal.stale?"cached":"synced";
+  let main;
+  if(next){
+    const date=new Date(next.date+"T00:00:00"),month=Number.isNaN(date.getTime())?"NEXT":date.toLocaleDateString(undefined,{month:"short"}),day=Number.isNaN(date.getTime())?"—":date.getDate();
+    const when=next.time==="all-day"?"All day":next.time;
+    main=`<div class="calnext"><div class="caldate"><span>${esc(month)}</span><b>${esc(day)}</b></div><div class="calcopy"><div class="eyebrow">Next · ${esc(calendarLongDate(next.date))} · ${esc(when)}</div><div class="event-title">${esc(next.summary)}</div><div class="event-meta">${next.where?esc(next.where):"Microsoft Outlook"}</div>${cal.syncError?`<div class="cal-sync-error">${esc(cal.syncError)}</div>`:""}</div></div>`;
+  }else main=`<div class="calempty">${cal.error?esc(cal.error):"No upcoming Outlook events in the current window."}${cal.syncError?`<br>${esc(cal.syncError)}`:""}</div>`;
+  const count=`${upcoming.length} upcoming event${upcoming.length===1?"":"s"}`;
+  const html=`${main}<div class="cal-actions"><span class="calcount">${esc(count)}${cal.stale?" · last good sync":""}</span><button type="button" class="btn line sm" data-go="#/calendar">Open calendar</button></div>`;
+  const sig=JSON.stringify([html,state.className,state.textContent]);if(body.dataset.sig===sig)return;
+  body.innerHTML=html;body.dataset.sig=sig;
+}
+
+function renderCalendarLegacy(){
+  const body=$("calendarbody");if(!body)return;
+  const cal=calendarData(),events=list(cal.events).slice().sort((a,b)=>calendarStamp(a)-calendarStamp(b));
+  $("calsub").textContent=cal.error?cal.error:`Meetings and events from Microsoft Outlook${cal.stale?" · showing the last good sync":""}${cal.syncError?" · "+cal.syncError:""}.`;
+  let html;
+  if(!events.length)html=`<div class="none">${esc(cal.error||"Nothing on the calendar")}</div>`;
+  else{
+    const today=dayKey(new Date()),tomorrowDate=new Date();tomorrowDate.setDate(tomorrowDate.getDate()+1);const tomorrow=dayKey(tomorrowDate),groups=new Map();
+    events.forEach(event=>{if(!groups.has(event.date))groups.set(event.date,[]);groups.get(event.date).push(event)});
+    html=[...groups.keys()].sort().map(date=>{
+      const label=date===today?"Today":date===tomorrow?"Tomorrow":calendarLongDate(date);
+      const rows=groups.get(date).map(event=>`<div class="lrow"><div class="sq alt cal-time">${event.time==="all-day"?"—":esc(event.time)}</div><div class="bd"><div class="t">${esc(event.summary)}</div><div class="s">${event.where?esc(event.where):(event.time==="all-day"?"all day":"Microsoft Outlook")}</div></div></div>`).join("");
+      return `<section style="margin-bottom:16px"><h3 class="s" style="margin-bottom:4px;font-weight:650;color:var(--ink)">${esc(label)}</h3>${rows}</section>`;
+    }).join("");
+  }
+  const sig=JSON.stringify([html,cal.stale,cal.error,cal.syncError]);if(body.dataset.sig===sig)return;
+  body.innerHTML=html;body.dataset.sig=sig;
+}
+
+function calendarDate(key){const value=new Date(String(key)+"T00:00:00");return Number.isNaN(value.getTime())?new Date():value}
+function calendarAddDays(date,days){const value=new Date(date);value.setDate(value.getDate()+days);return value}
+function calendarWeekStart(date){const value=new Date(date),offset=(value.getDay()+6)%7;value.setDate(value.getDate()-offset);value.setHours(0,0,0,0);return value}
+function calendarTimeLabel(event){if(event.time==="all-day"||event.allDay)return"All day";return event.endTime?`${event.time}–${event.endTime}`:event.time}
+function calendarCoverage(start,end){return!!(CAL.rangeStart&&CAL.rangeEnd&&(dayKey(end)<CAL.rangeStart||dayKey(start)>CAL.rangeEnd))}
+function calendarSourceLink(event){return event.webLink?`<a class="cal-source" href="${esc(event.webLink)}" target="_blank" rel="noopener noreferrer">Open in Outlook</a>`:""}
+function calendarEventCard(event,selectable=false){
+  const tag=selectable?"button":"article",attrs=selectable?` type="button" data-cal-date="${esc(event.date)}"`:"";
+  return`<${tag} class="cal-event"${attrs}><span class="cal-event-time">${esc(calendarTimeLabel(event))}</span><span class="cal-event-title">${esc(event.summary)}</span>${event.where?`<span class="cal-event-place">${esc(event.where)}</span>`:""}</${tag}>`;
+}
+function calendarSide(events,coverage){
+  const side=$("calendarside"),selected=events.filter(event=>event.date===CAL.selected).sort((a,b)=>calendarStamp(a)-calendarStamp(b)),date=calendarDate(CAL.selected);
+  const rows=selected.map(event=>`${calendarEventCard(event)}${calendarSourceLink(event)}`).join("");
+  side.innerHTML=`<h3>${selected.length?`${selected.length} event${selected.length===1?"":"s"}`:"No events"}</h3><div class="cal-side-date">${esc(date.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric",year:"numeric"}))}</div>${coverage?`<div class="cal-coverage">This day is outside the synced ${esc(CAL.rangeStart)} to ${esc(CAL.rangeEnd)} window.</div>`:rows||'<div class="cal-empty" style="min-height:120px">No synced events for this day.</div>'}`;
+}
+function calendarMonth(events){
+  const monthStart=new Date(CAL.cursor.getFullYear(),CAL.cursor.getMonth(),1),gridStart=calendarWeekStart(monthStart),today=dayKey(new Date()),groups=new Map();
+  events.forEach(event=>{if(!groups.has(event.date))groups.set(event.date,[]);groups.get(event.date).push(event)});
+  const weekdays=Array.from({length:7},(_,index)=>calendarAddDays(gridStart,index).toLocaleDateString(undefined,{weekday:"short"}));
+  const days=Array.from({length:42},(_,index)=>{const date=calendarAddDays(gridStart,index),key=dayKey(date),items=(groups.get(key)||[]).sort((a,b)=>calendarStamp(a)-calendarStamp(b)),outside=date.getMonth()!==monthStart.getMonth();
+    const chips=items.slice(0,3).map(event=>`<span class="cal-chip ${event.time==="all-day"?"all-day":""}" title="${esc(calendarTimeLabel(event)+" · "+event.summary)}">${esc(event.time==="all-day"?event.summary:`${event.time} ${event.summary}`)}</span>`).join("");
+    return`<button type="button" class="cal-day${outside?" outside":""}${key===CAL.selected?" selected":""}${key===today?" today":""}" data-cal-date="${key}" aria-label="${esc(calendarLongDate(key))}, ${items.length} event${items.length===1?"":"s"}"><span class="cal-day-num">${date.getDate()}</span><span class="cal-day-events">${chips}${items.length>3?`<span class="cal-more">+${items.length-3} more</span>`:""}</span></button>`;
+  }).join("");
+  return`<div class="cal-weekdays" aria-hidden="true">${weekdays.map(day=>`<span>${esc(day)}</span>`).join("")}</div><div class="cal-month-grid">${days}</div>`;
+}
+function calendarWeek(events){
+  const start=calendarWeekStart(CAL.cursor),today=dayKey(new Date());
+  return`<div class="cal-week-grid">${Array.from({length:7},(_,index)=>{const date=calendarAddDays(start,index),key=dayKey(date),items=events.filter(event=>event.date===key).sort((a,b)=>calendarStamp(a)-calendarStamp(b));return`<section class="cal-week-day"><button type="button" class="cal-week-head ${key===today?"today":""}" data-cal-date="${key}">${esc(date.toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}))}</button><div class="cal-week-events">${items.map(event=>calendarEventCard(event,true)).join("")}</div></section>`}).join("")}</div>`;
+}
+function calendarDayView(events){
+  const date=calendarDate(CAL.selected),items=events.filter(event=>event.date===CAL.selected).sort((a,b)=>calendarStamp(a)-calendarStamp(b));
+  return`<div class="cal-day-view"><h2>${esc(date.toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"}))}</h2>${items.length?items.map(event=>`${calendarEventCard(event)}${calendarSourceLink(event)}`).join(""):'<div class="cal-empty">No synced events for this day.</div>'}</div>`;
+}
+function calendarAgenda(events){
+  const start=calendarDate(dayKey(CAL.cursor)),end=calendarAddDays(start,29),groups=new Map();
+  events.filter(event=>event.date>=dayKey(start)&&event.date<=dayKey(end)).sort((a,b)=>calendarStamp(a)-calendarStamp(b)).forEach(event=>{if(!groups.has(event.date))groups.set(event.date,[]);groups.get(event.date).push(event)});
+  if(!groups.size)return'<div class="cal-empty">No synced events in this 30-day agenda.</div>';
+  return`<div class="cal-agenda">${[...groups].map(([date,items])=>`<section class="cal-agenda-group"><h3 class="cal-agenda-date">${esc(calendarLongDate(date))}</h3>${items.map(event=>`<div class="cal-agenda-row"><span class="cal-agenda-time">${esc(calendarTimeLabel(event))}</span><div class="cal-agenda-copy"><b>${esc(event.summary)}</b>${event.where?`<span>${esc(event.where)}</span>`:""}</div>${calendarSourceLink(event)}</div>`).join("")}</section>`).join("")}</div>`;
+}
+function calendarVisibleRange(){
+  if(CAL.view==="month"){const start=calendarWeekStart(new Date(CAL.cursor.getFullYear(),CAL.cursor.getMonth(),1));return[start,calendarAddDays(start,41)]}
+  if(CAL.view==="week"){const start=calendarWeekStart(CAL.cursor);return[start,calendarAddDays(start,6)]}
+  if(CAL.view==="agenda")return[CAL.cursor,calendarAddDays(CAL.cursor,29)];return[calendarDate(CAL.selected),calendarDate(CAL.selected)];
+}
+function renderCalendar(){
+  const body=$("calendarbody"),side=$("calendarside");if(!body||!side)return;
+  const cal=calendarData(),events=list(cal.events).filter(event=>/^\d{4}-\d{2}-\d{2}$/.test(event.date)).sort((a,b)=>calendarStamp(a)-calendarStamp(b));
+  const [rangeStart,rangeEnd]=calendarVisibleRange(),outside=calendarCoverage(rangeStart,rangeEnd),cursor=CAL.cursor;
+  const period=CAL.view==="month"?cursor.toLocaleDateString(undefined,{month:"long",year:"numeric"}):CAL.view==="week"?`${calendarAddDays(calendarWeekStart(cursor),0).toLocaleDateString(undefined,{month:"short",day:"numeric"})} – ${calendarAddDays(calendarWeekStart(cursor),6).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`:CAL.view==="agenda"?`${cursor.toLocaleDateString(undefined,{month:"short",day:"numeric"})} – ${calendarAddDays(cursor,29).toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}`:calendarDate(CAL.selected).toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"});
+  $("calendarperiod").textContent=period;document.querySelectorAll("[data-cal-view]").forEach(button=>{const selected=button.dataset.calView===CAL.view;button.setAttribute("aria-selected",String(selected));button.tabIndex=selected?0:-1});
+  const syncWindow=CAL.rangeStart?` · synced ${CAL.rangeStart} to ${CAL.rangeEnd}`:"";
+  $("calsub").textContent=CAL.loading?"Syncing the Microsoft Outlook calendar…":cal.error?cal.error:`Microsoft Outlook events${cal.stale?" · showing the last good sync":""}${cal.syncError?" · "+cal.syncError:""}${syncWindow}.`;
+  let content=CAL.view==="week"?calendarWeek(events):CAL.view==="day"?calendarDayView(events):CAL.view==="agenda"?calendarAgenda(events):calendarMonth(events);
+  if(outside)content=`<div class="cal-coverage">This view is outside the synced ${esc(CAL.rangeStart)} to ${esc(CAL.rangeEnd)} window. Navigation still works; no events are implied beyond the snapshot.</div>${content}`;
+  else if(CAL.loading&&!events.length)content='<div class="cal-empty">Loading calendar events…</div>';
+  else if(cal.error&&!events.length)content=`<div class="cal-empty">${esc(cal.error)}</div>`;
+  const sig=JSON.stringify([CAL.view,dayKey(cursor),CAL.selected,content,outside]);if(body.dataset.sig!==sig){body.innerHTML=content;body.dataset.sig=sig}
+  calendarSide(events,calendarCoverage(calendarDate(CAL.selected),calendarDate(CAL.selected)));
+}
+function calendarSelectDate(key){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(key))return;const date=calendarDate(key);CAL.selected=key;
+  if(CAL.view!=="month"||date.getMonth()!==CAL.cursor.getMonth()||date.getFullYear()!==CAL.cursor.getFullYear())CAL.cursor=date;
+  renderCalendar();
+}
+function calendarSetView(view){
+  if(!["month","week","day","agenda"].includes(view))return;CAL.view=view;
+  if(view==="day")CAL.cursor=calendarDate(CAL.selected);try{localStorage.setItem("rune-calendar-view",view)}catch(_){ }renderCalendar();
+}
+function calendarNavigate(action){
+  const direction=action==="prev"?-1:1;if(action==="today"){CAL.cursor=new Date();CAL.selected=dayKey(CAL.cursor);renderCalendar();return}
+  if(CAL.view==="month")CAL.cursor=new Date(CAL.cursor.getFullYear(),CAL.cursor.getMonth()+direction,1);
+  else CAL.cursor=calendarAddDays(CAL.cursor,direction*(CAL.view==="agenda"?30:CAL.view==="week"?7:1));
+  CAL.selected=dayKey(CAL.cursor);renderCalendar();
+}
+function radarFingerprint(event){
+  const tool=String(event.tool||event.event||"activity"),detail=String(event.detail||"").toLowerCase();
+  if(tool==="Bash"){
+    const category=["pytest","python","git","rg","grep","npm","pnpm","node","powershell","curl"].find(name=>new RegExp(`(^|[^a-z])${name}([^a-z]|$)`).test(detail))||"shell";
+    return{key:`bash:${category}`,label:`${category} command workflow`};
+  }
+  if(["Edit","Write","MultiEdit","NotebookEdit"].includes(tool)){
+    const extension=(detail.match(/\.[a-z0-9]{1,8}\b/i)||[])[0]||"source";return{key:`${tool}:${extension}`,label:`${tool.toLowerCase()} ${extension} files`};
+  }
+  return{key:tool,label:`${tool} workflow`};
+}
+function renderAutomationRadar(){
+  const body=$("automationradar"),scan=$("radarscan");if(!body||!scan)return;
+  const cutoff=Date.now()-7*86400000,recent=S.events.filter(event=>{const stamp=Date.parse(event.ts||event.time||"");return Number.isFinite(stamp)&&stamp>=cutoff});
+  const work=recent.filter(event=>event.event==="tool"&&CHG.has(event.tool)),groups=new Map();
+  work.forEach(event=>{const fp=radarFingerprint(event),entry=groups.get(fp.key)||{...fp,count:0};entry.count++;groups.set(fp.key,entry)});
+  const repeated=[...groups.values()].filter(entry=>entry.count>=4).sort((a,b)=>b.count-a.count)[0];
+  const runs=list(S.ceo),failedRoles=runs.flatMap(run=>list(run.roles)).filter(role=>["failed","error","blocked","exhausted"].includes(String(role.status||"").toLowerCase())),recoveries=runs.reduce((count,run)=>count+recoveryEntries(run).length+list(run.roles).reduce((sum,role)=>sum+recoveryEntries(role).length,0),0);
+  const waiting=runs.filter(run=>["review","waiting_permission","waiting-permission"].includes(String(run.status||"").toLowerCase())||list(run.roles).some(role=>["review","waiting_permission","waiting-permission"].includes(String(role.status||"").toLowerCase()))).length;
+  const skills=Object.entries((S.skills&&S.skills.skills)||{}).map(([name,value])=>({name,...value})).filter(skill=>["candidate","learning"].includes(skill.status)).sort((a,b)=>(b.uses||0)-(a.uses||0));
+  const coach=S.workflows&&S.workflows.advisory_only===true&&S.workflows.review_required===true&&S.workflows.executed===false&&Array.isArray(S.workflows.suggestions)?S.workflows:null,signals=[];
+  if(coach){
+    coach.suggestions.slice(0,3).forEach(suggestion=>{const count=Number(suggestion.count||0),sessions=list(suggestion.sessions).length,kind=suggestion.kind==="failure-recovery"?"recovery":"repeat",family=String(suggestion.family||"workflow");signals.push({kind,kicker:suggestion.kind==="failure-recovery"?"Recovery policy":suggestion.kind==="repeated-sequence"?"Repeated sequence":"Repeated workflow",title:`${suggestion.kind==="failure-recovery"?"Tune":"Review"} “${family}”`,evidence:`${count} matching observation${count===1?"":"s"} across ${sessions} session${sessions===1?"":"s"} · ${suggestion.confidence||"unrated"} confidence. ${suggestion.suggestion||"Consider a review-first workflow."} ${suggestion.next_action||"Review the evidence before acting."}`,route:suggestion.kind==="failure-recovery"?"#/instances":"#/audit",action:"Review evidence"})});
+    const stats=coach.stats||{};scan.textContent=`${Number(stats.events||0)} events · ${Number(coach.total_suggestions??coach.suggestions.length)} suggestion${Number(coach.total_suggestions??coach.suggestions.length)===1?"":"s"}`;
+  }else{
+    if(repeated)signals.push({kind:"repeat",kicker:"Repeated workflow",title:`Review ${repeated.label} for automation`,evidence:`Observed ${repeated.count} times in ${work.length} change-producing tool events over 7 days · ${repeated.count>=8?"high":"medium"} signal.`,route:"#/audit",action:"Review wire evidence"});
+    if(waiting||failedRoles.length||recoveries)signals.push({kind:"recovery",kicker:waiting?"Permission queue":"Recovery feedback",title:waiting?`${waiting} mission${waiting===1?"":"s"} need operator input`:`Close the loop on ${failedRoles.length} role failure${failedRoles.length===1?"":"s"}`,evidence:`Current mission records contain ${failedRoles.length} failed/blocked role${failedRoles.length===1?"":"s"} and ${recoveries} visible recovery attempt${recoveries===1?"":"s"}.`,route:"#/instances",action:"Open recovery history"});
+    if(skills.length){const skill=skills[0],uses=Number(skill.uses||0);signals.push({kind:"skill",kicker:"Skill coverage",title:`Review “${skill.name}” before promoting it`,evidence:`Registry status is ${skill.status} with ${uses}/3 recorded uses${skills.length>1?` · ${skills.length-1} other learning candidate${skills.length-1===1?"":"s"}`:""}.`,route:"#/skills",action:"Review skill tree"})}
+    scan.textContent=`${recent.length} wire event${recent.length===1?"":"s"} · ${runs.length} mission${runs.length===1?"":"s"}`;
+  }
+  const html=signals.length?`<div class="radar-grid">${signals.slice(0,3).map(signal=>`<article class="radar-item ${esc(signal.kind)}"><span class="radar-kicker">${esc(signal.kicker)}</span><div class="radar-title">${esc(signal.title)}</div><div class="radar-evidence">${esc(signal.evidence)}</div><button type="button" class="btn line sm radar-action" data-go="${esc(signal.route)}">${esc(signal.action)}</button></article>`).join("")}</div>`:`<div class="radar-empty">No pattern has enough evidence yet. The radar waits for at least four matching change-producing actions before suggesting automation.</div>`;
+  if(body.dataset.sig!==html){body.innerHTML=html;body.dataset.sig=html}
+}
+
+$("briefingbody").addEventListener("click",event=>{
+  const runButton=event.target.closest("[data-brief-run]");
+  if(runButton){
+    const task=briefingPriorities().find(entry=>entry.key===runButton.dataset.briefRun);
+    if(!task){toast("That saved briefing plan is no longer available.",true);return}
+    const permissionMode=runButton.dataset.briefPermissionMode==="skip"?"skip":"safe";
+    runBriefingPriority(task,permissionMode);return;
+  }
+  const button=event.target.closest("[data-brief-toggle]");if(!button)return;
+  const key=button.dataset.briefToggle,detail=$(button.getAttribute("aria-controls")),open=button.getAttribute("aria-expanded")!=="true";
+  if(open)BRIEF.open.add(key);else BRIEF.open.delete(key);
+  button.setAttribute("aria-expanded",String(open));button.querySelector("span").textContent=open?"View less":"View more";
+  if(detail)detail.hidden=!open;
+  button.closest(".priority-card")?.classList.toggle("expanded",open);
+  $("briefingbody").dataset.sig="";
+});
+
+$("briefingbody").addEventListener("change",async event=>{
+  const control=event.target.closest("[data-agent-field]");if(!control)return;
+  const card=control.closest("[data-agent-card]"),agentKey=control.dataset.agentKey,previous=BRIEF.overrides.get(agentKey);
+  const model=card.querySelector('[data-agent-field="model"]').value,effort=card.querySelector('[data-agent-field="effort"]').value;
+  BRIEF.overrides.set(agentKey,{model,effort});BRIEF.saving.add(agentKey);BRIEF.error="";BRIEF.feedback="Saving agent settings…";renderBriefing();
+  try{
+    const result=await post("/api/briefing/agent",{batch_id:control.dataset.batchId,priority_id:control.dataset.priorityId,agent_id:control.dataset.agentId,model,effort});
+    const saved=result.agent||{model,effort};BRIEF.overrides.set(agentKey,{model:saved.model||model,effort:saved.effort||effort});
+    BRIEF.feedback="Agent settings saved.";
+  }catch(error){
+    if(previous)BRIEF.overrides.set(agentKey,previous);else BRIEF.overrides.delete(agentKey);
+    BRIEF.error=error.message;BRIEF.feedback="Could not save that agent setting.";
+  }finally{BRIEF.saving.delete(agentKey);$("briefingbody").dataset.sig="";renderBriefing()}
+});
+
+$("brief-check").addEventListener("click",async()=>{
+  BRIEF.feedback="Checking the saved briefing status — no model run will start.";renderBriefing();
+  const result=await refreshBriefingData({force:true});BRIEF.feedback="";
+  if(result&&result.ok)toast("Briefing status checked — no model run started.");
+  else toast("Briefing status check failed; the last saved plan is still visible.",true);
+  renderBriefing();
+});
+
+$("brief-generate").addEventListener("click",async()=>{
+  const hasPrimary=briefingHasCurrentPrimary();
+  const model=$("brief-model").value,effort=$("brief-effort").value;
+  BRIEF.busy=true;BRIEF.error="";BRIEF.feedback="Collecting yesterday’s evidence for planning…";renderBriefing();
+  try{
+    const defaults=await post("/api/briefing/settings",{model,effort});
+    S.briefing={...briefingEnvelope(),settings:defaults.settings||{model,effort}};
+    const result=await post("/api/briefing/generate",{date:"yesterday",model,effort,more:hasPrimary,force:false});
+    S.briefing={...briefingEnvelope(),job:result.job||{status:"queued"}};
+    BRIEF.lastJobId=String((result.job&&result.job.id)||"");BRIEF.lastJobState=String((result.job&&result.job.status)||"queued").toLowerCase();BRIEF.nextFetchAt=0;
+    BRIEF.feedback="Briefing queued. New priorities will appear here when ready.";
+  }catch(error){BRIEF.error=error.message;BRIEF.feedback="Briefing generation could not start."}
+  finally{BRIEF.busy=false;$("briefingbody").dataset.sig="";renderBriefing()}
+});
 
 /* ---------- integrations ---------- */
 const II={
@@ -2186,6 +3217,13 @@ $("quickgo").addEventListener("click",async()=>{
   try{toast(await launch(DEFAULT_MISSION,"tab"));poll()}
   catch(e){toast("Failed: "+e.message,true)}btn.disabled=false});
 document.addEventListener("click",async e=>{
+  const cmdDismiss=e.target.closest("[data-cmd-dismiss]");
+  if(cmdDismiss){CMD.items=CMD.items.filter(item=>item.id!==cmdDismiss.dataset.cmdDismiss);renderCmdTray();return}
+  const cmdCollapse=e.target.closest("[data-cmd-collapse]");
+  if(cmdCollapse){CMD.collapsed=!CMD.collapsed;renderCmdTray();return}
+  const calendarView=e.target.closest("[data-cal-view]");if(calendarView){calendarSetView(calendarView.dataset.calView);return}
+  const calendarNav=e.target.closest("[data-cal-nav]");if(calendarNav){calendarNavigate(calendarNav.dataset.calNav);return}
+  const calendarDateButton=e.target.closest("[data-cal-date]");if(calendarDateButton){calendarSelectDate(calendarDateButton.dataset.calDate);return}
   const g=e.target.closest("[data-go]");if(g){location.hash=g.dataset.go;return}
   const f=e.target.closest("[data-focus]"),c=e.target.closest("[data-close]");
   const oa=e.target.closest("[data-orch-act]"),fg=e.target.closest("[data-forget]");
@@ -2200,7 +3238,7 @@ document.addEventListener("click",async e=>{
       toast(act==="stop"?"Loop stopped.":"Verdict sent: "+act);poll()}
     catch(err){toast("Action failed: "+err.message,true)}}
   const ca=e.target.closest("[data-ceo-act]");
-  if(ca){const act=ca.dataset.ceoAct;
+  if(ca){e.preventDefault();e.stopPropagation();const act=ca.dataset.ceoAct;
     let feedback="";
     if(act==="redo"){feedback=prompt("What should this role fix?")||"";if(!feedback)return}
     if(act==="stop"&&!confirm("Stop this mission? The running role is killed."))return;
@@ -2244,7 +3282,7 @@ $("pausebtn").addEventListener("click",()=>{S.paused=!S.paused;
   $("pausebtn").classList.toggle("paused",S.paused);
   toast(S.paused?"Polling paused.":"Polling resumed.");render()});
 $("refreshbtn").addEventListener("click",()=>{S.paused=false;
-  $("pausebtn").classList.remove("paused");poll();toast("Refreshed.")});
+  $("pausebtn").classList.remove("paused");poll({forceBriefing:true});toast("Refreshed.")});
 
 /* ---------- stable, navigable brain graph (real Obsidian vault) ---------- */
 const Graph=(function(){
@@ -2753,12 +3791,22 @@ const Graph=(function(){
     });
   }
   function pause(){rememberPositions();stopSimulation();cancelCameraAnimation()}
-  return{sync:sync,activate:activate,pause:pause};
+  return{sync:sync,activate:activate,pause:pause,close:closeDrawer};
 })();
 
+document.addEventListener("keydown",event=>{
+  if(event.key!=="Escape")return;let handled=false;
+  if($("cmdpop").classList.contains("open")){$("cmdpop").classList.remove("open");$("cmdbarbox").classList.remove("optsopen");$("cmddrop").focus({preventScroll:true});handled=true}
+  if(CHAT.open){chatToggle(false);handled=true}
+  if($("side").classList.contains("open")){$("side").classList.remove("open");$("burger").focus({preventScroll:true});handled=true}
+  if($("graphspace").classList.contains("detail-open")){Graph.close();handled=true}
+  if(!$("cmdtray").hidden&&!CMD.collapsed){CMD.collapsed=true;renderCmdTray();handled=true}
+  if(handled){event.preventDefault();event.stopPropagation()}
+},true);
+
 /* ---------- routing & clocks ---------- */
-const TITLES={overview:1,instances:1,skills:1,brain:1,graph:1,integrations:1,audit:1,guard:1};
-const ROUTE_ORDER=["overview","instances","skills","brain","graph","integrations","audit","guard"];
+const TITLES={overview:1,calendar:1,instances:1,skills:1,brain:1,graph:1,integrations:1,audit:1,guard:1};
+const ROUTE_ORDER=["overview","calendar","instances","skills","brain","graph","integrations","audit","guard"];
 let lastRoute=0;
 function route(){const h=location.hash.slice(2)||"overview";const s=TITLES[h]?h:"overview";
   const idx=Math.max(0,ROUTE_ORDER.indexOf(s));
@@ -2815,6 +3863,12 @@ $("sk-add").addEventListener("click",async()=>{
     toast(`Skill "${name}" added.`);poll();
   }catch(e){toast("Add failed: "+e.message,true)}btn.disabled=false});
 // command bar
+document.querySelector(".calendar-views").addEventListener("keydown",event=>{
+  if(!["ArrowLeft","ArrowRight","Home","End"].includes(event.key))return;event.preventDefault();
+  const tabs=[...document.querySelectorAll("[data-cal-view]")],current=Math.max(0,tabs.indexOf(document.activeElement));
+  const next=event.key==="Home"?0:event.key==="End"?tabs.length-1:(current+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;
+  tabs[next].focus({preventScroll:true});calendarSetView(tabs[next].dataset.calView);
+});
 $("cmdspark").innerHTML=SPARK;
 $("cmdgo").addEventListener("click",cmdSend);
 $("cmdinput").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();cmdSend()}});
@@ -2824,11 +3878,20 @@ $("cmddrop").addEventListener("click",()=>{
 document.addEventListener("click",e=>{           // click-away closes the overrides
   if(!e.target.closest("#cmdbarbox")){$("cmdpop").classList.remove("open");$("cmdbarbox").classList.remove("optsopen");}});
 $("cmdpop").addEventListener("change",()=>$("cmddrop").classList.toggle("tuned",cmdTuned()));
+$("cmdclear").addEventListener("click",()=>{CMD.items=CMD.items.filter(item=>cmdMissionInfo(item).live);renderCmdTray()});
+$("cmdstopactive").addEventListener("click",async()=>{
+  const active=[...new Set(CMD.items.filter(item=>item.cid&&cmdMissionInfo(item).live).map(item=>item.cid))];if(!active.length)return;
+  if(!confirm(`Stop ${active.length} active mission${active.length===1?"":"s"}? Running roles will be killed.`))return;
+  const button=$("cmdstopactive");button.disabled=true;
+  try{for(const cid of active)await post("/api/ceo-action",{cid,role:"",action:"stop",feedback:""});toast(`${active.length} mission${active.length===1?"":"s"} stopped.`);poll()}
+  catch(error){toast("Stop failed: "+error.message,true)}finally{button.disabled=false}
+});
 cmdType();
 // chat assistant
 $("chatspark").innerHTML=SPARK;
 $("chatfab").addEventListener("click",()=>chatToggle());
 $("chatclose").addEventListener("click",()=>chatToggle(false));
+$("chatclear").addEventListener("click",chatClear);
 $("chatsendbtn").addEventListener("click",chatSend);
 $("chatinput").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();chatSend()}});
 $("chatinput").addEventListener("input",e=>{e.target.style.height="auto";e.target.style.height=Math.min(92,e.target.scrollHeight)+"px"});
@@ -2840,11 +3903,13 @@ $("perfsvg").addEventListener("pointerover",e=>{const c=e.target.closest(".lgdot
 $("perfsvg").addEventListener("pointerout",()=>$("perftip").classList.remove("show"));
 setInterval(()=>{$("clock").textContent=new Date().toLocaleTimeString("en-GB");
   vTick();                                          // vinyl progress advances locally
+  document.querySelectorAll("[data-brief-due]").forEach(el=>{
+    const text=briefingCountdown(el.dataset.briefDue,el.dataset.briefState);if(el.textContent!==text)el.textContent=text});
   document.querySelectorAll("[data-reset]").forEach(el=>{
     const txt=resetText(+el.dataset.reset);
     if(el.textContent===txt)return;                 // no change -> no reflow, no flash
     el.textContent=txt;el.classList.remove("roll");void el.offsetWidth;el.classList.add("roll");});},1000);
-route();poll();setInterval(poll,2500);
+route();poll();loadCalendarRange();setInterval(poll,2500);
 </script>
 </body>
 </html>

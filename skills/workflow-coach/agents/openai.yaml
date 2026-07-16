@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Coach"
+  short_description: "Rank evidence-backed automation opportunities"
+  default_prompt: "Use $workflow-coach to find evidence-backed automation opportunities in my recent work."

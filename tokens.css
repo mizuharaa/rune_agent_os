@@ -1,0 +1,121 @@
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R4 V5 — live review passed from 320px through desktop; legacy brand motion and gradient wordmark remain by explicit user direction. */
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app · nav: N3 compact side rail */
+:root {
+  color-scheme: light;
+
+  --rune-paper: oklch(97.5% 0.007 330);
+  --rune-paper-raised: oklch(99% 0.004 330);
+  --rune-paper-2: oklch(94.9% 0.011 330);
+  --rune-paper-3: oklch(91.5% 0.016 330);
+  --rune-rule: oklch(81.5% 0.021 330);
+  --rune-rule-strong: oklch(67% 0.029 330);
+  --rune-muted: oklch(45.5% 0.025 330);
+  --rune-ink-2: oklch(29% 0.028 330);
+  --rune-ink: oklch(18.5% 0.022 330);
+
+  --rune-accent: oklch(35.5% 0.115 330);
+  --rune-accent-hover: oklch(30.5% 0.112 330);
+  --rune-accent-active: oklch(27% 0.105 330);
+  --rune-accent-soft: oklch(93% 0.035 330);
+  --rune-on-accent: oklch(98% 0.006 330);
+  --rune-focus: oklch(56% 0.17 330);
+
+  --rune-success: oklch(43% 0.115 150);
+  --rune-success-soft: oklch(94% 0.035 150);
+  --rune-warning: oklch(48% 0.12 78);
+  --rune-warning-soft: oklch(94% 0.045 78);
+  --rune-danger: oklch(49% 0.17 25);
+  --rune-danger-hover: oklch(43% 0.16 25);
+  --rune-danger-soft: oklch(94% 0.04 25);
+  --rune-info: oklch(45% 0.13 250);
+  --rune-info-soft: oklch(94% 0.035 250);
+
+  --rune-font-display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --rune-font-text: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --rune-font-mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+
+  --rune-text-xs: 0.75rem;
+  --rune-text-sm: 0.875rem;
+  --rune-text-md: 1rem;
+  --rune-text-lg: 1.25rem;
+  --rune-text-xl: 1.625rem;
+  --rune-leading-tight: 1.2;
+  --rune-leading-normal: 1.5;
+
+  --rune-space-1: 0.25rem;
+  --rune-space-2: 0.5rem;
+  --rune-space-3: 0.75rem;
+  --rune-space-4: 1rem;
+  --rune-space-5: 1.25rem;
+  --rune-space-6: 1.5rem;
+  --rune-space-8: 2rem;
+  --rune-space-10: 2.5rem;
+
+  --rune-radius-sm: 0.25rem;
+  --rune-radius-md: 0.5rem;
+  --rune-radius-lg: 0.75rem;
+  --rune-radius-pill: 999px;
+
+  --rune-control-min: 2.5rem;
+  --rune-content-max: 76rem;
+  --rune-reading-max: 76ch;
+  --rune-rail-width: 12.5rem;
+
+  --rune-shadow-overlay: 0 1rem 3rem oklch(18.5% 0.022 330 / 18%);
+  --rune-shadow-float: 0 0.5rem 1.5rem oklch(18.5% 0.022 330 / 12%);
+
+  --rune-duration-fast: 120ms;
+  --rune-duration-normal: 180ms;
+  --rune-duration-slow: 240ms;
+  --rune-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --rune-ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  --rune-z-nav: 20;
+  --rune-z-tray: 60;
+  --rune-z-overlay: 80;
+  --rune-z-toast: 100;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --rune-paper: oklch(17% 0.018 330);
+  --rune-paper-raised: oklch(21% 0.021 330);
+  --rune-paper-2: oklch(24.5% 0.023 330);
+  --rune-paper-3: oklch(29% 0.026 330);
+  --rune-rule: oklch(40% 0.03 330);
+  --rune-rule-strong: oklch(53% 0.034 330);
+  --rune-muted: oklch(72% 0.025 330);
+  --rune-ink-2: oklch(86% 0.016 330);
+  --rune-ink: oklch(96% 0.008 330);
+  --rune-accent: oklch(72% 0.13 330);
+  --rune-accent-hover: oklch(77% 0.12 330);
+  --rune-accent-active: oklch(82% 0.105 330);
+  --rune-accent-soft: oklch(31% 0.065 330);
+  --rune-on-accent: oklch(18% 0.02 330);
+  --rune-focus: oklch(78% 0.13 330);
+  --rune-success: oklch(72% 0.12 150);
+  --rune-success-soft: oklch(27% 0.045 150);
+  --rune-warning: oklch(79% 0.13 78);
+  --rune-warning-soft: oklch(29% 0.055 78);
+  --rune-danger: oklch(74% 0.15 25);
+  --rune-danger-hover: oklch(80% 0.13 25);
+  --rune-danger-soft: oklch(29% 0.06 25);
+  --rune-info: oklch(74% 0.12 250);
+  --rune-info-soft: oklch(28% 0.055 250);
+}
+
+:focus-visible {
+  outline: 3px solid var(--rune-focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

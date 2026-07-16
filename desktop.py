@@ -46,7 +46,8 @@ def find_browser():
 
 
 BACKEND_FILES = [os.path.join(HERE, "dashboard", n) for n in
-                 ("serve.py", "ceo.py", "chat.py", "orchestrator.py", "pulse.py", "askpass.py")
+                 ("serve.py", "ceo.py", "chat.py", "orchestrator.py", "pulse.py",
+                  "runtime.py", "askpass.py")
                  ] + [os.path.join(HERE, "daily_briefing.py")]
 
 
@@ -70,15 +71,20 @@ def port_alive():
 
 
 def live_missions():
-    """How many CEO missions are running RIGHT NOW in the server on the port.
+    """How many CEO or feedback-loop missions are running on the current server.
     Missions live in that process's threads, so killing it kills them mid-task
     with nothing written down — the other half of 'it died and gave no reason'.
     Nothing answering / can't tell => 0 (never block a restart on a guess)."""
-    try:
-        with urllib.request.urlopen("http://127.0.0.1:%d/api/ceo" % PORT, timeout=2) as r:
-            return sum(1 for m in json.loads(r.read()).get("runs", []) if m.get("live"))
-    except (OSError, ValueError):
-        return 0
+    total = 0
+    for endpoint, key in (("ceo", "runs"), ("orchestrations", "orchestrations")):
+        try:
+            with urllib.request.urlopen(
+                    "http://127.0.0.1:%d/api/%s" % (PORT, endpoint), timeout=2) as response:
+                total += sum(1 for mission in json.loads(response.read()).get(key, [])
+                             if mission.get("live"))
+        except (OSError, ValueError):
+            continue
+    return total
 
 
 def free_port():

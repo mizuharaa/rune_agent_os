@@ -1,0 +1,28 @@
+{
+  "date": "2026-07-15",
+  "scope": "app",
+  "project": "Rune agentic_OS",
+  "genre": "modern-minimal",
+  "macrostructure": "Workbench",
+  "navigation": "N3 compact side rail",
+  "audience": "technical operator",
+  "product_verbs": ["launch", "monitor", "intervene", "recover"],
+  "findings": {
+    "typography": {
+      "display": "Segoe UI Variable Display",
+      "text": "Segoe UI Variable Text",
+      "technical": "Cascadia Mono"
+    },
+    "color": "Existing royal-plum anchor with several low-contrast supporting tokens",
+    "layout": "Single-file multi-route dashboard with unbounded inline mission messages",
+    "motion_library": "none",
+    "spacing": "ad hoc values; normalized to a 4px scale",
+    "runtime": "Python standard library server and vanilla HTML/CSS/JS"
+  },
+  "constraints": [
+    "Preserve existing routes and user changes",
+    "No new frontend runtime dependency",
+    "Mission controls must remain available on narrow viewports",
+    "Permission-gated actions must never be auto-approved"
+  ]
+}

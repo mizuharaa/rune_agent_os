@@ -2,6 +2,10 @@
 
 Read the event wire, find what I keep doing by hand, flag it for automation.
 
+Choose this legacy audit for a compact event-type and repeat summary. Use
+`workflow-coach` when you need ranked suggestions, bounded sequences,
+failure/recovery evidence, confidence, or structured JSON.
+
 - **Trigger:** /audit ("audit my workflow", "what am I repeating")
 - **Command:** `python skills/workflow-audit/audit.py`
 - **Earn:** `python skills/engine.py use workflow-audit` after each real use

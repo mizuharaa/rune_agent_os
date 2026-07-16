@@ -15,9 +15,11 @@ owner's env — never paths, never committed) and serves one cached snapshot:
            Sign in once: python dashboard/pulse.py --outlook-login
 
 A daemon thread refreshes every 45s so requests never block on the network.
-Each service degrades to {"error": ...} independently.
+Each service degrades independently; calendar/mail/GitHub keep last-good data
+with explicit stale/error metadata when a transient refresh fails.
 """
 import base64
+import contextlib
 import datetime
 import email.header
 import imaplib
@@ -35,16 +37,158 @@ CFG = os.path.join(ROOT, "state", "pulse.json")
 # from it (the daily briefing's GitHub section) had nothing to read when the
 # network — or the process — was gone. This is the offline copy.
 CACHE = os.path.join(ROOT, "state", "pulse-cache.json")
+STATE_WRITE_LOCK = os.path.join(ROOT, "state", "pulse-state.lock")
 WINDOW = 5 * 3600
-SNAP = {"asof": 0}
+CACHED_SERVICES = ("github", "gmail", "outlook")
+CACHE_STALE_AFTER = 3600
 LOCK = threading.Lock()
 
 
-def _cfg():
+@contextlib.contextmanager
+def _state_write_lock(path=STATE_WRITE_LOCK, timeout=5, stale_after=30):
+    """Serialize read/merge/replace across dashboard and login processes."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    deadline = time.monotonic() + timeout
+    acquired = False
+    while not acquired:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            try:
+                os.write(fd, ("%d %d\n" % (os.getpid(), threading.get_ident())).encode())
+            except BaseException:
+                os.close(fd)
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+                raise
+            else:
+                os.close(fd)
+            acquired = True
+        except FileExistsError:
+            try:
+                stale = time.time() - os.path.getmtime(path) > stale_after
+            except OSError:
+                stale = False
+            if stale:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+                continue
+            if time.monotonic() >= deadline:
+                raise TimeoutError("timed out waiting for pulse state lock")
+            time.sleep(0.02)
     try:
-        return json.load(open(CFG, encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        yield
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _read_json(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            value = json.load(f)
+        return value if isinstance(value, dict) else {}
+    except (OSError, json.JSONDecodeError, ValueError):
         return {}
+
+
+def _atomic_json_write(path, value, indent=None):
+    """Atomically write JSON without sharing a predictable .tmp filename.
+
+    Several dashboard server processes can overlap during a self-restart. A
+    fixed ``path + '.tmp'`` lets one process replace/delete another process's
+    temporary file. The unique name plus ``os.replace`` keeps readers on either
+    complete version and makes concurrent writers safe (last complete write
+    wins).
+    """
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = "%s.%s.%s.%s.tmp" % (path, os.getpid(), threading.get_ident(), time.time_ns())
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(value, f, indent=indent)
+            f.flush()
+            os.fsync(f.fileno())
+        last_error = None
+        for delay in (0, .03, .12):
+            if delay:
+                time.sleep(delay)
+            try:
+                os.replace(tmp, path)
+                return
+            except OSError as e:
+                last_error = e
+        raise last_error
+    finally:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
+def _stamp(value, fallback=0):
+    try:
+        return max(0, int(value))
+    except (TypeError, ValueError):
+        return max(0, int(fallback or 0))
+
+
+def _cache_clean(value):
+    """Remove runtime-only failure flags from a last-good service payload."""
+    out = dict(value) if isinstance(value, dict) else {}
+    for key in ("cached", "stale", "refresh_error", "refresh_attempt_asof"):
+        out.pop(key, None)
+    return out
+
+
+def _service_good(value):
+    return (isinstance(value, dict) and bool(value)
+            and not value.get("error") and not value.get("refresh_error"))
+
+
+def _normalise_cache(raw):
+    """Read both the legacy global-asof schema and the per-service schema."""
+    raw = raw if isinstance(raw, dict) else {}
+    global_asof = _stamp(raw.get("asof"))
+    out = {"asof": global_asof}
+    for key in CACHED_SERVICES:
+        value = raw.get(key)
+        if not _service_good(value):
+            continue
+        value = _cache_clean(value)
+        value["asof"] = _stamp(value.get("asof"), global_asof)
+        out[key] = value
+    return out
+
+
+def _cold_snapshot(raw, now=None):
+    """Hydrate the in-memory strip from disk before any network request."""
+    now = _stamp(now, time.time())
+    cache = _normalise_cache(raw)
+    out = {"asof": cache.get("asof", 0)}
+    for key in CACHED_SERVICES:
+        if key not in cache:
+            continue
+        value = dict(cache[key])
+        value["cached"] = True
+        asof = _stamp(value.get("asof"))
+        if not asof or now - asof > CACHE_STALE_AFTER:
+            value["stale"] = True
+        out[key] = value
+    return out
+
+
+# Do not flash an empty calendar/GitHub/Gmail strip while the first refresh is
+# in flight. Legacy cache files are upgraded in memory and on their next write.
+SNAP = _cold_snapshot(_read_json(CACHE))
+
+
+def _cfg():
+    return _read_json(CFG)
 
 
 def _http(url, headers=None, data=None, timeout=8):
@@ -162,8 +306,8 @@ def _creds(base):
     """{token, expires_ms, email, uuid} for the account currently logged into
     config dir `base` (from its .credentials.json + .claude.json)."""
     try:
-        oa = (json.load(open(os.path.join(base, ".credentials.json"),
-                              encoding="utf-8")).get("claudeAiOauth") or {})
+        with open(os.path.join(base, ".credentials.json"), encoding="utf-8") as handle:
+            oa = (json.load(handle).get("claudeAiOauth") or {})
     except (OSError, json.JSONDecodeError, ValueError):
         return {}
     if not oa.get("accessToken"):
@@ -171,7 +315,8 @@ def _creds(base):
     out = {"token": oa["accessToken"], "expires_ms": oa.get("expiresAt")}
     for cand in (os.path.join(base, ".claude.json"), base.rstrip("/\\") + ".json"):
         try:
-            a = (json.load(open(cand, encoding="utf-8")).get("oauthAccount") or {})
+            with open(cand, encoding="utf-8") as handle:
+                a = (json.load(handle).get("oauthAccount") or {})
             if a.get("emailAddress"):
                 out["email"], out["uuid"] = a["emailAddress"], a.get("accountUuid")
                 break
@@ -182,7 +327,8 @@ def _creds(base):
 
 def _load_seen():
     try:
-        return json.load(open(SEEN, encoding="utf-8"))
+        with open(SEEN, encoding="utf-8") as handle:
+            return json.load(handle)
     except (OSError, json.JSONDecodeError):
         return {}
 
@@ -214,10 +360,7 @@ def _capture_seen(cfg):
         changed = True
     if changed:
         try:
-            os.makedirs(os.path.dirname(SEEN), exist_ok=True)
-            tmp = SEEN + ".tmp"
-            json.dump(seen, open(tmp, "w", encoding="utf-8"), indent=1)
-            os.replace(tmp, SEEN)
+            _atomic_json_write(SEEN, seen, indent=1)
         except OSError:
             pass
     return seen
@@ -300,13 +443,10 @@ def _github_calendar(user, hdr):
     if "Authorization" not in hdr:
         return [], 0  # GraphQL requires auth; skip cleanly on public-only config
     body = json.dumps({"query": _GQL_CAL, "variables": {"l": user}}).encode()
-    try:
-        d = _http("https://api.github.com/graphql",
-                  dict(hdr, **{"Content-Type": "application/json"}), body)
-    except Exception:
-        return [], 0
+    d = _http("https://api.github.com/graphql",
+              dict(hdr, **{"Content-Type": "application/json"}), body)
     if d.get("errors"):
-        return [], 0
+        raise RuntimeError("GitHub GraphQL returned an error")
     cal = (((d.get("data") or {}).get("user") or {}).get("contributionsCollection")
            or {}).get("contributionCalendar") or {}
     days = [{"date": dd["date"], "count": dd["contributionCount"]}
@@ -337,19 +477,20 @@ def _github(cfg):
     # recent commit messages from the most-recently-pushed repo (events still
     # carry repo + timestamp reliably, just not the commit bodies)
     commits, repos = [], []
-    try:
-        evs = _http("https://api.github.com/users/%s/events?per_page=30" % user, hdr)
-        for e in evs:
-            if e.get("type") == "PushEvent":
-                r = (e.get("repo") or {}).get("name")
-                if r and r not in repos:
-                    repos.append(r)
-    except Exception:
-        pass
+    evs = _http("https://api.github.com/users/%s/events?per_page=30" % user, hdr)
+    for e in evs:
+        if e.get("type") == "PushEvent":
+            r = (e.get("repo") or {}).get("name")
+            if r and r not in repos:
+                repos.append(r)
+    commit_fetches = 0
+    last_error = None
     for full in repos[:2]:
         try:
             cs = _http("https://api.github.com/repos/%s/commits?per_page=6" % full, hdr)
-        except Exception:
+            commit_fetches += 1
+        except Exception as e:
+            last_error = e
             continue
         repo = full.split("/")[-1]
         for c in cs:
@@ -359,6 +500,8 @@ def _github(cfg):
                             "ts": (cm.get("author") or {}).get("date", "")})
         if len(commits) >= 8:
             break
+    if repos and not commit_fetches and last_error:
+        raise last_error
     commits.sort(key=lambda c: c["ts"], reverse=True)
     return {"user": user, "today": today, "year": total_year,
             "streak": streak, "days": days, "commits": commits[:8]}
@@ -524,11 +667,7 @@ def spotify_exchange(code, redirect_uri):
     rt = tok.get("refresh_token")
     if not rt:
         return "no refresh_token in Spotify response"
-    cfg = _cfg()
-    cfg.setdefault("spotify", {})["refresh_token"] = rt
-    tmp = CFG + ".tmp"
-    json.dump(cfg, open(tmp, "w", encoding="utf-8"), indent=2)
-    os.replace(tmp, CFG)
+    _save_cfg("spotify", {"refresh_token": rt})
     _refresh()  # reflect it on the dashboard immediately
     return None
 
@@ -548,17 +687,19 @@ MS_SCOPE = "offline_access Calendars.Read"
 MS_DEVICE = "https://login.microsoftonline.com/%s/oauth2/v2.0/devicecode"
 MS_TOKEN = "https://login.microsoftonline.com/%s/oauth2/v2.0/token"
 MS_CAL = "https://graph.microsoft.com/v1.0/me/calendarView"
-CAL_AHEAD_DAYS = 7
+CAL_BEHIND_DAYS = 35
+CAL_AHEAD_DAYS = 92
+OUTLOOK_REFRESH_SECONDS = 10 * 60
+MS_MAX_PAGES = 10
+MS_TIMEZONE_DEFAULT = "SE Asia Standard Time"
 _MS = {"at": "", "exp": 0}      # access token cache: it lives ~1h, the loop is 45s
 
 
 def _save_cfg(section, patch):
-    cfg = _cfg()
-    cfg.setdefault(section, {}).update(patch)
-    tmp = CFG + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2)
-    os.replace(tmp, CFG)
+    with _state_write_lock():
+        cfg = _cfg()
+        cfg.setdefault(section, {}).update(patch)
+        _atomic_json_write(CFG, cfg, indent=2)
     return cfg
 
 
@@ -596,55 +737,144 @@ def _ms_token(cfg):
     return at, None
 
 
-def _ms_local(slot):
-    """Graph returns {'dateTime','timeZone'} in UTC by default — make it local."""
+def _ms_local(slot, local_tz=None):
+    """Convert UTC/offset Graph slots; preferred-local naive slots stay local."""
     raw = (slot or {}).get("dateTime") or ""
     try:
-        d = datetime.datetime.fromisoformat(raw[:26])
+        d = datetime.datetime.fromisoformat(raw.replace("Z", "+00:00"))
     except ValueError:
         return None
-    if (slot.get("timeZone") or "UTC").upper() == "UTC":
-        d = d.replace(tzinfo=datetime.timezone.utc).astimezone().replace(tzinfo=None)
+    local_tz = local_tz or datetime.datetime.now().astimezone().tzinfo
+    zone = (slot.get("timeZone") or "UTC").upper()
+    if d.tzinfo is not None:
+        return d.astimezone(local_tz).replace(tzinfo=None)
+    if zone == "UTC":
+        return d.replace(tzinfo=datetime.timezone.utc).astimezone(local_tz).replace(tzinfo=None)
+    # With Prefer: outlook.timezone Graph intentionally returns a naive wall
+    # time in that requested Windows timezone, which is our local timezone.
     return d
 
 
+def _calendar_bounds(now=None):
+    """Return Graph's window with an explicit local UTC offset on both ends."""
+    now = now or datetime.datetime.now().astimezone()
+    if now.tzinfo is None:
+        now = now.astimezone()
+    start = datetime.datetime.combine(now.date(), datetime.time.min,
+                                      tzinfo=now.tzinfo) - datetime.timedelta(
+                                          days=CAL_BEHIND_DAYS)
+    end = datetime.datetime.combine(now.date(), datetime.time.min,
+                                    tzinfo=now.tzinfo) + datetime.timedelta(
+                                        days=CAL_AHEAD_DAYS + 1)
+    return (start.isoformat(timespec="seconds"), end.isoformat(timespec="seconds"))
+
+
+def _outlook_timezone(cfg):
+    value = str(((cfg.get("outlook") or {}).get("timezone")
+                 or MS_TIMEZONE_DEFAULT)).strip()
+    # Naive Graph wall times are interpreted as the dashboard's machine-local
+    # zone. Keep the supported preference explicit instead of silently showing
+    # a different configured Windows zone as Bangkok time.
+    if value not in (MS_TIMEZONE_DEFAULT, "UTC") or any(c in value for c in '\r\n"'):
+        return MS_TIMEZONE_DEFAULT
+    return value
+
+
+def _safe_graph_next(url):
+    """Accept pagination links only from Graph so bearer tokens cannot leak."""
+    if not isinstance(url, str) or len(url) > 8192:
+        return None
+    p = urllib.parse.urlsplit(url)
+    if p.scheme.lower() != "https" or (p.hostname or "").lower() != "graph.microsoft.com":
+        return None
+    return url
+
+
+def _graph_values(url, headers, fetch=None, max_pages=MS_MAX_PAGES):
+    """Follow bounded Graph pagination, rejecting repeated or foreign links."""
+    fetch = fetch or _http
+    values, seen = [], set()
+    next_url = url
+    for _page in range(max(1, int(max_pages))):
+        if next_url in seen:
+            raise ValueError("repeated Microsoft Graph nextLink")
+        seen.add(next_url)
+        page = fetch(next_url, headers)
+        if not isinstance(page, dict):
+            raise ValueError("invalid Microsoft Graph response")
+        values.extend(page.get("value") or [])
+        candidate = page.get("@odata.nextLink")
+        if not candidate:
+            break
+        next_url = _safe_graph_next(candidate)
+        if not next_url:
+            raise ValueError("unsafe Microsoft Graph nextLink")
+    return values
+
+
+def _outlook_request(cfg, access_token, now=None):
+    """Build the timezone-explicit Graph request (kept pure for self-checks)."""
+    start, end = _calendar_bounds(now)
+    url = MS_CAL + "?" + urllib.parse.urlencode({
+        "startDateTime": start, "endDateTime": end,
+        "$select": "id,subject,start,end,isAllDay,isCancelled,location,webLink",
+        "$orderby": "start/dateTime", "$top": 50})
+    headers = {"Authorization": "Bearer " + access_token,
+               "Accept": "application/json",
+               "Prefer": 'outlook.timezone="%s"' % _outlook_timezone(cfg)}
+    return url, headers
+
+
+def _event_identity(event):
+    """Safe optional Graph identity fields used for links and stable UI keys."""
+    event_id = str(event.get("id") or "")[:256]
+    web_link = str(event.get("webLink") or "")
+    if web_link and urllib.parse.urlsplit(web_link).scheme.lower() != "https":
+        web_link = ""
+    return {"id": event_id, "web_link": web_link[:1200]}
+
+
 def _outlook(cfg):
-    """Calendar events from yesterday through the next week. Shaped exactly like
-    the .ics events the briefing already renders, so it's a drop-in source."""
+    """Calendar events around the current quarter, normalized for every view."""
     at, err = _ms_token(cfg)
     if err:
         return {"error": err}
-    start = datetime.datetime.combine(datetime.date.today(), datetime.time.min) \
-        - datetime.timedelta(days=1)
-    end = start + datetime.timedelta(days=CAL_AHEAD_DAYS + 1)
-    url = MS_CAL + "?" + urllib.parse.urlencode({
-        "startDateTime": start.isoformat(), "endDateTime": end.isoformat(),
-        "$select": "subject,start,end,isAllDay,isCancelled,location",
-        "$orderby": "start/dateTime", "$top": 50})
-    j = _http(url, {"Authorization": "Bearer " + at, "Accept": "application/json"})
+    url, headers = _outlook_request(cfg, at)
     events = []
-    for e in j.get("value") or []:
+    for e in _graph_values(url, headers):
         if e.get("isCancelled"):
             continue
         if e.get("isAllDay"):
-            # all-day comes back as midnight UTC. Converting it to a negative-offset
-            # zone (any US one) would drag it onto the PREVIOUS day — take the date
-            # as given and never localise it.
+            # Graph returns this date in the preferred Outlook timezone. Never
+            # convert an all-day midnight again or it can move to an adjacent day.
             day = ((e.get("start") or {}).get("dateTime") or "")[:10]
             if len(day) != 10:
                 continue
-            events.append({"date": day, "time": "all-day",
-                           "summary": (e.get("subject") or "(no subject)")[:100],
-                           "where": ((e.get("location") or {}).get("displayName") or "")[:60]})
+            end_day = ((e.get("end") or {}).get("dateTime") or "")[:10]
+            shaped = {
+                "date": day, "time": "all-day", "end_date": end_day or day,
+                "end_time": "all-day", "is_all_day": True,
+                "summary": (e.get("subject") or "(no subject)")[:100],
+                "where": ((e.get("location") or {}).get("displayName") or "")[:60],
+            }
+            shaped.update(_event_identity(e))
+            events.append(shaped)
             continue
         d = _ms_local(e.get("start"))
         if not d:
             continue
-        events.append({
+        end_d = _ms_local(e.get("end"))
+        shaped = {
             "date": d.date().isoformat(),
             "time": d.strftime("%H:%M"),
+            "end_date": (end_d or d).date().isoformat(),
+            "end_time": (end_d or d).strftime("%H:%M"),
+            "is_all_day": False,
             "summary": (e.get("subject") or "(no subject)")[:100],
-            "where": ((e.get("location") or {}).get("displayName") or "")[:60]})
+            "where": ((e.get("location") or {}).get("displayName") or "")[:60],
+        }
+        shaped.update(_event_identity(e))
+        events.append(shaped)
     return {"events": events, "count": len(events)}
 
 
@@ -709,7 +939,8 @@ def _codex(cfg):
     base = _codex_dir(cfg)
     auth_path = os.path.join(base, "auth.json")
     try:
-        auth = json.load(open(auth_path, encoding="utf-8"))
+        with open(auth_path, encoding="utf-8") as handle:
+            auth = json.load(handle)
     except (OSError, json.JSONDecodeError):
         return {"error": "not connected", "hint": "run `codex login` in a terminal"}
     toks = auth.get("tokens") or {}
@@ -732,9 +963,10 @@ def _codex(cfg):
     for _mt, p in sorted(files, reverse=True)[:5]:
         snap = None
         try:
-            for line in open(p, encoding="utf-8", errors="ignore"):
-                if '"rate_limits"' in line:
-                    snap = line  # keep the LAST snapshot in the file
+            with open(p, encoding="utf-8", errors="ignore") as handle:
+                for line in handle:
+                    if '"rate_limits"' in line:
+                        snap = line  # keep the LAST snapshot in the file
         except OSError:
             continue
         if not snap:
@@ -769,15 +1001,68 @@ def _codex(cfg):
 
 
 # ---------------------------------------------------------------- loop
+def _error_text(value):
+    if isinstance(value, dict) and value.get("error"):
+        return str(value["error"])[:160]
+    return ""
+
+
+def _disconnected(value):
+    """Missing configuration is intentional; do not resurrect old account data."""
+    error = _error_text(value).lower()
+    return "not connected" in error or "not signed in" in error
+
+
+def _last_good(key, *snapshots):
+    for snapshot in snapshots:
+        value = (snapshot or {}).get(key)
+        cleaned = _cache_clean(value)
+        if _service_good(cleaned):
+            return cleaned
+    return None
+
+
+def _failed_over(value, fallback, attempted):
+    """Return last-good data with an honest refresh failure marker."""
+    out = _cache_clean(fallback)
+    out["cached"] = True
+    out["stale"] = True
+    out["refresh_error"] = _error_text(value) or "refresh failed"
+    out["refresh_attempt_asof"] = attempted
+    return out
+
+
 def _refresh():
     cfg = _cfg()
-    snap = {"asof": int(time.time())}
+    attempted = int(time.time())
+    with LOCK:
+        previous = dict(SNAP)
+    disk = cached()
+    snap = {"asof": attempted}
     for key, fn in (("claude", _claude), ("codex", _codex), ("github", _github),
                     ("gmail", _gmail), ("spotify", _spotify), ("outlook", _outlook)):
-        try:
-            snap[key] = fn(cfg)
-        except Exception as e:
-            snap[key] = {"error": type(e).__name__ + ": " + str(e)[:120]}
+        reused = False
+        prior = _last_good(key, previous, disk) if key in CACHED_SERVICES else None
+        # A multi-month calendar window is intentionally richer than the small
+        # overview query it replaced. Reuse a fresh last-good Outlook snapshot
+        # between ten-minute refreshes instead of re-downloading it every 45s.
+        if (key == "outlook" and prior
+                and attempted - _stamp(prior.get("asof")) < OUTLOOK_REFRESH_SECONDS):
+            value, reused = prior, True
+        else:
+            try:
+                value = fn(cfg)
+            except Exception as e:
+                value = {"error": type(e).__name__ + ": " + str(e)[:120]}
+        if key in CACHED_SERVICES:
+            if _service_good(value):
+                value = _cache_clean(value)
+                value["asof"] = _stamp(value.get("asof"), attempted) if reused else attempted
+            elif _error_text(value) and not _disconnected(value):
+                fallback = prior
+                if fallback:
+                    value = _failed_over(value, fallback, attempted)
+        snap[key] = value
     with LOCK:
         SNAP.clear()
         SNAP.update(snap)
@@ -792,30 +1077,45 @@ def _refresh():
         pass
 
 
+def _merge_cache(old, snap):
+    """Pure last-good merge used by the writer and the offline self-check."""
+    out = _normalise_cache(old)
+    for key in CACHED_SERVICES:
+        value = snap.get(key)
+        if _service_good(value):
+            value = _cache_clean(value)
+            value["asof"] = _stamp(value.get("asof"), snap.get("asof"))
+            previous_asof = _stamp((out.get(key) or {}).get("asof"))
+            if value["asof"] >= previous_asof:
+                out[key] = value
+        elif _disconnected(value):
+            out.pop(key, None)
+    service_stamps = [_stamp(out[key].get("asof")) for key in CACHED_SERVICES
+                      if key in out]
+    out["asof"] = max(service_stamps) if service_stamps else 0
+    return out
+
+
 def _write_cache(snap):
     """Persist the snapshot so the briefing can read GitHub activity with no
     network (and before the first refresh of a cold start). Best-effort: a failed
     write must never take the pulse loop down."""
-    keep = {k: v for k, v in snap.items()
-            if k in ("asof", "github", "gmail", "outlook")
-            and not (isinstance(v, dict) and v.get("error"))}
-    if len(keep) < 2:               # asof alone = every service errored
-        return
     try:
-        tmp = CACHE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(keep, f)
-        os.replace(tmp, CACHE)
+        with _state_write_lock():
+            # Re-read only after acquiring the cross-process lock. Otherwise a
+            # slower stale writer can erase another service's newer snapshot.
+            old = _read_json(CACHE)
+            merged = _merge_cache(old, snap)
+            if len(merged) < 2 and len(_normalise_cache(old)) < 2:
+                return
+            _atomic_json_write(CACHE, merged)
     except OSError:
         pass
 
 
 def cached():
     """Last good snapshot from disk — works offline, works before first refresh."""
-    try:
-        return json.load(open(CACHE, encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
+    return _normalise_cache(_read_json(CACHE))
 
 
 def _loop():
@@ -825,7 +1125,8 @@ def _loop():
         except Exception as e:
             # a crash here used to kill the thread outright: the strip froze on
             # its last snapshot forever and said nothing. Log and keep looping.
-            SNAP["loop_error"] = type(e).__name__ + ": " + str(e)[:120]
+            with LOCK:
+                SNAP["loop_error"] = type(e).__name__ + ": " + str(e)[:120]
         time.sleep(45)
 
 
@@ -881,17 +1182,117 @@ def least_used():
     return cfg[0]["name"] if cfg else ""
 
 
-threading.Thread(target=_loop, daemon=True).start()
-threading.Thread(target=_loop_spotify, daemon=True).start()
+def _selfcheck():
+    """Deterministic coverage for cache/Graph helpers; performs no network I/O."""
+    plus7 = datetime.timezone(datetime.timedelta(hours=7))
+    local_now = datetime.datetime(2026, 7, 14, 12, 0, tzinfo=plus7)
+    start, end = _calendar_bounds(local_now)
+    assert start == "2026-06-09T00:00:00+07:00", start
+    assert end == "2026-10-15T00:00:00+07:00", end
+    utc = _ms_local({"dateTime": "2026-07-14T09:30:00.0000000",
+                     "timeZone": "UTC"}, plus7)
+    assert utc == datetime.datetime(2026, 7, 14, 16, 30), utc
+    preferred = _ms_local({"dateTime": "2026-07-14T09:30:00.0000000",
+                           "timeZone": MS_TIMEZONE_DEFAULT}, plus7)
+    assert preferred == datetime.datetime(2026, 7, 14, 9, 30), preferred
+    assert _ms_local({"dateTime": "junk"}, plus7) is None
+    assert _outlook_timezone({"outlook": {"timezone": 'bad"\r\n'}}) == MS_TIMEZONE_DEFAULT
+    assert _outlook_timezone({"outlook": {"timezone": "Pacific Standard Time"}}) \
+        == MS_TIMEZONE_DEFAULT
+    request_url, request_headers = _outlook_request(
+        {"outlook": {}}, "offline-test-token", local_now)
+    request_query = urllib.parse.parse_qs(urllib.parse.urlsplit(request_url).query)
+    assert request_query["startDateTime"] == [start]
+    assert request_query["endDateTime"] == [end]
+    assert request_headers["Prefer"] == 'outlook.timezone="SE Asia Standard Time"'
+    assert "webLink" in request_query["$select"][0]
+    assert _event_identity({"id": "a", "webLink": "javascript:bad"})["web_link"] == ""
+
+    first = MS_CAL + "?startDateTime=x"
+    second = MS_CAL + "?$skiptoken=opaque"
+    pages = {
+        first: {"value": [{"subject": "one"}], "@odata.nextLink": second},
+        second: {"value": [{"subject": "two"}]},
+    }
+    calls = []
+
+    def fake_fetch(url, _headers):
+        calls.append(url)
+        return pages[url]
+
+    assert [e["subject"] for e in _graph_values(first, {}, fake_fetch)] == ["one", "two"]
+    assert calls == [first, second]
+    assert _safe_graph_next("https://graph.microsoft.com/v1.0/me/calendarView?$skip=1")
+    assert _safe_graph_next("https://graph.microsoft.com.evil.invalid/steal") is None
+    try:
+        _graph_values(first, {}, lambda _u, _h: {
+            "value": [], "@odata.nextLink": "https://evil.invalid/steal"})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("foreign Graph nextLink accepted")
+
+    old = {"asof": 100,
+           "outlook": {"events": [{"summary": "kept"}], "count": 1},
+           "github": {"commits": [{"msg": "old"}]},
+           "gmail": {"unread": 2}}
+    transient = {"asof": 200,
+                 "outlook": {"error": "TimeoutError: offline"},
+                 "github": {"commits": [{"msg": "new"}], "asof": 200},
+                 "gmail": {"error": "not connected"}}
+    merged = _merge_cache(old, transient)
+    assert merged["outlook"]["events"][0]["summary"] == "kept"
+    assert merged["outlook"]["asof"] == 100
+    assert merged["github"]["asof"] == 200
+    assert "gmail" not in merged
+    assert _merge_cache(merged, {"asof": 150,
+                                 "github": {"commits": [], "asof": 150}})["github"] \
+        == merged["github"]
+    stale = _failed_over(transient["outlook"], merged["outlook"], 200)
+    assert stale["stale"] and stale["cached"] and stale["asof"] == 100
+    cold = _cold_snapshot(merged, now=4000)
+    assert cold["outlook"]["stale"] and cold["outlook"]["cached"]
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        p = os.path.join(d, "cache.json")
+        _atomic_json_write(p, merged)
+        assert _read_json(p) == merged
+        assert not [name for name in os.listdir(d) if name.endswith(".tmp")]
+        gate = threading.Barrier(2)
+        state_lock = os.path.join(d, "state.lock")
+
+        def merge_key(key):
+            gate.wait()
+            with _state_write_lock(state_lock):
+                value = _read_json(p)
+                time.sleep(0.03)
+                value[key] = {"asof": 500, "value": key}
+                _atomic_json_write(p, value)
+
+        writers = [threading.Thread(target=merge_key, args=(key,))
+                   for key in ("outlook2", "github2")]
+        for writer in writers:
+            writer.start()
+        for writer in writers:
+            writer.join()
+        locked = _read_json(p)
+        assert "outlook2" in locked and "github2" in locked
+        assert not os.path.exists(state_lock)
+    print("pulse selfcheck: ok (cache merge, state lock, cold start, Graph time/pagination, atomic write)")
+    return 0
+
+
+def _start_daemons():
+    threading.Thread(target=_loop, daemon=True, name="pulse-refresh").start()
+    threading.Thread(target=_loop_spotify, daemon=True, name="pulse-spotify").start()
 
 if __name__ == "__main__":
-    # Graph hands back UTC; a 23:30Z event is *tomorrow* in a +2 zone. Pin it.
-    utc = _ms_local({"dateTime": "2026-07-14T09:30:00.0000000", "timeZone": "UTC"})
-    exp = (datetime.datetime(2026, 7, 14, 9, 30, tzinfo=datetime.timezone.utc)
-           .astimezone().replace(tzinfo=None))
-    assert utc == exp, (utc, exp)
-    assert _ms_local({"dateTime": "junk"}) is None
-    if "--outlook-login" in sys.argv:
+    if "--selfcheck" in sys.argv:
+        sys.exit(_selfcheck())
+    elif "--outlook-login" in sys.argv:
         sys.exit(outlook_login())
     _refresh()
     print(json.dumps(get(), indent=2)[:3000])
+elif os.environ.get("RUNE_PULSE_NO_THREADS") != "1":
+    _start_daemons()

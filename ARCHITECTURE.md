@@ -1,182 +1,187 @@
 # Architecture
 
-The shared model/orchestration layer everything else builds on. Six components,
-four data contracts. Contracts are minimal JSON — every module reads and writes
-the same shapes onto the existing wire (`state/events.jsonl`), so nothing needs a
-private format and the UI graph can render any of it without a translation step.
+This document describes Rune's operator workbench, recovery runtime, calendar,
+and plan-only daily briefing. It replaces the retired review/grading pipeline
+that treated activity logs as the product.
 
-## Principles
+## Data flow
 
-- **One model door.** All model calls go through `model_client.py`. Model choice,
-  token budget, effort, and refusal handling are decided there, once. The 1-week
-  Opus upgrade is a single constant flip (`MODEL`).
-- **Refusals are data, not crashes.** Every call returns a 200-shaped envelope
-  with a `stopped_reason`. A loop that gets a refusal re-routes; it never exits.
-- **Cheap-first escalation.** A haiku scan sizes work, opus plans, then the build
-  is delegated to the tier that fits. Don't spend Fable on a lookup.
-- **The wire is the truth.** Components communicate by appending events, not by
-  calling each other. The dashboard (and the UI graph) read only the wire.
+```text
+Microsoft Graph ──> dashboard/pulse.py ──> state/pulse-cache.json
+                                             │
+                                             ├─> GET /api/pulse
+                                             └─> GET /api/calendar
+                                                        │
+                                                        v
+                                                Calendar dashboard card
 
-```
-                         ┌───────────────────┐
-      prompt / cron ────▶│ 1. Daily review   │  sizes the day, files tasks
-                         │    loop           │
-                         └─────────┬─────────┘
-                                   │ task[]
-                                   ▼
-        ┌───────────────────────────────────────────┐
-        │ 2. Agent orchestration / cards            │  escalate() -> roster
-        │    (model_client.complete per role)       │  emits agent-card status
-        └───────┬───────────────────────────┬───────┘
-                │ result                     │ status
-                ▼                            ▼
-        ┌──────────────┐            ┌──────────────────┐
-        │ 4. Grading / │◀───────────│ 3. Feedback-loop │  critic->doer until
-        │    audit     │  grade[]   │    agent         │  the goal predicate
-        └──────┬───────┘            └──────────────────┘
-               │ audit[]
-               ▼
-        ┌──────────────┐   consumes tasks+grades   ┌──────────────────┐
-        │ 5. Skill-    │──────────────────────────▶│ 6. UI graph      │
-        │    tree tests│   (pass gates a skill)    │ (reads the wire) │
-        └──────────────┘                           └──────────────────┘
+sibling Git repos ──> private yesterday evidence ──> Fable 5 or GPT-5.6 Sol
+                                                        │
+                                              validate exactly 3 plans
+                                                        │
+                                                        v
+                                               state/briefing.json
+                                                        │
+                                              GET /api/briefing
+                                                        │
+                                                        v
+                                      collapsed priority and agent cards
 ```
 
----
+Neither path executes repository work. Calendar is read-only. Briefing
+generation collects evidence, asks for structured plans, validates them, and
+only then replaces the last good briefing atomically.
 
-## Data contracts
+CEO and orchestration missions are a separate execution path:
 
-Four shapes, shared across all six components. Every field is JSON-native; ids
-are short hex slugs (matching `state/ceo/<cid>.json`). Extra keys are allowed —
-consumers read what they know and ignore the rest.
-
-### `task`
-The unit of work. Produced by the review loop, consumed by orchestration, graded
-by grading/audit.
-```json
-{
-  "id": "a1b2c3d4",
-  "goal": "one-line what/why",
-  "complexity": "trivial|light|hard|frontier",
-  "status": "pending|running|blocked|review|done|failed",
-  "depends_on": ["<task id>"],
-  "created": "2026-07-13T10:00:00",
-  "source": "daily-review|directive|feedback"
-}
+```text
+command bar -> dashboard/ceo.py -> planner -> role worker
+                                      |             |
+                                      |      classified failure
+                                      |             |
+                                      +-- persisted run state
+                                                    |
+                         transient -> bounded retry |
+                         permission -> operator wait|
+                         task -> safe fixer (<=2) -> original-role verification
+                                                    |
+                                   verified learning -> Hermes (best effort)
 ```
-`complexity` feeds `model_client.escalate()`; `status` is the same vocabulary the
-CEO roles already use, so the UI needs no mapping.
 
-### `grade`
-The verdict on a finished task. Produced by grading/audit and the feedback loop.
-```json
-{
-  "task_id": "a1b2c3d4",
-  "score": 0.0,
-  "verdict": "pass|revise|fail",
-  "rubric": ["criterion met/unmet ..."],
-  "grader": "opus",
-  "ts": "2026-07-13T10:05:00"
-}
-```
-`score` is 0–1. `verdict: revise` is the signal the feedback loop iterates on;
-`pass` is what gates a skill-tree test.
+## Calendar path
 
-### `agent-card status`
-One card per spawned role. Emitted on every state transition so the UI graph and
-the dashboard render live.
-```json
-{
-  "card_id": "a1b2c3d4:eng",
-  "task_id": "a1b2c3d4",
-  "role": "eng",
-  "model": "fable|opus|sonnet|haiku",
-  "effort": "low|medium|high|xhigh|max",
-  "status": "pending|working|blocked|review|done|failed",
-  "stopped_reason": null,
-  "cost": 0.0,
-  "ts": "2026-07-13T10:02:00"
-}
-```
-`stopped_reason` is carried straight from `model_client.normalize()` — a card can
-show "refused (cyber)" without the run having crashed.
+`dashboard/pulse.py` authenticates a public Microsoft application with the
+device-code flow and requests `offline_access Calendars.Read`. It calls Graph's
+`calendarView` endpoint with explicit local offsets and an Outlook timezone
+preference, follows bounded same-host pagination, converts event times, and
+refreshes in a background thread.
 
-### `audit log entry`
-The append-only record of what happened and why. Written by grading/audit; the
-UI graph replays it.
-```json
-{
-  "id": "e5f6a7b8",
-  "task_id": "a1b2c3d4",
-  "actor": "grading|feedback|orchestration|review-loop",
-  "action": "graded|escalated|refused|shipped|reverted",
-  "detail": "one line",
-  "refs": {"grade": "...", "card": "a1b2c3d4:eng"},
-  "ts": "2026-07-13T10:06:00"
-}
-```
-This is a typed superset of the existing `mirror.py` event, so entries land on
-`state/events.jsonl` unchanged.
+Outlook has its own freshness timestamp. A GitHub or Gmail refresh cannot make
+old calendar data appear current. Cold starts hydrate from
+`state/pulse-cache.json`; transient failures preserve the last good events and
+add stale/error metadata. A cross-process lock serializes cache merges and
+rotated-token updates before atomic replacement, so simultaneous Outlook and
+Spotify refreshes cannot erase one another.
 
----
+The overview card prefers live `/api/pulse` data. `/api/calendar` accepts a
+bounded start/day range and the Calendar route renders Month, Week, Day, and
+Agenda from the same 35-days-back/92-days-forward snapshot. Event ids, end
+times, all-day state, location, and safe source links survive normalization.
+The calendar included in `/api/briefing` uses the same cache, with an optional
+existing ICS subscription as fallback.
 
-## Components
+## Mission recovery path
 
-### 1. Daily review loop
-Reads the inbox and open tasks at a cadence (cron or session boot), sizes each
-into a `task` with a `complexity`, and files them on the wire. Idempotent: a task
-already `done` is not re-filed. Output contract: `task[]`.
+`dashboard/runtime.py` is the shared safety layer for CEO roles and conductor
+loops. It owns process-tree termination, failure classification, interruptible
+backoff, protected-action preflight, secret-safe excerpts, and compact recovery
+evidence.
 
-### 2. Agent orchestration / cards
-For each runnable `task`, calls `model_client.escalate(task.complexity)` to pick
-the roster tier, then `model_client.complete(...)` per role. Every transition
-emits an `agent-card status`. Because `complete()` never raises, a role that gets
-refused is marked `status: blocked, stopped_reason: refusal` and the rest of the
-roster keeps running — the loop closes instead of hanging. This is the direct
-successor to `dashboard/ceo.py`, now sharing the model door.
+`dashboard/ceo.py` persists attempts, planning history, recovery history,
+detail, and next action in `state/ceo/<cid>.json`. Planner retry is limited to
+transient, empty, or malformed responses. Worker retries are limited to
+classified transport/capacity failures. A task-class failure can launch at
+most two native-permission fixer cycles; the original role is always the
+verifier. Permission, credential, destructive, outward, spending, and access
+decisions remain operator-gated.
 
-### 3. Feedback-loop agent
-A critic→doer loop (the earned `loop-engineering` skill) bounded by a
-max-iteration budget. Reads a `grade`; while `verdict == revise` and iterations
-remain, it re-briefs the doer with the rubric gaps and re-runs. Emits a new
-`grade` each pass and stops on `pass`, `fail`, or budget exhaustion. Never spins
-forever — the budget is the ceiling.
+New missions opt into restart recovery. On server boot, interrupted planning or
+working states resume from persisted context; review and permission waits do
+not. Stop is monotonic, kills descendants, and wins races with a late worker.
 
-### 4. Grading / audit
-Grades a finished `task` against a rubric using an opus grader (a fresh context,
-not self-critique), producing a `grade`, and writes an `audit log entry` for the
-decision. Grading and audit are one component because every grade is an auditable
-event — the score and the reasoning land together on the wire.
+`dashboard/orchestrator.py` uses the same tree-kill and transient-retry
+helpers for both worker and critic calls.
 
-### 5. Skill-tree tests
-Each skill has a checkable predicate. A skill advances (earns / stays active) only
-when its associated `task`s carry a `grade` with `verdict: pass`. Consumes
-`task` + `grade`; writes skill-registry transitions as `audit log entries`. This
-is the enforcement arm of "skills are earned, not declared."
+## Workflow suggestion path
 
-### 6. UI graph
-Reads only the wire (`events.jsonl` + registries) and renders tasks, agent cards,
-grades, and audit entries as a live graph — nodes are tasks/skills, edges are
-`depends_on` and `refs`. It writes nothing. Any component's output is renderable
-because they all speak the four contracts above.
+`skills/workflow-coach/scripts/analyze.py` reads the append-only event wire,
+redacts credential-shaped evidence, removes navigation noise, normalizes
+volatile paths/ids, and looks for action families, adjacent sequences no more
+than 15 minutes apart, and failure/recovery correlations. All candidates need
+at least three observations. Missing input fails loudly and malformed input
+counts remain visible.
 
----
+`GET /api/workflows` exposes the top 12 cached candidates to Automation Radar
+and reports the total. Its contract always includes
+`advisory_only=true`, `review_required=true`, and `executed=false`.
 
-## The model layer (`model_client.py`)
+## Briefing path
 
-The foundation the six components share:
+`daily_briefing.py` discovers up to 30 Git repositories beneath configured
+roots. For the previous local day `[00:00, 00:00)`, it collects bounded signals:
 
-- `MODEL` — the model string, `claude-fable-5` today. **The single-constant swap
-  path to Opus** is `MODEL = MODEL_IDS["opus"]`.
-- `complete(prompt, ...)` — one Messages call that **always** returns a
-  `normalize()` envelope (`status: 200`, `stopped_reason`, `text`, `usage`).
-  Fable's thinking is always on, so depth is set via `effort`, not a thinking
-  budget.
-- `resolve_effort(effort, agentic_loop)` — the `low..max` ladder. `xhigh` is
-  gated: allowed only when `agentic_loop=True`, else it degrades to `high`.
-- `clamp_max_tokens(n)` — forces the per-call budget into 64K–100K.
-- `escalate(complexity, agentic_loop)` — the tiering plan: haiku scan → opus plan
-  → Sonnet/Opus/Fable delegate.
+- commits from all refs, changed paths, and diff totals;
+- working-tree paths whose modification time falls in the source day;
+- relevant TODO/README context from safe text files.
 
-Run `python model_client.py` for the self-check (simulated refusal → 200 +
-`stopped_reason`, plus the effort/token config assertions).
+Sensitive-looking paths and linked, reparse-point, or hard-linked evidence
+files are omitted. Repository text is marked as untrusted in the model prompt.
+Evidence is never stored in `state/briefing.json`; only the validated decision
+artifact is stored.
+
+The planning model must return exactly three priorities that refer to three
+different repository ids. Each priority contains a title, reason, outcome,
+first move, two to six CEO steps, a definition of done, and two to four planned
+agents. An agent has a role, icon, mission, deliverable, model, effort, and
+`planned` status.
+
+The validator rejects unknown or duplicate repositories, empty content,
+unsupported models/efforts, repeated additional priorities, and malformed
+agent plans. It also rejects secret-like output, absolute paths, and copied or
+near-copied commit subjects. Generation retries malformed model output once. A
+file lock stops
+overlapping generations, and atomic replacement keeps the previous snapshot if
+collection, model execution, or validation fails.
+
+Primary generation is idempotent for a source date. `--more` appends a new
+three-priority batch; `--force` replaces the primary result for that date. None
+of these modes starts the planned agents.
+
+## Models and controls
+
+Briefing brainstorm providers:
+
+- `fable` — Fable 5 through the Claude CLI in safe, tool-free mode.
+- `gpt-5.6-sol` — GPT-5.6 Sol through Codex from an isolated temporary
+  directory with shell, browser, app, computer, image, and multi-agent tools
+  disabled.
+
+Shared effort values are `low`, `medium`, `high`, `xhigh`, and `max`. Planned
+agent cards additionally allow Haiku, Sonnet, and Opus. Updating a card changes
+only its persisted plan metadata while its status remains `planned`.
+
+## HTTP contract
+
+| Method | Route | Result |
+|---|---|---|
+| GET | `/api/pulse` | Live/cached outside-world snapshot, including Outlook. |
+| GET | `/api/calendar` | Normalized calendar events and freshness. |
+| GET | `/api/workflows` | Ranked, evidence-backed workflow suggestions; never execution. |
+| GET | `/api/ceo` | Persisted CEO missions, live state, attempts, and recovery history. |
+| POST | `/api/ceo-action` | Stop, resume, archive, or resolve a gated role. |
+| GET | `/api/briefing` | Last good briefing, async job status, settings, and calendar. |
+| GET | `/api/briefing/job` | Current in-process generation job. |
+| GET | `/api/briefing/settings` | Default model, effort, and repository roots. |
+| POST | `/api/briefing/generate` | Queue an asynchronous, plan-only generation. |
+| POST | `/api/briefing/agent` | Change one planned agent's model and/or effort. |
+| POST | `/api/briefing/settings` | Change briefing defaults. |
+
+The server accepts object-shaped POST bodies up to 1 MiB and rejects
+cross-origin requests. Static serving uses an explicit asset allowlist and
+rejects Windows path aliases; the dashboard binds only to `127.0.0.1`.
+
+## Presentation contract
+
+The global Mission Activity tray is fixed, height-bounded, internally
+scrollable, and collapsible with Escape. It groups prompt, latest reply, state,
+and actions by mission instead of appending permanent chat bubbles. The
+overview orders Microsoft Calendar before Daily briefing and follows it with
+Automation Radar. Calendar is responsive down to 320px without hiding Today or
+the four view selectors. Recovery and permission states use explicit labels in
+addition to semantic color.
+
+Dashboard polling and **Check now** only read the stored briefing. Repository
+scans and model calls occur after an explicit generation request, the scheduled
+09:30 command, or the server's boot/minute catch-up when that cycle is overdue.
+Catch-up runs in an external process with a frozen source date and durable
+failure/retry state.

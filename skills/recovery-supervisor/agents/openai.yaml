@@ -1,0 +1,4 @@
+interface:
+  display_name: "Recovery Supervisor"
+  short_description: "Recover failed, stalled, or gated agent work"
+  default_prompt: "Use $recovery-supervisor to diagnose and safely recover this failed agent task."

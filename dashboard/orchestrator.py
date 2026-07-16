@@ -25,6 +25,7 @@ import time
 import uuid
 
 import pulse  # account routing: which Claude account this loop delegates to
+import runtime as agent_runtime
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ODIR = os.path.join(ROOT, "state", "orchestrations")
@@ -32,10 +33,12 @@ MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 IS_WIN = sys.platform == "win32"
 WORKER_TIMEOUT = 1800
 CRITIC_TIMEOUT = 240
+MAX_TRANSIENT_RETRIES = 2
+RETRY_BACKOFF_BASE = 0.5
 
 # in-process registry: oid -> {"thread","proc","stop","human"}
 LIVE = {}
-LOCK = threading.Lock()
+LOCK = threading.RLock()
 
 CRITIC_PROMPT = """You are the critic in an orchestration loop. Judge whether the worker completed the mission. Do NOT use any tools — judge only from the report below.
 
@@ -62,12 +65,28 @@ def _path(oid):
     return os.path.join(ODIR, oid + ".json")
 
 
+def _load_json(path):
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
 def _save(o):
-    o["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
-    tmp = _path(o["oid"]) + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(o, f, ensure_ascii=False, indent=1)
-    os.replace(tmp, _path(o["oid"]))
+    # Serialize against action(stop): a completion that arrives after Stop may
+    # update telemetry, but it may never transition the persisted run away from
+    # stopped.
+    with LOCK:
+        live = LIVE.get(o.get("oid")) or {}
+        thread = live.get("thread")
+        thread_alive = not thread or not hasattr(thread, "is_alive") or thread.is_alive()
+        if live.get("stop") and thread_alive:
+            o["status"] = "stopped"
+            o["detail"] = "stopped by operator"
+            o["next_action"] = "Start a new loop if more work is needed."
+        o["updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+        tmp = _path(o["oid"]) + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(o, f, ensure_ascii=False, indent=1)
+        os.replace(tmp, _path(o["oid"]))
 
 
 def list_all():
@@ -76,14 +95,15 @@ def list_all():
         for fn in os.listdir(ODIR):
             if fn.endswith(".json"):
                 try:
-                    o = json.load(open(os.path.join(ODIR, fn), encoding="utf-8"))
+                    o = _load_json(os.path.join(ODIR, fn))
                 except (OSError, json.JSONDecodeError):
                     continue
                 with LOCK:
                     live = o["oid"] in LIVE and LIVE[o["oid"]]["thread"].is_alive()
                 o["live"] = live
-                if o.get("status") in ("running", "waiting") and not live:
+                if o.get("status") in ("running", "retrying", "waiting") and not live:
                     o["status"] = "stalled"  # server restarted mid-run
+                    o["detail"] = "the dashboard server stopped during this loop"
                 out.append(o)
     out.sort(key=lambda o: o.get("started", ""), reverse=True)
     return out
@@ -94,16 +114,35 @@ def _claude(oid, argv, prompt, timeout, cwd, config_dir=None):
     env = dict(os.environ, MAESTRO_SID=oid)
     if config_dir:
         env["CLAUDE_CONFIG_DIR"] = config_dir  # run under the delegated account
-    p = subprocess.Popen(argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                         shell=IS_WIN, env=env)
+    p = subprocess.Popen(
+        argv, cwd=cwd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE, text=True, encoding="utf-8", shell=IS_WIN,
+        env=env, start_new_session=not IS_WIN,
+        creationflags=(getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+                       if IS_WIN else 0))
+    stop_after_spawn = False
     with LOCK:
         if oid in LIVE:
             LIVE[oid]["proc"] = p
+            stop_after_spawn = bool(LIVE[oid].get("stop"))
+    if stop_after_spawn:
+        agent_runtime.terminate_process_tree(p)
+        try:
+            p.communicate(timeout=5)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        with LOCK:
+            if oid in LIVE and LIVE[oid].get("proc") is p:
+                LIVE[oid]["proc"] = None
+        return {"is_error": True, "result": "stopped by operator"}
     try:
         out, err = p.communicate(prompt, timeout=timeout)
     except subprocess.TimeoutExpired:
-        p.kill()
+        agent_runtime.terminate_process_tree(p)
+        try:
+            p.communicate(timeout=5)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
         return {"is_error": True, "result": "timed out after %ss" % timeout}
     finally:
         with LOCK:
@@ -130,6 +169,53 @@ def _verdict(text):
     return "revise", "Critic reply was unparseable; continue the mission: " + text[:300]
 
 
+def _stopped(oid):
+    with LOCK:
+        return bool(LIVE.get(oid, {}).get("stop"))
+
+
+def _call_with_transient_retries(oid, o, actor, call):
+    """Run worker/critic with a bounded retry only for classified transients."""
+    retries, total_cost = 0, 0.0
+    while True:
+        if _stopped(oid):
+            return {"is_error": True, "result": "stopped by operator",
+                    "classification": "stopped"}
+        value = call()
+        if _stopped(oid):
+            return {"is_error": True, "result": "stopped by operator",
+                    "classification": "stopped", "retry_cost_usd": total_cost,
+                    "retry_count": retries}
+        total_cost += value.get("total_cost_usd") or 0
+        detail = str(value.get("result") or "")
+        classification = agent_runtime.classify_failure(
+            detail, bool(value.get("is_error")), value.get("subtype") or "")
+        value["classification"] = classification
+        value["retry_cost_usd"] = total_cost
+        value["retry_count"] = retries
+        if (not value.get("is_error") or
+                classification not in ("transient", "transient_limit") or
+                retries >= MAX_TRANSIENT_RETRIES):
+            return value
+        retries += 1
+        o["turns_log"].append({
+            "role": "system", "round": o.get("round", 0),
+            "result": "%s %s; retry %d/%d" %
+                      (actor, classification, retries, MAX_TRANSIENT_RETRIES),
+            "classification": classification,
+        })
+        o["status"] = "retrying"
+        o["detail"] = ("%s %s; bounded retry %d/%d" %
+                       (actor, classification, retries, MAX_TRANSIENT_RETRIES))
+        o["next_action"] = "Retrying automatically after a short backoff."
+        _save(o)
+        emit(oid, o["detail"])
+        if not agent_runtime.wait_backoff(
+                lambda: _stopped(oid), retries, base=RETRY_BACKOFF_BASE):
+            return {"is_error": True, "result": "stopped by operator",
+                    "classification": "stopped"}
+
+
 def _wait_human(oid, o):
     o["status"] = "waiting"
     _save(o)
@@ -147,10 +233,10 @@ def _wait_human(oid, o):
 
 
 def _run(oid):
-    o = json.load(open(_path(oid), encoding="utf-8"))
+    o = _load_json(_path(oid))
     cwd = o.get("dir") or ROOT
     prompt = o["mission"]
-    sid = None
+    sid = o.get("session_id") or None
     # resolve which Claude account this loop delegates to. "auto" picks the
     # account with the most headroom right now (least tokens used this window).
     acct = o.get("account") or ""
@@ -171,6 +257,11 @@ def _run(oid):
             o["round"] = rnd
             o["status"] = "running"
             _save(o)
+            if _stopped(oid):
+                o["status"] = "stopped"
+                o["detail"] = "stopped by operator"
+                _save(o)
+                return
             argv = ["claude", "-p", "--output-format", "json",
                     "--max-turns", str(o["turns"])]
             if sid:
@@ -181,9 +272,21 @@ def _run(oid):
                 argv.append("--dangerously-skip-permissions")
             emit(oid, "round %d/%d worker: %s" % (rnd, o["rounds"], prompt))
             t0 = time.time()
-            w = _claude(oid, argv, prompt, WORKER_TIMEOUT, cwd, cfg_dir)
+            w = _call_with_transient_retries(
+                oid, o, "worker",
+                lambda: _claude(oid, argv, prompt, WORKER_TIMEOUT, cwd, cfg_dir))
+            if w.get("classification") == "stopped":
+                o["status"] = "stopped"
+                o["detail"] = "stopped by operator"
+                _save(o)
+                return
+            o["status"] = "running"
+            o["detail"] = ""
+            o["next_action"] = "Critic will verify the worker report."
             sid = w.get("session_id") or sid
-            o["cost"] = round(o.get("cost", 0) + (w.get("total_cost_usd") or 0), 4)
+            o["session_id"] = sid
+            o["cost"] = round(o.get("cost", 0) +
+                              (w.get("retry_cost_usd", w.get("total_cost_usd") or 0)), 4)
             # a worker that burns its whole turn budget mid-work is not a crash —
             # it has no final message, but the critic can still steer the resume
             ran_out = w.get("subtype") == "error_max_turns"
@@ -194,10 +297,15 @@ def _run(oid):
                 "role": "worker", "round": rnd, "prompt": prompt,
                 "result": report,
                 "error": bool(w.get("is_error")) and not ran_out,
-                "secs": round(time.time() - t0), "cost": w.get("total_cost_usd")})
+                "classification": w.get("classification"),
+                "retries": w.get("retry_count", 0),
+                "secs": round(time.time() - t0),
+                "cost": w.get("retry_cost_usd", w.get("total_cost_usd"))})
             _save(o)
             if w.get("is_error") and not ran_out:
                 o["status"] = "error"
+                o["detail"] = "%s: %s" % (w.get("classification") or "task", report[:300])
+                o["next_action"] = "Inspect the retry evidence and start a new loop if appropriate."
                 _save(o)
                 emit(oid, "worker error: " + report[:120])
                 return
@@ -207,12 +315,38 @@ def _run(oid):
             cargv = ["claude", "-p", "--output-format", "json", "--max-turns", "2",
                      "--disallowedTools", "*",
                      "--model", o.get("critic") or "opus"]
-            c = _claude(oid, cargv, CRITIC_PROMPT % (o["mission"], report),
-                        CRITIC_TIMEOUT, cwd, cfg_dir)
-            o["cost"] = round(o.get("cost", 0) + (c.get("total_cost_usd") or 0), 4)
+            c = _call_with_transient_retries(
+                oid, o, "critic",
+                lambda: _claude(oid, cargv,
+                                CRITIC_PROMPT % (o["mission"], report),
+                                CRITIC_TIMEOUT, cwd, cfg_dir))
+            if c.get("classification") == "stopped":
+                o["status"] = "stopped"
+                o["detail"] = "stopped by operator"
+                _save(o)
+                return
+            o["status"] = "running"
+            o["detail"] = ""
+            o["next_action"] = "Applying the critic verdict."
+            o["cost"] = round(o.get("cost", 0) +
+                              (c.get("retry_cost_usd", c.get("total_cost_usd") or 0)), 4)
+            if c.get("is_error"):
+                o["status"] = "error"
+                o["detail"] = "%s critic failure: %s" % (
+                    c.get("classification") or "task",
+                    agent_runtime.safe_excerpt(c.get("result"), 280))
+                o["next_action"] = "Retry the loop after the critic service recovers."
+                o["turns_log"].append({"role": "critic", "round": rnd,
+                                       "error": True,
+                                       "classification": c.get("classification"),
+                                       "feedback": o["detail"]})
+                _save(o)
+                emit(oid, o["detail"])
+                return
             verdict, feedback = _verdict(str(c.get("result") or ""))
             o["turns_log"].append({"role": "critic", "round": rnd,
-                                   "verdict": verdict, "feedback": feedback[:2000]})
+                                   "verdict": verdict, "feedback": feedback[:2000],
+                                   "retries": c.get("retry_count", 0)})
             _save(o)
             emit(oid, "round %d critic: %s — %s" % (rnd, verdict, feedback))
             if not o.get("auto", True):
@@ -234,8 +368,9 @@ def _run(oid):
                          or o.get("model") in ("opus", "fable"))
                 if worth:
                     subprocess.run([sys.executable, os.path.join(ROOT, "hermes", "hermes.py"),
-                                    "note", o["mission"][:180],
-                                    ("accepted after %d round(s): %s" % (rnd, report))[:400],
+                                    "note", agent_runtime.safe_excerpt(o["mission"], 180),
+                                    agent_runtime.safe_excerpt(
+                                        "accepted after %d round(s): %s" % (rnd, report), 400),
                                     "--tags", "mission,orchestrated", "--source", "loop:" + oid],
                                    capture_output=True)
                 else:
@@ -251,11 +386,16 @@ def _run(oid):
         _save(o)
         emit(oid, "round budget exhausted without acceptance")
     except Exception as e:  # never leave a run stuck at "running" on a crash
-        o["status"] = "error"
-        o["turns_log"].append({"role": "system", "round": o.get("round", 0),
-                               "result": repr(e)[:500]})
-        _save(o)
-        emit(oid, "orchestrator crashed: " + repr(e)[:120])
+        if _stopped(oid):
+            o["status"] = "stopped"
+            o["detail"] = "stopped by operator"
+            _save(o)
+        else:
+            o["status"] = "error"
+            o["turns_log"].append({"role": "system", "round": o.get("round", 0),
+                                   "result": repr(e)[:500]})
+            _save(o)
+            emit(oid, "orchestrator crashed: " + repr(e)[:120])
     finally:
         with LOCK:
             LIVE.pop(oid, None)
@@ -272,7 +412,8 @@ def start(mission, name="", model="default", critic="opus", turns=40, rounds=3,
          "dir": workdir, "model": model, "critic": critic, "account": account,
          "turns": max(1, min(100, turns)), "rounds": max(1, min(8, rounds)),
          "auto": bool(auto), "skip": bool(skip), "status": "running", "round": 0,
-         "cost": 0, "turns_log": [],
+         "cost": 0, "turns_log": [], "detail": "", "next_action": "Worker is starting.",
+         "session_id": None,
          "started": datetime.datetime.now().isoformat(timespec="seconds")}
     _save(o)
     t = threading.Thread(target=_run, args=(oid,), daemon=True)
@@ -286,19 +427,26 @@ def start(mission, name="", model="default", critic="opus", turns=40, rounds=3,
 
 
 def action(oid, act, feedback=""):
+    proc = None
     with LOCK:
         st = LIVE.get(oid)
         if not st:
             return "not running (finished or server restarted)"
         if act == "stop":
             st["stop"] = True
-            if st.get("proc"):
-                try:
-                    st["proc"].kill()
-                except OSError:
-                    pass
-            return None
+            proc = st.get("proc")
         if act in ("accept", "revise", "reject"):
             st["human"] = (act, feedback)
             return None
+    if act == "stop":
+        agent_runtime.terminate_process_tree(proc)
+        try:
+            o = _load_json(_path(oid))
+            o["status"] = "stopped"
+            o["detail"] = "stopped by operator"
+            o["next_action"] = "Start a new loop if more work is needed."
+            _save(o)
+        except (OSError, json.JSONDecodeError):
+            pass
+        return None
     return "unknown action"

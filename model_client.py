@@ -4,8 +4,8 @@
 Every module that reasons with a model routes through here so four policies are
 enforced once, not re-litigated per caller:
 
-1. Model swap is a ONE-LINE change. `MODEL` points at Fable 5 today; flip it to
-   MODEL_IDS["opus"] for the 1-week Opus upgrade. Nothing else changes.
+1. Model swap is a ONE-LINE change. `MODEL` points at Opus 4.8 for the 1-week
+   upgrade; flip it back to MODEL_IDS["fable"] to revert. Nothing else changes.
 2. `max_tokens` is clamped to 64K-100K per call (below that Fable under-answers
    hard tasks; above 100K raw-HTTP turns risk timing out).
 3. Effort is a ladder low->max. `xhigh` is gated: it is only allowed when the
@@ -18,11 +18,13 @@ Stdlib only, raw urllib against the Anthropic API (repo rule: no deps), matching
 dashboard/ceo.py and dashboard/chat.py.
 """
 import json
+import logging
 import os
 import re
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+log = logging.getLogger("model_client")
 API = "https://api.anthropic.com/v1/messages"
 
 # The four tiers Rune staffs from, as {short name: API id}. Short names are what
@@ -34,8 +36,8 @@ MODEL_IDS = {
     "fable": "claude-fable-5",      # frontier-complex reasoning
 }
 
-# === THE ONE LINE ===  swap to MODEL_IDS["opus"] for the 1-week Opus upgrade.
-MODEL = MODEL_IDS["fable"]
+# === THE ONE LINE ===  Opus for the 1-week upgrade; flip to MODEL_IDS["fable"] to revert.
+MODEL = MODEL_IDS["opus"]
 
 # Effort ladder, cheapest to deepest. `xhigh` sits between high and max and is
 # reserved for agentic loops (it burns tokens exploring); see resolve_effort.
@@ -105,6 +107,11 @@ def normalize(data, http_status=200, model=MODEL):
         detail = (data.get("error") or {}).get("message")
     elif stop == "refusal":
         detail = (data.get("stop_details") or {}).get("explanation") or "safety refusal"
+    if stopped:
+        # The one choke point every outcome flows through: log here so a
+        # non-success is NEVER silent even if a caller ignores the return value.
+        log.warning("model call stopped: %s%s", stopped,
+                    " — " + detail if detail else "")
     return {
         "status": 200,               # ALWAYS 200 to the caller, by design
         "stopped_reason": stopped,
@@ -134,8 +141,8 @@ def _api_key():
 def complete(prompt, system=None, max_tokens=MAX_TOKENS_FLOOR, effort="high",
              agentic_loop=False, model=None, schema=None, timeout=600):
     """One Messages call, always returning a normalize() envelope (never raising
-    on a refusal or HTTP error). Fable 5 thinking is always on, so the `thinking`
-    param is omitted; depth is controlled by effort. `schema` opts into
+    on a refusal or HTTP error). Opus/Fable thinking is always on, so the
+    `thinking` param is omitted; depth is controlled by effort. `schema` opts into
     structured JSON output.
 
     ponytail: non-streaming. Fine for the bounded structured outputs the
@@ -179,7 +186,7 @@ if __name__ == "__main__":
     # self-check — no API call needed. Proves the four policies hold.
 
     # 1. model swap is a single constant, pointing at a real id
-    assert MODEL == MODEL_IDS["fable"], "MODEL must default to Fable 5"
+    assert MODEL == MODEL_IDS["opus"], "MODEL is on the Opus upgrade"
     assert MODEL_IDS["opus"] == "claude-opus-4-8"
 
     # 2. max_tokens config: clamped to the 64K-100K band

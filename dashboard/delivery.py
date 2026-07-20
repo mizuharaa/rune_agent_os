@@ -214,15 +214,21 @@ def _digest_index(digest, repo, paths):
         _digest_part(digest, result.get("stdout") or result.get("stderr") or "")
 
 
-def _fingerprint(repo, head, branch, paths):
-    """Hash HEAD/branch plus the worktree and index state of a fixed path set.
+def _fingerprint(repo, branch, paths):
+    """Hash branch plus the worktree and index state of a fixed path set.
 
     Scoping to a path list is what keeps review->test->commit stable while
-    unrelated files (logs, caches, sync noise) churn elsewhere in the repo."""
+    unrelated files (logs, caches, sync noise) churn elsewhere in the repo.
+    HEAD is deliberately NOT an ingredient: another Rune mission, or the
+    operator, routinely commits to the same repository while this one is
+    mid-review, and a commit that never touches the reviewed paths must not
+    invalidate the review. What has to hold is that the reviewed paths'
+    bytes/index are unchanged and the branch is still the one being shipped;
+    `git commit --only -- paths` commits those paths onto whatever HEAD is
+    now, safely, regardless of unrelated history elsewhere on the branch."""
     paths = sorted(set(paths))
     digest = hashlib.sha256()
-    for value in (head, branch):
-        _digest_part(digest, value)
+    _digest_part(digest, branch)
     for relative in paths:
         _digest_worktree_path(digest, repo, relative)
     _digest_index(digest, repo, paths)
@@ -241,7 +247,7 @@ def _snapshot(repo):
     paths = _status_paths(status)
     return {"head": head, "branch": branch, "paths": paths,
             "clean": not bool(status),
-            "fingerprint": _fingerprint(repo, head, branch, paths)}
+            "fingerprint": _fingerprint(repo, branch, paths)}
 
 
 def capture_git_baseline(workdir):
@@ -395,17 +401,23 @@ def _state(mission):
     return delivery, baseline, repo, _snapshot(repo)
 
 
-def _invalidate_after_review(delivery, baseline):
-    delivery["tests"] = {"status": "pending"}
+def _reset_commit_push(delivery, baseline):
+    """The one place commit/push default to not_needed vs pending: nothing to
+    ship when the mission changed nothing, otherwise pending against the
+    current block reason. Recomputed from the baseline, never carried-forward
+    persisted text — records blocked under retired rules must unblock here."""
     if delivery.get("changed") is False:
         delivery["commit"] = {"status": "not_needed"}
         delivery["push"] = {"status": "not_needed"}
     else:
-        # Recompute from the baseline instead of carrying persisted text
-        # forward — records blocked under retired rules must unblock here.
-        blocked = _blocked_reason(baseline)
-        delivery["commit"] = {"status": "pending", "blocked_reason": blocked}
+        delivery["commit"] = {"status": "pending",
+                              "blocked_reason": _blocked_reason(baseline)}
         delivery["push"] = {"status": "pending"}
+
+
+def _invalidate_after_review(delivery, baseline):
+    delivery["tests"] = {"status": "pending"}
+    _reset_commit_push(delivery, baseline)
     if _blocked_reason(baseline):
         delivery["blocked_reason"] = _blocked_reason(baseline)
     else:
@@ -566,7 +578,6 @@ def _review(mission):
                                   "git diff --check failed", 2000)
     delivery["review"] = review
     _invalidate_after_review(delivery, baseline)
-    delivery["review"] = review
     delivery["status"] = "reviewed" if review["status"] == "reviewed" else "review_failed"
     delivery["current"] = {"head": snap["head"], "branch": snap["branch"],
                            "changed_paths": snap["paths"],
@@ -808,7 +819,7 @@ def _test(mission):
     if review.get("status") != "reviewed":
         raise DeliveryError("review changes before running tests")
     reviewed = _reviewed_paths(review)
-    gate = _fingerprint(repo, snap["head"], snap["branch"], reviewed)
+    gate = _fingerprint(repo, snap["branch"], reviewed)
     if review.get("fingerprint") != gate:
         _mark_review_stale(delivery, snap)
         raise DeliveryError(
@@ -822,13 +833,7 @@ def _test(mission):
                              "fingerprint": snap["fingerprint"],
                              "head": snap["head"], "detail": detail,
                              "error": detail}
-        if delivery.get("changed") is False:
-            delivery["commit"] = {"status": "not_needed"}
-            delivery["push"] = {"status": "not_needed"}
-        else:
-            delivery["commit"] = {"status": "pending",
-                                  "blocked_reason": _blocked_reason(_baseline)}
-            delivery["push"] = {"status": "pending"}
+        _reset_commit_push(delivery, _baseline)
         delivery["status"] = "tests_unavailable"
         delivery["current"] = {
             "head": snap["head"], "branch": snap["branch"],
@@ -845,7 +850,7 @@ def _test(mission):
     test_env = {"PYTHONDONTWRITEBYTECODE": "1"} if python_runner else None
     result = _run(argv, test_cwd, timeout=900, env=test_env)
     after = _snapshot(repo)
-    after_gate = _fingerprint(repo, after["head"], after["branch"], reviewed)
+    after_gate = _fingerprint(repo, after["branch"], reviewed)
     mutated = after_gate != gate
     output = ((result.get("stdout") or "") +
               (("\n" + result.get("stderr", "")) if result.get("stderr") else ""))
@@ -865,13 +870,7 @@ def _test(mission):
              "worktree_mutated": mutated,
              "output": _redact(output, OUTPUT_LIMIT)}
     delivery["tests"] = tests
-    if delivery.get("changed") is False:
-        delivery["commit"] = {"status": "not_needed"}
-        delivery["push"] = {"status": "not_needed"}
-    else:
-        delivery["commit"] = {"status": "pending",
-                              "blocked_reason": _blocked_reason(_baseline)}
-        delivery["push"] = {"status": "pending"}
+    _reset_commit_push(delivery, _baseline)
     delivery["status"] = "tested" if tests["status"] == "passed" else "tests_failed"
     delivery["current"] = {"head": after["head"], "branch": after["branch"],
                            "changed_paths": after["paths"],
@@ -901,7 +900,7 @@ def _commit(mission, message, peer_active=False):
     if review.get("status") != "reviewed" or tests.get("status") != "passed":
         raise DeliveryError("review and passing tests are required before commit")
     reviewed = _reviewed_paths(review)
-    gate = _fingerprint(repo, snap["head"], snap["branch"], reviewed)
+    gate = _fingerprint(repo, snap["branch"], reviewed)
     if (review.get("fingerprint") != gate or tests.get("fingerprint") != gate):
         _mark_review_stale(delivery, snap)
         raise DeliveryError(
@@ -916,8 +915,20 @@ def _commit(mission, message, peer_active=False):
         delivery["push"] = {"status": "pending"}
         delivery["status"] = "committed"
         return {"delivery": public_delivery(delivery)}
-    if snap["head"] != baseline.get("head"):
-        raise DeliveryError("Git HEAD changed during the mission while changes remain dirty")
+    # NOTE: HEAD moving away from the mission's baseline is no longer treated
+    # as a block. The fingerprint gate above already proves the reviewed paths
+    # are unchanged since review (computed against the CURRENT head), and
+    # `commit --only -- paths` commits exactly those paths onto whatever HEAD
+    # is now — safe regardless of unrelated commits elsewhere on the branch.
+    # An older revision of this function blocked here unconditionally; that
+    # was a permanent dead end (baseline.head never changes, so re-reviewing
+    # could never clear it) and is why this comment exists instead of a check.
+    def _fail(message):
+        delivery["commit"] = {"status": "failed", "failed_at": _now(),
+                              "error": message}
+        delivery["status"] = "commit_failed"
+        raise DeliveryError(message)
+
     # Commit exactly the reviewed, mission-attributed paths: never files that
     # appeared after review, and never paths that were already dirty before
     # the mission started (that is the operator's own work in progress).
@@ -932,30 +943,27 @@ def _commit(mission, message, peer_active=False):
         raise DeliveryError(reason)
     add = _git(repo, "add", "-A", "--", *paths, timeout=120)
     if add["returncode"]:
-        raise DeliveryError("git add failed: %s" %
-                            (add.get("stderr") or add.get("stdout") or "unknown error")[:1200])
+        _fail("git add failed: %s" %
+              (add.get("stderr") or add.get("stdout") or "unknown error")[:1200])
     staged_raw = _require_raw(_git(repo, "diff", "--cached", "--name-only", "-z"),
                               "staged-path check")
     staged = sorted(set(_clean_path(path) for path in staged_raw.split("\x00") if _clean_path(path)))
     if not staged or not set(staged).issubset(set(paths)):
-        raise DeliveryError("staged changes escaped the attributed mission path set")
+        _fail("staged changes escaped the attributed mission path set")
     check = _git(repo, "diff", "--cached", "--check", timeout=120)
     if check["returncode"]:
-        raise DeliveryError("staged diff check failed: %s" %
-                            (check.get("stdout") or check.get("stderr") or "invalid diff")[:1200])
+        _fail("staged diff check failed: %s" %
+              (check.get("stdout") or check.get("stderr") or "invalid diff")[:1200])
     commit_message = _commit_message(mission, message)
     result = _git(repo, "commit", "--only", "-m", commit_message, "--", *paths,
                   timeout=600)
     if result["returncode"]:
         error = _redact(result.get("stderr") or result.get("stdout"), 2000)
-        delivery["commit"] = {"status": "failed", "failed_at": _now(),
-                              "error": error}
-        delivery["status"] = "commit_failed"
-        raise DeliveryError("git commit failed: %s" %
-                            (error or "the repository rejected the commit"))
+        _fail("git commit failed: %s" %
+              (error or "the repository rejected the commit"))
     new_snap = _snapshot(repo)
     if not new_snap["head"] or new_snap["head"] == snap["head"]:
-        raise DeliveryError("git commit did not create a new HEAD")
+        _fail("git commit did not create a new HEAD")
     delivery["commit"] = {"status": "committed", "head": new_snap["head"],
                           "short_head": new_snap["head"][:10],
                           "committed_at": _now(), "message": commit_message,

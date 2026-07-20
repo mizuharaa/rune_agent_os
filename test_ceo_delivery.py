@@ -436,6 +436,48 @@ class DeliveryTests(unittest.TestCase):
         with self.assertRaisesRegex(delivery.DeliveryError, "invalid or already used"):
             delivery.perform(mission, "confirm_push", token=token)
 
+    def test_unrelated_commit_during_the_mission_does_not_block_delivery(self):
+        # A different mission, or the operator, commits to the SAME repo while
+        # this mission's changes are still under review. The reviewed files
+        # never overlap that commit, so delivery must not treat HEAD drift as
+        # a block -- the fingerprint gate already proves the reviewed paths
+        # are untouched. Once blocked here, baseline.head never changes, so
+        # the old behavior was a permanent dead end with no recovery path.
+        mission = self.changed_mission()
+        delivery.perform(mission, "review")
+        self.write("unrelated.txt", "a concurrent commit landed on main\n")
+        self.git("add", "unrelated.txt")
+        self.git("commit", "-m", "unrelated concurrent work")
+        tested = delivery.perform(mission, "test")["delivery"]
+        self.assertEqual(tested["tests"]["status"], "passed")
+
+        committed = delivery.perform(
+            mission, "commit", message="fix: still deliverable")["delivery"]
+        self.assertEqual(committed["commit"]["status"], "committed")
+        self.assertEqual(committed["commit"]["paths"], ["app.py"])
+        self.assertIn("unrelated concurrent work",
+                      self.git("log", "--oneline", "-3").stdout)
+
+    def test_commit_failure_before_the_final_git_call_is_persisted_and_fixable(self):
+        # Any early-exit failure inside _commit must be durable (not a toast
+        # that vanishes on refresh) so 'Fix with agent' can find it.
+        mission = self.changed_mission()
+        self.review_and_test(mission)
+        real_git = delivery._git
+
+        def failing_add(repo, *args, **kwargs):
+            if args[:1] == ("add",):
+                return {"returncode": 1, "stdout": "", "stderr": "add exploded"}
+            return real_git(repo, *args, **kwargs)
+
+        with mock.patch.object(delivery, "_git", side_effect=failing_add):
+            with self.assertRaisesRegex(delivery.DeliveryError, "git add failed"):
+                delivery.perform(mission, "commit", message="should fail")
+
+        commit = mission["delivery"]["commit"]
+        self.assertEqual(commit["status"], "failed")
+        self.assertIn("add exploded", commit["error"])
+
     def test_commit_hooks_remain_enabled_and_failure_is_visible(self):
         mission = self.changed_mission()
         self.review_and_test(mission)

@@ -62,6 +62,7 @@ import chat                      # dashboard assistant (Haiku/Sonnet over the An
 import ceo                       # command bar: prompt -> Haiku refine -> CEO plan -> roles
 import uia                       # structured, verified Windows UI Automation
 import browser                   # CDP control of a real Edge/Chrome (Wisp profile)
+import vault                     # DPAPI secret vault with per-mission grants
 import daily_briefing            # offline: where you left off + what to continue
 MIRROR = os.path.join(ROOT, ".claude", "hooks", "mirror.py")
 INBOX = os.path.join(ROOT, "state", "inbox.jsonl")
@@ -538,6 +539,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self._json(200, {"orchestrations": orchestrator.list_all()})
         if self.path == "/api/activity":
             return self._json(200, activity_payload())
+        if self.path == "/api/secrets":
+            # names and grants only — decrypted values never leave the vault
+            return self._json(200, {"keys": vault.keys(),
+                                    "grants": vault.grants()})
         if self.path == "/api/browser/tabs":
             try:
                 return self._json(200, {"tabs": browser.tabs()})
@@ -639,6 +644,9 @@ class Handler(SimpleHTTPRequestHandler):
             "/api/spotify/ctl": self.api_spotify_ctl,
             "/api/stop-all": self.api_stop_all,
             "/api/voice": self.api_voice,
+            "/api/secrets/set": self.api_vault_set,
+            "/api/secrets/forget": self.api_vault_forget,
+            "/api/secrets/grant": self.api_vault_grant,
             "/api/browser/open": self.api_browser_open,
             "/api/browser/act": self.api_browser_act,
             "/api/uia/tree": self.api_uia_tree,
@@ -705,6 +713,32 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._json(500, {"error": "transcription failed: %s" % str(e)[:150]})
         return self._json(200, {"ok": True, "text": text})
+
+    def api_vault_set(self, data):
+        try:
+            vault.set_secret(data.get("key"), data.get("value"))
+        except vault.VaultError as e:
+            return self._json(400, {"error": str(e)})
+        emit(session="operator", event="vault-set",
+             detail=str(data.get("key"))[:80])  # name only, never the value
+        return self._json(200, {"ok": True, "keys": vault.keys()})
+
+    def api_vault_forget(self, data):
+        ok = vault.forget(str(data.get("key") or ""))
+        if ok:
+            emit(session="operator", event="vault-forget",
+                 detail=str(data.get("key"))[:80])
+        return self._json(200 if ok else 404,
+                          {"ok": ok, "error": None if ok else "no such secret"})
+
+    def api_vault_grant(self, data):
+        try:
+            granted = vault.grant(data.get("cid"), data.get("keys") or [])
+        except vault.VaultError as e:
+            return self._json(400, {"error": str(e)})
+        emit(session="operator", event="vault-grant",
+             detail="%s -> %s" % (data.get("cid"), ", ".join(granted) or "(revoked)"))
+        return self._json(200, {"ok": True, "granted": granted})
 
     def api_browser_open(self, data):
         try:

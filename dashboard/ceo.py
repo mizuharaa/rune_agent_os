@@ -37,6 +37,7 @@ import chat    # API key resolution
 import delivery  # guarded review/test/commit/push lane
 import pulse   # account routing for workers
 import runtime as agent_runtime
+import vault   # DPAPI secrets, injected per-mission by explicit grant only
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -1579,6 +1580,9 @@ def _worker(cid, role, context, cfg_dir, resume_sid="", workdir=ROOT,
         env["MAESTRO_BRAIN_PREINJECTED"] = "1"
     if cfg_dir and provider == "claude":
         env["CLAUDE_CONFIG_DIR"] = cfg_dir
+    # scoped credentials: a worker sees only the vault keys its mission was
+    # explicitly granted — never the operator's whole environment of tokens
+    env.update(vault.env_for(cid))
     p = None
     try:
         try:

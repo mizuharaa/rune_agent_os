@@ -1192,46 +1192,39 @@
    Layered AFTER the legacy styles on purpose — tokens stay authoritative for
    ink/spacing; this layer only re-paints canvas + surfaces. ── */
 :root{
-  --wisp-hue: 316; /* set per route + scroll by the script at the end of body */
+  --wisp-hue: 245; /* sapphire; set per route by the script at the end of body */
   --rune-paper: oklch(96.6% 0.014 88);
   --rune-paper-raised: oklch(99.2% 0.006 92);
-  --rune-paper-2: oklch(94% 0.017 88);
-  --rune-paper-3: oklch(90.8% 0.021 88);
   --rune-rule: oklch(86% 0.02 88);
   --rune-rule-strong: oklch(72% 0.026 88);
 }
 body{
-  --glow-y: 0px; /* parallax: script slides the mesh as you scroll */
-  /* a real gradient mesh — the color the glass blurs. Hue-anchored so the
-     whole atmosphere shifts per route and sweeps as you scroll. */
+  /* calm two-glow atmosphere in one hue family — static; only the route
+     changes it. No scroll-driven color motion. */
   background:
-    radial-gradient(1300px 850px at 4% calc(-8% + var(--glow-y)),
-      oklch(86% 0.11 var(--wisp-hue)), transparent 62%),
-    radial-gradient(1100px 760px at 104% calc(6% + var(--glow-y) * 1.5),
-      oklch(87% 0.1 calc(var(--wisp-hue) + 70)), transparent 60%),
-    radial-gradient(900px 640px at 78% calc(88% - var(--glow-y) * 0.9),
-      oklch(88% 0.09 calc(var(--wisp-hue) + 150)), transparent 58%),
-    radial-gradient(1000px 700px at 12% calc(96% - var(--glow-y) * 0.6),
-      oklch(89% 0.08 calc(var(--wisp-hue) + 230)), transparent 60%),
-    linear-gradient(160deg,
-      oklch(94% 0.035 var(--wisp-hue)),
-      oklch(95% 0.03 calc(var(--wisp-hue) + 90)));
+    radial-gradient(1300px 850px at 6% -10%,
+      oklch(90% 0.055 var(--wisp-hue)), transparent 60%),
+    radial-gradient(1100px 780px at 102% 108%,
+      oklch(91% 0.05 calc(var(--wisp-hue) + 45)), transparent 58%),
+    linear-gradient(165deg,
+      oklch(95.5% 0.02 var(--wisp-hue)),
+      oklch(96.5% 0.014 calc(var(--wisp-hue) + 45)));
   background-attachment: fixed;
 }
 /* glass surfaces — filled (not washed-out), blurred, hairline-lit */
-/* inset fields go translucent too, so no opaque slab breaks the glass */
+/* inset fields stay lightly translucent so cards don't hold opaque slabs */
 :root{
-  --rune-paper-2: rgb(255 255 255 / 0.42);
-  --rune-paper-3: rgb(255 255 255 / 0.55);
+  --rune-paper-2: rgb(255 255 255 / 0.6);
+  --rune-paper-3: rgb(255 255 255 / 0.72);
 }
 .card,.cmdbar,.inst,.intcard,.treecard,.mrun,.cmdmission,.chatpanel,.cmdmsg.a,.msg.a{
-  background: rgb(255 255 255 / 0.44);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
-  backdrop-filter: blur(28px) saturate(1.5);
-  border: 1px solid rgb(255 255 255 / 0.85);
+  background: rgb(255 255 255 / 0.74);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgb(255 255 255 / 0.9);
   box-shadow:
-    0 2px 4px oklch(35% 0.06 var(--wisp-hue) / 0.08),
-    0 20px 48px oklch(35% 0.07 var(--wisp-hue) / 0.18),
+    0 2px 4px oklch(35% 0.05 var(--wisp-hue) / 0.07),
+    0 18px 44px oklch(35% 0.06 var(--wisp-hue) / 0.14),
     inset 0 1px 0 rgb(255 255 255 / 0.95);
 }
 .card{ border-radius: 20px; }
@@ -1244,25 +1237,23 @@ body{
     0 4px 14px oklch(30% 0.06 var(--wisp-hue) / 0.12);
 }
 aside#side{
-  background: rgb(255 255 255 / 0.38);
-  -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  backdrop-filter: blur(26px) saturate(1.5);
-  border-right: 1px solid rgb(255 255 255 / 0.7);
+  background: rgb(255 255 255 / 0.62);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border-right: 1px solid rgb(255 255 255 / 0.8);
 }
 /* hue hairline across the top of primary cards */
 .card{ border-top: 2.5px solid transparent;
   background-clip: padding-box;
   position: relative; }
 .card::before{
-  content:""; position:absolute; inset:-1px -1px auto -1px; height:2.5px;
+  content:""; position:absolute; inset:-1px -1px auto -1px; height:2px;
   border-radius: inherit; pointer-events:none;
   background: linear-gradient(90deg,
-    oklch(62% 0.16 var(--wisp-hue)),
-    oklch(70% 0.14 calc(var(--wisp-hue) + 55)) 55%,
-    oklch(78% 0.12 calc(var(--wisp-hue) + 110)));
-  opacity:.55; transition: opacity .25s ease;
+    oklch(60% 0.11 var(--wisp-hue)),
+    oklch(72% 0.08 calc(var(--wisp-hue) + 40)));
+  opacity:.4;
 }
-.card:hover::before{ opacity:.95; }
 /* topbar: normal flow (no sticky — it collided with page titles); it gains a
    glass chip look and a hue underline that brightens once you scroll */
 .topbar{ position: relative;
@@ -4592,23 +4583,19 @@ route();poll();loadCalendarRange();setInterval(poll,2500);
 <script>
 /* wisp-glass: per-route hue + scroll drift + topbar elevation */
 (function(){
-  const HUES = { overview:316, calendar:255, instances:286, skills:150,
-                 brain:210, graph:210, integrations:80, audit:35, guard:10 };
-  let base = 316;
+  const HUES = { overview:245, calendar:215, instances:265, skills:170,
+                 brain:205, graph:205, integrations:80, audit:50, guard:25 };
+  let base = 245;
   function routeHue(){
     const r = (location.hash.match(/#\/([a-z]+)/) || [])[1] || "overview";
-    base = HUES[r] !== undefined ? HUES[r] : 316;
+    base = HUES[r] !== undefined ? HUES[r] : 245;
     document.documentElement.dataset.route = r;
+    document.documentElement.style.setProperty("--wisp-hue", String(base));
     apply();
   }
   function apply(){
-    const y = window.scrollY || 0;
-    const drift = Math.min(90, y / 12);          // hue sweeps as you scroll
-    document.documentElement.style.setProperty("--wisp-hue",
-      String(base + drift));
-    document.body.style.setProperty("--glow-y",  // glows slide (parallax)
-      (y * 0.22).toFixed(1) + "px");
-    if (y > 8) document.documentElement.dataset.scrolled = "1";
+    // colors are static; scrolling only elevates the topbar
+    if ((window.scrollY || 0) > 8) document.documentElement.dataset.scrolled = "1";
     else delete document.documentElement.dataset.scrolled;
   }
   let raf = 0;

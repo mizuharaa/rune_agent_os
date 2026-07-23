@@ -3,22 +3,22 @@
 :root {
   color-scheme: light;
 
-  --rune-paper: oklch(97.5% 0.007 330);
-  --rune-paper-raised: oklch(99% 0.004 330);
-  --rune-paper-2: oklch(94.9% 0.011 330);
-  --rune-paper-3: oklch(91.5% 0.016 330);
-  --rune-rule: oklch(81.5% 0.021 330);
-  --rune-rule-strong: oklch(67% 0.029 330);
-  --rune-muted: oklch(45.5% 0.025 330);
-  --rune-ink-2: oklch(29% 0.028 330);
-  --rune-ink: oklch(18.5% 0.022 330);
+  --rune-paper: oklch(97.5% 0.007 245);
+  --rune-paper-raised: oklch(99% 0.004 245);
+  --rune-paper-2: oklch(94.9% 0.011 245);
+  --rune-paper-3: oklch(91.5% 0.016 245);
+  --rune-rule: oklch(81.5% 0.021 245);
+  --rune-rule-strong: oklch(67% 0.029 245);
+  --rune-muted: oklch(45.5% 0.025 245);
+  --rune-ink-2: oklch(29% 0.028 245);
+  --rune-ink: oklch(18.5% 0.022 245);
 
-  --rune-accent: oklch(35.5% 0.115 330);
-  --rune-accent-hover: oklch(30.5% 0.112 330);
-  --rune-accent-active: oklch(27% 0.105 330);
-  --rune-accent-soft: oklch(93% 0.035 330);
-  --rune-on-accent: oklch(98% 0.006 330);
-  --rune-focus: oklch(56% 0.17 330);
+  --rune-accent: oklch(35.5% 0.115 245);
+  --rune-accent-hover: oklch(30.5% 0.112 245);
+  --rune-accent-active: oklch(27% 0.105 245);
+  --rune-accent-soft: oklch(93% 0.035 245);
+  --rune-on-accent: oklch(98% 0.006 245);
+  --rune-focus: oklch(56% 0.17 245);
 
   --rune-success: oklch(43% 0.115 150);
   --rune-success-soft: oklch(94% 0.035 150);
@@ -78,21 +78,21 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --rune-paper: oklch(17% 0.018 330);
-  --rune-paper-raised: oklch(21% 0.021 330);
-  --rune-paper-2: oklch(24.5% 0.023 330);
-  --rune-paper-3: oklch(29% 0.026 330);
-  --rune-rule: oklch(40% 0.03 330);
-  --rune-rule-strong: oklch(53% 0.034 330);
-  --rune-muted: oklch(72% 0.025 330);
-  --rune-ink-2: oklch(86% 0.016 330);
-  --rune-ink: oklch(96% 0.008 330);
-  --rune-accent: oklch(72% 0.13 330);
-  --rune-accent-hover: oklch(77% 0.12 330);
-  --rune-accent-active: oklch(82% 0.105 330);
-  --rune-accent-soft: oklch(31% 0.065 330);
-  --rune-on-accent: oklch(18% 0.02 330);
-  --rune-focus: oklch(78% 0.13 330);
+  --rune-paper: oklch(17% 0.018 245);
+  --rune-paper-raised: oklch(21% 0.021 245);
+  --rune-paper-2: oklch(24.5% 0.023 245);
+  --rune-paper-3: oklch(29% 0.026 245);
+  --rune-rule: oklch(40% 0.03 245);
+  --rune-rule-strong: oklch(53% 0.034 245);
+  --rune-muted: oklch(72% 0.025 245);
+  --rune-ink-2: oklch(86% 0.016 245);
+  --rune-ink: oklch(96% 0.008 245);
+  --rune-accent: oklch(72% 0.13 245);
+  --rune-accent-hover: oklch(77% 0.12 245);
+  --rune-accent-active: oklch(82% 0.105 245);
+  --rune-accent-soft: oklch(31% 0.065 245);
+  --rune-on-accent: oklch(18% 0.02 245);
+  --rune-focus: oklch(78% 0.13 245);
   --rune-success: oklch(72% 0.12 150);
   --rune-success-soft: oklch(27% 0.045 150);
   --rune-warning: oklch(79% 0.13 78);

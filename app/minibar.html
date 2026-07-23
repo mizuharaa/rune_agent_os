@@ -117,6 +117,28 @@
   #note b { font-weight: 600; }
   @keyframes rise { from { opacity: 0; transform: translateY(6px) scale(.98); } }
 
+  /* ── approval queue ──────────────────────────────────────── */
+  .appr {
+    margin: 0 18px 12px; padding: 11px 14px;
+    border-radius: 14px; background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(106, 46, 138, 0.22);
+    font-size: 13px; line-height: 1.45;
+    animation: rise 260ms cubic-bezier(.2,.8,.3,1.1);
+  }
+  .appr .who { color: var(--ink-soft); font-size: 11.5px; letter-spacing: .02em;
+               text-transform: uppercase; margin-bottom: 2px; }
+  .appr .what { margin-bottom: 8px; }
+  .appr .acts { display: flex; gap: 8px; }
+  .appr .acts button {
+    width: auto; height: 30px; padding: 0 14px; border-radius: 10px;
+    font: 600 12.5px/1 Inter, "Segoe UI", system-ui, sans-serif;
+  }
+  .appr .allow { background: var(--plum); color: #fff; }
+  .appr .allow:hover { background: #7d3aa1; }
+  .appr .retry { border: 1px solid rgba(32, 26, 38, 0.2); }
+  .appr .deny { color: #a11f3c; border: 1px solid rgba(161, 31, 60, 0.3); }
+  .appr .deny:hover { background: rgba(161, 31, 60, 0.08); }
+
   @media (prefers-reduced-motion: reduce) {
     #island::before, #status .wave i, #mic.live::after { animation: none !important; }
     button { transition: background 180ms ease; }
@@ -141,6 +163,7 @@
       </button>
     </div>
     <div id="status"><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="stext"></span></div>
+    <div id="approvals"></div>
     <div id="note" role="status"></div>
   </div>
 
@@ -257,11 +280,52 @@
   $("undo").addEventListener("click", undo);
   $("open").addEventListener("click", () => window.wisp && window.wisp.openMain());
 
+  // ── approval queue: the island is the fastest path to allow/deny ──
+  const approvalsBox = $("approvals");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  let seenApprovals = new Set();
+
+  function renderApprovals(list) {
+    const ids = new Set(list.map((a) => a.request_id));
+    for (const a of list) {
+      if (!seenApprovals.has(a.request_id)) {
+        speak("Approval needed.");
+        if (Notification.permission === "granted")
+          new Notification("Wisp — approval needed", { body: a.summary });
+      }
+    }
+    seenApprovals = ids;
+    approvalsBox.innerHTML = list.map((a) => `
+      <div class="appr" data-rid="${esc(a.request_id)}">
+        <div class="who">${esc(a.mission)}${a.kind === "credential" ? " — credentials" : ""}</div>
+        <div class="what">${esc(a.summary)}</div>
+        <div class="acts">
+          ${a.can_authorize ? `<button class="allow" data-act="allow">Allow &amp; resume</button>` : ""}
+          <button class="retry" data-act="retry">Retry after fixing</button>
+          ${a.can_authorize ? `<button class="deny" data-act="deny">Deny &amp; skip</button>` : ""}
+        </div>
+      </div>`).join("");
+    approvalsBox.querySelectorAll("button").forEach((b) =>
+      b.addEventListener("click", async () => {
+        const card = b.closest(".appr");
+        const a = list.find((x) => x.request_id === card.dataset.rid);
+        if (!a) return;
+        b.disabled = true;
+        const r = await api("/api/ceo-action",
+          { cid: a.cid, role: a.role, action: b.dataset.act, request_id: a.request_id });
+        toast(r.ok ? "<b>" + b.textContent + ".</b>" : "Rejected: " + esc(r.data.error || r.status), "");
+        poll();
+      }));
+    fit();
+  }
+
   // ── activity: live agent tracker + completion notifications ──
   let wasRunning = new Map();
   async function poll() {
     try {
       const { data } = await api("/api/activity");
+      renderApprovals(data.approvals || []);
       const run = data.running || [];
       if (run.length) {
         if (!rec) state("working");

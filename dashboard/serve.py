@@ -258,8 +258,9 @@ MISSION_ACTIVE = ("planning", "running", "retrying", "repairing",
 
 
 def activity_payload():
-    """Small stable feed for the mini bar: what runs now, what just finished."""
-    running, recent = [], []
+    """Small stable feed for the mini bar: running work, recent ends, and the
+    approval queue (permission-waiting roles with their bound request ids)."""
+    running, recent, approvals = [], [], []
     for o in orchestrator.list_all():
         item = {"kind": "loop", "id": o.get("oid") or "",
                 "title": (o.get("name") or o.get("mission") or "loop")[:80],
@@ -270,7 +271,23 @@ def activity_payload():
                 "title": (r.get("name") or r.get("mission") or "mission")[:80],
                 "status": r.get("status") or ""}
         (running if r.get("status") in MISSION_ACTIVE else recent).append(item)
-    return {"running": running, "recent": recent[:8]}
+        pub = ceo.public_run(r)
+        for role in pub.get("roles") or []:
+            req = role.get("permission_request")
+            if role.get("status") != "waiting_permission" or not isinstance(req, dict):
+                continue
+            if not req.get("request_id") or req.get("status") not in (None, "pending"):
+                continue
+            approvals.append({
+                "cid": pub.get("cid") or "",
+                "role": req.get("role_id") or "",
+                "request_id": req.get("request_id"),
+                "mission": item["title"],
+                "summary": (req.get("summary") or "operator decision required")[:160],
+                "kind": req.get("kind") or "guard",
+                "can_authorize": req.get("can_authorize") is not False,
+            })
+    return {"running": running, "recent": recent[:8], "approvals": approvals}
 
 
 def brain_payload(limit=100):

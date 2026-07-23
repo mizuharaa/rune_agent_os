@@ -44,3 +44,4 @@ state/inbox.jsonl
 state/windows.json
 dashboard/web/node_modules/
 dashboard/web/dist/
+app/node_modules/

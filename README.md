@@ -83,6 +83,11 @@ cd app && npm install && npm start
 pip install pywinauto && python test_uia_runtime.py
 ```
 
+```bash
+# give your agents Wisp's tools (UIA act/assert, activity, panic stop) over MCP
+claude mcp add wisp -- python mcp/server.py
+```
+
 ## Architecture
 
 ```mermaid

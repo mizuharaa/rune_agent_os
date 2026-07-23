@@ -1,5 +1,9 @@
 {
   "mcpServers": {
+    "wisp": {
+      "command": "python",
+      "args": ["mcp/server.py"]
+    },
     "playwright": {
       "command": "npx",
       "args": [

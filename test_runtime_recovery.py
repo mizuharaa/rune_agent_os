@@ -463,6 +463,34 @@ class CeoRecoveryTests(unittest.TestCase):
         self.assertIn("cut off, not finished", item["detail"])
         self.assertEqual(got["status"], "exhausted")
 
+    def test_run_crash_fails_the_working_role_instead_of_leaving_it_stuck(self):
+        # Regression: a role mid-turn when _run() itself crashes (e.g. a
+        # PermissionError from the OS, not a worker-reported error) used to
+        # stay at "working" forever -- the console showed it as still
+        # running with nothing for a click to reveal, and the mission never
+        # left the active list since "error" isn't a SUCCESSFUL status.
+        self.save(mission())
+        self.make_live()
+
+        def worker(*_a, **_kw):
+            raise PermissionError(13, "Access is denied")
+
+        with mock.patch.object(ceo, "_worker", worker):
+            ceo._run("m1")
+        got = self.load()
+        self.assertEqual(got["status"], "error")
+        role_state = got["roles"][0]
+        self.assertEqual(role_state["status"], "failed")
+        self.assertIn("mission crashed", role_state["detail"])
+        self.assertIn("PermissionError", role_state["detail"])
+        # A failed role is resumable, same as the operator-stop path.
+        ran = []
+        with mock.patch.object(ceo.threading, "Thread", InlineThread), \
+                mock.patch.object(ceo, "_run", lambda cid: ran.append(cid)):
+            self.assertIsNone(ceo.resume("m1"))
+        self.assertEqual(ran, ["m1"])
+        self.assertEqual(self.load()["roles"][0]["status"], "pending")
+
     def test_resume_resets_only_unfinished_roles_and_continues_exhausted(self):
         roles = [role(id="landed", status="done", result="finished"),
                  role(id="stuck", status="exhausted", session="sess-9",

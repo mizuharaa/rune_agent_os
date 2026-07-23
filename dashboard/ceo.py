@@ -2285,6 +2285,15 @@ def _run(cid):
         else:
             o["status"] = "error"
             o["detail"] = repr(e)[:300]
+            # A role mid-turn when the mission crashes is otherwise left at
+            # "working" forever (same trap _stop_state() already guards
+            # against for the operator-stop path) -- the console would show
+            # it as still running, with nothing for a click to reveal.
+            for role in o.get("roles") or []:
+                if role.get("status") in ("working", "retrying", "repairing"):
+                    role["status"] = "failed"
+                    role["detail"] = "mission crashed: " + repr(e)[:200]
+                    role["next_action"] = "Resume to retry this role, or archive the mission."
             _link_recall_outcome(o)
             _save(o)
             emit(cid, "CEO run crashed: " + repr(e)[:120])

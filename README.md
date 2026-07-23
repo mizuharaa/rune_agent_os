@@ -193,12 +193,8 @@ python dashboard/serve.py        # -> http://127.0.0.1:8817/dashboard/
 # desktop app (tray + dynamic island)
 cd app && npm install && npm start
 
-# prove the UIA runtime (drives Calculator via automation ids, asserts the display)
-pip install pywinauto && python test_uia_runtime.py
-
-# prove the scheduler, the MCP bridge, and the browser runtime (no model spend)
-python test_parallel_roles.py && python test_mcp_server.py
-pip install websocket-client && python test_browser_runtime.py
+# optional runtimes
+pip install pywinauto websocket-client   # UIA + browser control
 ```
 
 ## Status

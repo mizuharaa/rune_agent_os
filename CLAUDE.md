@@ -45,7 +45,6 @@ runs at 09:30 local time; do not regenerate on every session boot.
 | `dashboard/pulse.py` | Background Microsoft Graph and account/service refresh. |
 | `dashboard/runtime.py` | Shared failure classification, backoff, recovery safety, and process-tree Stop. |
 | `dashboard/` | Local console at `http://127.0.0.1:8817/dashboard/`. |
-| `briefing.cmd`, `loop.sh` | Windows and Unix briefing wrappers. |
 
 ## Briefing rules
 

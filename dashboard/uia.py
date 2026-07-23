@@ -10,9 +10,18 @@ Requires pywinauto (the only non-stdlib dependency in the engine; degraded
 endpoints return 501 without it). All functions raise UiaError with an
 operator-readable message.
 
+All UIA work executes on ONE dedicated worker thread that owns the COM
+apartment: the multi-threaded HTTP server never touches COM from request
+threads (per-thread CoInitialize bugs), callers just block on a result, and
+UI actions are naturally serialized — two agents can never fight over the
+same desktop at once. The worker starts lazily, so engine boot stays
+instant; without pywinauto every call raises UiaError with an install hint.
+
 ponytail: locator is exact-match on automation_id/name/control_type; add a
 query language when real agent use demands it.
 """
+import queue
+import threading
 import time
 
 
@@ -21,11 +30,46 @@ class UiaError(Exception):
 
 
 _DESKTOP = None
+_JOBS = queue.Queue()
+_WORKER_LOCK = threading.Lock()
+_WORKER = None
+JOB_TIMEOUT = 60
+
+
+def _worker_loop():
+    while True:
+        job = _JOBS.get()
+        try:
+            job["res"] = job["fn"](**job["kw"])
+        except UiaError as e:
+            job["err"] = e
+        except Exception as e:
+            job["err"] = UiaError(("%s: %s" % (type(e).__name__, e))[:200])
+        job["ev"].set()
+
+
+def _dispatch(fn, **kw):
+    """Run fn on the single COM-owning worker thread and wait for the result."""
+    global _WORKER
+    with _WORKER_LOCK:
+        if _WORKER is None or not _WORKER.is_alive():
+            _WORKER = threading.Thread(target=_worker_loop, name="uia-worker",
+                                       daemon=True)
+            _WORKER.start()
+    job = {"fn": fn, "kw": kw, "ev": threading.Event()}
+    _JOBS.put(job)
+    if not job["ev"].wait(JOB_TIMEOUT):
+        raise UiaError("UIA action timed out after %ss (queued behind a stuck "
+                       "action?)" % JOB_TIMEOUT)
+    if "err" in job:
+        raise job["err"]
+    return job["res"]
 
 
 def _desktop():
     """Lazy: importing pywinauto/comtypes costs seconds, so the engine only
-    pays it on the first UIA call, not at boot."""
+    pays it on the first UIA call. Only ever called on the worker thread, so
+    COM is initialized exactly once, in exactly one apartment."""
     global _DESKTOP
     if _DESKTOP is None:
         try:
@@ -38,6 +82,10 @@ def _desktop():
 
 def windows():
     """Top-level windows: title, pid, handle. The agent's map of the desktop."""
+    return _dispatch(_windows)
+
+
+def _windows():
     out = []
     for w in _desktop().windows():
         try:
@@ -88,6 +136,11 @@ def _describe(el, depth, max_nodes, bag):
 
 def tree(pid=None, title_re=None, depth=3, max_nodes=400):
     """Bounded serialization of a window's control tree."""
+    return _dispatch(_tree, pid=pid, title_re=title_re, depth=depth,
+                     max_nodes=max_nodes)
+
+
+def _tree(pid=None, title_re=None, depth=3, max_nodes=400):
     w = _window(pid, title_re).wrapper_object()
     bag = []
     root = _describe(w, max(0, int(depth)), min(int(max_nodes), 1200), bag)
@@ -126,6 +179,11 @@ def _state(el):
 def act(pid=None, title_re=None, locator=None, action="invoke", value=None):
     """Perform one structured action, then re-read the control and report
     what is actually true. Never claims success it cannot observe."""
+    return _dispatch(_act, pid=pid, title_re=title_re, locator=locator,
+                     action=action, value=value)
+
+
+def _act(pid=None, title_re=None, locator=None, action="invoke", value=None):
     w = _window(pid, title_re)
     el = _find(w, locator or {})
     before = _state(el)
@@ -155,5 +213,9 @@ def act(pid=None, title_re=None, locator=None, action="invoke", value=None):
 
 def read(pid=None, title_re=None, locator=None):
     """Read one control's current state (the assertion primitive)."""
+    return _dispatch(_read, pid=pid, title_re=title_re, locator=locator)
+
+
+def _read(pid=None, title_re=None, locator=None):
     w = _window(pid, title_re)
     return _state(_find(w, locator or {}))

@@ -123,7 +123,10 @@ def emit(**kv):
     args = []
     for k, v in kv.items():
         args += ["--" + k, str(v)]
-    subprocess.run([sys.executable, MIRROR] + args, capture_output=True)
+    # fire-and-forget: a wire event must never add a subprocess round-trip
+    # to request latency; mirror.py appends atomically on its own
+    subprocess.Popen([sys.executable, MIRROR] + args,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 # ---------------------------------------------------------------- window mgmt

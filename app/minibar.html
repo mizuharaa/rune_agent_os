@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Wisp bar</title>
+<style>
+  /* ponytail: placeholder chrome — full glass UI pass replaces this later */
+  html, body { margin: 0; background: transparent; font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  .bar {
+    display: flex; align-items: center; gap: 10px;
+    margin: 8px; padding: 10px 14px; border-radius: 16px;
+    background: rgba(20, 18, 24, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(18px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  }
+  input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    color: #f4f1f7; font-size: 14px;
+  }
+  input::placeholder { color: rgba(244, 241, 247, 0.45); }
+  .status { color: rgba(244, 241, 247, 0.55); font-size: 12px; white-space: nowrap; }
+</style>
+</head>
+<body>
+  <div class="bar">
+    <input id="q" placeholder="Ask Wisp…" autofocus>
+    <span class="status" id="s"></span>
+  </div>
+  <script>
+    const q = document.getElementById("q");
+    const s = document.getElementById("s");
+    q.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter" || !q.value.trim()) return;
+      s.textContent = "sending…";
+      try {
+        const r = await fetch("/api/message", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: q.value.trim(), source: "minibar" }),
+        });
+        s.textContent = r.ok ? "queued" : "error " + r.status;
+        if (r.ok) q.value = "";
+      } catch (err) {
+        s.textContent = "engine offline";
+      }
+      setTimeout(() => (s.textContent = ""), 2500);
+    });
+  </script>
+</body>
+</html>

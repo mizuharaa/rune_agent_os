@@ -1,0 +1,13 @@
+{
+  "name": "wisp",
+  "productName": "Wisp",
+  "version": "0.1.0",
+  "description": "Wisp — a local AI that lives on your desktop and gets your work done.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}

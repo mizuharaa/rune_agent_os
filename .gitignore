@@ -47,3 +47,4 @@ dashboard/web/dist/
 app/node_modules/
 state/vault.json
 state/vault-grants.json
+app/dist/

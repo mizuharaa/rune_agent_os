@@ -195,7 +195,14 @@ cd app && npm install && npm start
 
 # optional runtimes
 pip install pywinauto websocket-client   # UIA + browser control
+
+# build the Windows installer (app/dist/Wisp Setup 0.1.0.exe)
+cd app && npm run dist
 ```
+
+Secrets: store tokens once (`POST /api/secrets/set`), grant them per
+mission (`POST /api/secrets/grant`) — workers see only what their mission
+was granted, DPAPI-encrypted at rest, values never on the wire.
 
 ## Status
 
@@ -204,8 +211,8 @@ coding missions daily in this codebase's previous life as Rune. The desktop
 shell, dynamic island, UIA runtime, parallel waves, and MCP bridge are the
 new control-plane surface, sharpened in the open. Windows + WSL first.
 
-Near-term: per-agent credential scoping (DPAPI), WSL spawn parity, per-role
-worktrees, installer.
+Shipped since the pivot: scoped secret vault (DPAPI), NSIS installer.
+Near-term: WSL spawn parity, per-role worktrees.
 
 <div align="center">
 

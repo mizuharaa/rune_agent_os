@@ -1,11 +1,13 @@
 // Wisp desktop shell: tray + main dashboard window + always-on-top mini bar.
 // The Python engine (dashboard/serve.py) runs as a sidecar on 127.0.0.1:8817.
-const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, ipcMain, session } = require("electron");
+const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, ipcMain, session, dialog } = require("electron");
 const { spawn } = require("child_process");
 const http = require("http");
 const path = require("path");
 
-const REPO = path.join(__dirname, "..");
+// packaged installs carry the engine under resources/engine; dev runs from the repo
+const REPO = app.isPackaged ? path.join(process.resourcesPath, "engine")
+                            : path.join(__dirname, "..");
 const BASE = "http://127.0.0.1:8817";
 const SMOKE = process.argv.includes("--smoke");
 
@@ -22,6 +24,13 @@ function ensureEngine(cb) {
   ping((up) => {
     if (up) return cb();
     sidecar = spawn("python", ["dashboard/serve.py"], { cwd: REPO, stdio: "ignore" });
+    sidecar.on("error", () => {
+      dialog.showErrorBox("Wisp needs Python",
+        "Wisp's engine runs on Python 3, which wasn't found on PATH.\n\n" +
+        "Install it from python.org (check \"Add python.exe to PATH\"), " +
+        "then start Wisp again.");
+      app.exit(1);
+    });
     const started = Date.now();
     (function wait() {
       ping((ok) => {

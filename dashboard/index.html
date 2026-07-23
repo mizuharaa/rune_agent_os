@@ -1201,24 +1201,36 @@
   --rune-rule-strong: oklch(72% 0.026 88);
 }
 body{
+  --glow-y: 0px; /* parallax: script slides the glows as you scroll */
   background:
-    radial-gradient(1100px 720px at 6% -12%,
-      oklch(93% 0.055 var(--wisp-hue) / 0.55), transparent 62%),
-    radial-gradient(950px 640px at 104% 12%,
-      oklch(94% 0.05 calc(var(--wisp-hue) + 70) / 0.4), transparent 58%),
+    radial-gradient(1200px 780px at 8% calc(-10% + var(--glow-y)),
+      oklch(90% 0.085 var(--wisp-hue) / 0.85), transparent 60%),
+    radial-gradient(1000px 700px at 103% calc(14% + var(--glow-y) * 1.6),
+      oklch(91% 0.08 calc(var(--wisp-hue) + 80) / 0.65), transparent 58%),
+    radial-gradient(800px 560px at 45% calc(112% - var(--glow-y) * 0.8),
+      oklch(92% 0.06 calc(var(--wisp-hue) + 150) / 0.5), transparent 60%),
     var(--rune-paper);
   background-attachment: fixed;
 }
 /* glass surfaces — filled (not washed-out), blurred, hairline-lit */
 .card,.cmdbar,.inst,.intcard,.treecard,.mrun,.cmdmission,.chatpanel,.cmdmsg.a,.msg.a{
-  background: rgb(255 255 252 / 0.66);
-  -webkit-backdrop-filter: blur(16px) saturate(1.35);
-  backdrop-filter: blur(16px) saturate(1.35);
-  border-color: rgb(255 255 255 / 0.72);
+  background: rgb(255 255 252 / 0.55);
+  -webkit-backdrop-filter: blur(22px) saturate(1.45);
+  backdrop-filter: blur(22px) saturate(1.45);
+  border-color: rgb(255 255 255 / 0.75);
   box-shadow:
-    0 1px 2px oklch(30% 0.03 var(--wisp-hue) / 0.05),
-    0 12px 32px oklch(30% 0.03 var(--wisp-hue) / 0.10),
-    inset 0 1px 0 rgb(255 255 255 / 0.75);
+    0 1px 2px oklch(30% 0.04 var(--wisp-hue) / 0.06),
+    0 16px 40px oklch(32% 0.05 var(--wisp-hue) / 0.14),
+    inset 0 1px 0 rgb(255 255 255 / 0.85);
+}
+.card{ border-radius: 18px; }
+/* sidebar active item: gradient glass pill */
+#nav a.active, #nav a[aria-current]{
+  background: linear-gradient(115deg,
+    oklch(93% 0.05 var(--wisp-hue) / 0.9),
+    oklch(94% 0.045 calc(var(--wisp-hue) + 60) / 0.75)) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8),
+    0 4px 14px oklch(30% 0.06 var(--wisp-hue) / 0.12);
 }
 aside#side{
   background: rgb(255 255 252 / 0.55);
@@ -1240,15 +1252,16 @@ aside#side{
   opacity:.55; transition: opacity .25s ease;
 }
 .card:hover::before{ opacity:.95; }
-/* topbar: quiet at rest, elevated glass once you scroll */
-.topbar{ position: sticky; top: 0; z-index: 40;
-  transition: background .25s ease, box-shadow .25s ease, padding .25s ease; }
+/* topbar: normal flow (no sticky — it collided with page titles); it gains a
+   glass chip look and a hue underline that brightens once you scroll */
+.topbar{ position: relative;
+  transition: background .3s ease, box-shadow .3s ease; border-radius: 18px; }
 html[data-scrolled] .topbar{
-  background: rgb(255 255 252 / 0.7);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
-  backdrop-filter: blur(18px) saturate(1.35);
-  box-shadow: 0 10px 28px oklch(30% 0.03 var(--wisp-hue) / 0.10);
-  border-radius: 0 0 16px 16px; padding-left: 12px; padding-right: 12px;
+  background: rgb(255 255 252 / 0.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: 0 8px 26px oklch(30% 0.05 var(--wisp-hue) / 0.12);
+  padding-left: 12px; padding-right: 12px;
 }
 /* Phantom-style motion */
 @media (hover:hover) and (prefers-reduced-motion: no-preference){
@@ -4578,10 +4591,13 @@ route();poll();loadCalendarRange();setInterval(poll,2500);
     apply();
   }
   function apply(){
-    const drift = Math.min(40, (window.scrollY || 0) / 24);
+    const y = window.scrollY || 0;
+    const drift = Math.min(90, y / 12);          // hue sweeps as you scroll
     document.documentElement.style.setProperty("--wisp-hue",
       String(base + drift));
-    if (window.scrollY > 8) document.documentElement.dataset.scrolled = "1";
+    document.body.style.setProperty("--glow-y",  // glows slide (parallax)
+      (y * 0.22).toFixed(1) + "px");
+    if (y > 8) document.documentElement.dataset.scrolled = "1";
     else delete document.documentElement.dataset.scrolled;
   }
   let raf = 0;

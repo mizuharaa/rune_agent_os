@@ -62,29 +62,55 @@ function createMainWindow() {
   });
 }
 
+const fs = require("fs");
+const BOUNDS_FILE = () => path.join(app.getPath("userData"), "minibar-bounds.json");
+
+function loadBarBounds() {
+  try { return JSON.parse(fs.readFileSync(BOUNDS_FILE(), "utf8")); }
+  catch (_) { return null; }
+}
+let saveTimer = null;
+function saveBarBounds() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    if (!miniBar) return;
+    const b = miniBar.getBounds();
+    try { fs.writeFileSync(BOUNDS_FILE(), JSON.stringify({ x: b.x, y: b.y, width: b.width })); }
+    catch (_) {}
+  }, 400);
+}
+
 function createMiniBar() {
-  const { width } = require("electron").screen.getPrimaryDisplay().workAreaSize;
+  const area = require("electron").screen.getPrimaryDisplay().workAreaSize;
+  const saved = loadBarBounds() || {};
+  const width = Math.min(Math.max(saved.width || 420, 320), 780);
   miniBar = new BrowserWindow({
-    width: 520,
-    height: 88,
-    x: Math.round((width - 520) / 2),
-    y: 10,
+    width,
+    height: 62,
+    x: Number.isFinite(saved.x) ? Math.min(Math.max(saved.x, 0), area.width - 100)
+                                : Math.round((area.width - width) / 2),
+    y: Number.isFinite(saved.y) ? Math.min(Math.max(saved.y, 0), area.height - 62) : 10,
     frame: false,
     transparent: true,
-    resizable: false,
+    resizable: true,           // width is the user's; height follows content
+    minWidth: 320,
+    maxWidth: 780,
+    minHeight: 56,
     alwaysOnTop: true,
     skipTaskbar: true,
     show: false,
     webPreferences: { preload: path.join(__dirname, "preload.js") },
   });
   miniBar.setAlwaysOnTop(true, "screen-saver");
+  miniBar.on("moved", saveBarBounds);
+  miniBar.on("resized", saveBarBounds);
   // served by the python engine so fetch() to /api/* is same-origin
   miniBar.loadURL(BASE + "/app/minibar.html");
 }
 
 ipcMain.on("minibar:resize", (_e, height) => {
   if (!miniBar) return;
-  const h = Math.max(88, Math.min(360, Math.round(Number(height) || 88)));
+  const h = Math.max(56, Math.min(560, Math.round(Number(height) || 56)));
   const b = miniBar.getBounds();
   if (b.height !== h) miniBar.setBounds({ ...b, height: h });
 });

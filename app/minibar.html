@@ -5,203 +5,204 @@
 <title>Wisp bar</title>
 <style>
   :root {
-    --paper: 250, 248, 244;
+    --paper: 252, 250, 246;
     --ink: #201a26;
     --ink-soft: rgba(32, 26, 38, 0.55);
     --plum: #6a2e8a;
     --hue-a: #8b5cf6;
     --hue-b: #ec4899;
     --hue-c: #f59e0b;
-    --radius: 22px;
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0; background: transparent; overflow: hidden;
     font: 14px/1.45 Inter, "Segoe UI", system-ui, sans-serif;
-    color: var(--ink);
-    -webkit-font-smoothing: antialiased;
-    user-select: none;
+    color: var(--ink); -webkit-font-smoothing: antialiased; user-select: none;
   }
 
-  /* ── the island ──────────────────────────────────────────── */
+  /* ── island: compact pill that morphs open ── */
   #island {
-    position: relative;
-    margin: 10px 12px;
-    border-radius: var(--radius);
-    background: rgba(var(--paper), 0.92);
-    backdrop-filter: blur(24px) saturate(1.35);
-    box-shadow:
-      0 1px 2px rgba(20, 14, 28, 0.06),
-      0 10px 34px rgba(20, 14, 28, 0.16),
-      inset 0 1px 0 rgba(255, 255, 255, 0.65);
-    transition: box-shadow 220ms ease;
+    position: relative; margin: 8px 10px;
+    border-radius: 26px;
+    background: rgba(var(--paper), 0.9);
+    backdrop-filter: blur(26px) saturate(1.4);
+    box-shadow: 0 2px 6px rgba(22, 14, 30, 0.10),
+                0 14px 40px rgba(22, 14, 30, 0.20),
+                inset 0 1px 0 rgba(255, 255, 255, 0.7);
+    transition: border-radius .28s cubic-bezier(.2,.8,.3,1.1),
+                box-shadow .28s ease, background .28s ease;
   }
-  /* gradient hairline that hue-shifts with state */
   #island::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit;
     padding: 1.5px; pointer-events: none;
     background: linear-gradient(115deg, var(--hue-a), var(--hue-b) 55%, var(--hue-c));
-    opacity: 0.35;
+    opacity: .4;
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor; mask-composite: exclude;
-    transition: opacity 250ms ease;
+    transition: opacity .25s ease;
   }
   body[data-state="listening"] #island::before,
-  body[data-state="working"] #island::before {
-    opacity: 0.9;
-    animation: hue 4s linear infinite;
-  }
+  body[data-state="thinking"] #island::before,
+  body[data-state="working"] #island::before { opacity: 1; animation: hue 4s linear infinite; }
   @keyframes hue { to { filter: hue-rotate(360deg); } }
+  #island[data-open="1"] { border-radius: 20px; }
 
-  .row { display: flex; align-items: center; gap: 6px; padding: 12px 14px; }
-
-  input#q {
-    flex: 1; min-width: 0; background: transparent; border: 0; outline: 0;
-    color: var(--ink); font-size: 14px; font-family: inherit;
+  /* pill row — the drag handle */
+  .pill {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px; cursor: grab; min-height: 44px;
+    -webkit-app-region: drag;
   }
+  .pill svg { width: 15px; height: 15px; stroke: var(--plum); fill: none;
+              stroke-width: 2; flex: none; }
+  #ptext { flex: 1; min-width: 0; color: var(--ink-soft); font-size: 13px;
+           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body[data-state="thinking"] #ptext, body[data-state="working"] #ptext { color: var(--ink); }
+
+  /* morphing panel (grid-rows trick) */
+  #panel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.2,.8,.3,1.05); }
+  #island[data-open="1"] #panel { grid-template-rows: 1fr; }
+  #panel > .inner { overflow: hidden; }
+
+  .row { display: flex; align-items: center; gap: 6px; padding: 2px 12px 10px;
+         -webkit-app-region: no-drag; }
+  input#q { flex: 1; min-width: 0; background: rgba(255,255,255,.65);
+    border: 1px solid rgba(255,255,255,.9); border-radius: 13px;
+    padding: 8px 12px; outline: 0; color: var(--ink); font: inherit; font-size: 13.5px; }
+  input#q:focus { border-color: var(--plum); }
   input#q::placeholder { color: var(--ink-soft); }
 
-  /* ── buttons: SVG only, magnetic hover ───────────────────── */
-  button {
-    appearance: none; border: 0; background: transparent; cursor: pointer;
-    width: 34px; height: 34px; border-radius: 12px; padding: 0;
+  button { appearance: none; border: 0; background: transparent; cursor: pointer;
+    width: 32px; height: 32px; border-radius: 11px; padding: 0;
     display: grid; place-items: center; color: var(--ink);
-    transition: background 180ms ease, transform 180ms cubic-bezier(.2,.8,.3,1.2), color 180ms ease;
-    will-change: transform;
-  }
-  button:hover { background: rgba(106, 46, 138, 0.10); }
-  button:active { transform: scale(0.92); }
+    -webkit-app-region: no-drag;
+    transition: background .18s ease, transform .18s cubic-bezier(.2,.8,.3,1.2); }
+  button:hover { background: rgba(106, 46, 138, 0.10); transform: translateY(-1px); }
+  button:active { transform: scale(.94); }
   button:focus-visible { outline: 2px solid var(--plum); outline-offset: 2px; }
-  button svg { width: 17px; height: 17px; stroke: currentColor; fill: none;
+  button svg { width: 16px; height: 16px; stroke: currentColor; fill: none;
                stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
-
   #mic.live { color: #fff; background: var(--plum); }
-  #mic.live::after {
-    content: ""; position: absolute; width: 34px; height: 34px; border-radius: 12px;
-    border: 1.5px solid var(--plum); animation: ring 1.4s ease-out infinite;
-  }
-  @keyframes ring { from { transform: scale(1); opacity: .7; } to { transform: scale(1.65); opacity: 0; } }
+  #stop { display: none; color: #a11f3c; }
+  body[data-state="working"] #stop { display: grid; }
 
-  #stop { display: none; }
-  body[data-state="working"] #stop { display: grid; color: #a11f3c; }
-  #stop:hover { background: rgba(161, 31, 60, 0.10); }
+  /* answer card */
+  #answer { display: none; margin: 0 12px 10px; padding: 11px 13px;
+    border-radius: 14px; background: rgba(255,255,255,.72);
+    border: 1px solid rgba(106,46,138,.14); font-size: 13px; line-height: 1.5;
+    max-height: 300px; overflow-y: auto; white-space: pre-wrap; user-select: text;
+    -webkit-app-region: no-drag; animation: rise .25s cubic-bezier(.2,.8,.3,1.1); }
+  #answer.show { display: block; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px) scale(.985); } }
 
-  /* ── status line (working / listening) ───────────────────── */
-  #status {
-    display: none; align-items: center; gap: 10px;
-    padding: 0 18px 12px; color: var(--ink-soft); font-size: 12.5px;
-    white-space: nowrap; overflow: hidden;
-  }
-  body[data-state="working"] #status, body[data-state="listening"] #status { display: flex; }
-  #status .wave { display: flex; gap: 2.5px; align-items: flex-end; height: 12px; }
-  #status .wave i {
-    width: 2.5px; height: 4px; border-radius: 2px;
-    background: linear-gradient(var(--hue-a), var(--hue-b));
-    animation: wave 900ms ease-in-out infinite;
-  }
-  #status .wave i:nth-child(2) { animation-delay: 120ms; }
-  #status .wave i:nth-child(3) { animation-delay: 240ms; }
-  #status .wave i:nth-child(4) { animation-delay: 360ms; }
-  @keyframes wave { 50% { height: 12px; } }
-  #status #stext { overflow: hidden; text-overflow: ellipsis; }
-
-  /* ── notification card ───────────────────────────────────── */
-  #note {
-    display: none; margin: 0 18px 14px; padding: 10px 14px;
-    border-radius: 14px; background: rgba(255, 255, 255, 0.75);
-    border: 1px solid rgba(106, 46, 138, 0.14);
-    font-size: 13px; line-height: 1.4;
-    animation: rise 260ms cubic-bezier(.2,.8,.3,1.1);
-  }
-  #note.show { display: block; }
-  #note b { font-weight: 600; }
-  @keyframes rise { from { opacity: 0; transform: translateY(6px) scale(.98); } }
-
-  /* ── approval queue ──────────────────────────────────────── */
-  .appr {
-    margin: 0 18px 12px; padding: 11px 14px;
-    border-radius: 14px; background: rgba(255, 255, 255, 0.8);
-    border: 1px solid rgba(106, 46, 138, 0.22);
-    font-size: 13px; line-height: 1.45;
-    animation: rise 260ms cubic-bezier(.2,.8,.3,1.1);
-  }
-  .appr .who { color: var(--ink-soft); font-size: 11.5px; letter-spacing: .02em;
+  .appr { margin: 0 12px 10px; padding: 10px 13px; border-radius: 14px;
+    background: rgba(255,255,255,.78); border: 1px solid rgba(106,46,138,.22);
+    font-size: 13px; -webkit-app-region: no-drag; animation: rise .25s ease; }
+  .appr .who { color: var(--ink-soft); font-size: 11px; letter-spacing: .03em;
                text-transform: uppercase; margin-bottom: 2px; }
   .appr .what { margin-bottom: 8px; }
-  .appr .acts { display: flex; gap: 8px; }
-  .appr .acts button {
-    width: auto; height: 30px; padding: 0 14px; border-radius: 10px;
-    font: 600 12.5px/1 Inter, "Segoe UI", system-ui, sans-serif;
-  }
+  .appr .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+  .appr .acts button { width: auto; height: 29px; padding: 0 13px; border-radius: 10px;
+    font: 600 12.5px/1 Inter, "Segoe UI", system-ui, sans-serif; }
   .appr .allow { background: var(--plum); color: #fff; }
-  .appr .allow:hover { background: #7d3aa1; }
-  .appr .retry { border: 1px solid rgba(32, 26, 38, 0.2); }
-  .appr .deny { color: #a11f3c; border: 1px solid rgba(161, 31, 60, 0.3); }
-  .appr .deny:hover { background: rgba(161, 31, 60, 0.08); }
+  .appr .retry { border: 1px solid rgba(32,26,38,.2); }
+  .appr .deny { color: #a11f3c; border: 1px solid rgba(161,31,60,.3); }
+
+  #note { display: none; margin: 0 12px 10px; padding: 9px 13px; border-radius: 13px;
+    background: rgba(255,255,255,.7); border: 1px solid rgba(106,46,138,.12);
+    font-size: 12.5px; -webkit-app-region: no-drag; animation: rise .25s ease; }
+  #note.show { display: block; }
 
   @media (prefers-reduced-motion: reduce) {
-    #island::before, #status .wave i, #mic.live::after { animation: none !important; }
-    button { transition: background 180ms ease; }
+    #island, #panel, button { transition: none !important; }
+    #island::before { animation: none !important; }
   }
 </style>
 </head>
 <body data-state="idle">
-  <div id="island">
-    <div class="row">
-      <input id="q" placeholder="Ask Wisp…" aria-label="Ask Wisp" autofocus>
-      <button id="mic" aria-label="Talk to Wisp" title="Talk to Wisp">
-        <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
-      </button>
-      <button id="undo" aria-label="Undo last action" title="Ask Wisp to undo its last action">
-        <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
-      </button>
-      <button id="stop" aria-label="Stop all running work" title="Stop everything">
-        <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-      </button>
-      <button id="open" aria-label="Open Wisp dashboard" title="Open dashboard">
-        <svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-      </button>
+  <div id="island" data-open="0">
+    <div class="pill" title="Drag to move — Esc hides">
+      <svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
+      <span id="ptext">Ask Wisp — hover to open</span>
     </div>
-    <div id="status"><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="stext"></span></div>
-    <div id="approvals"></div>
-    <div id="note" role="status"></div>
+    <div id="panel"><div class="inner">
+      <div class="row">
+        <input id="q" placeholder='Ask anything · "run …" hands it to the agents' aria-label="Ask Wisp">
+        <button id="mic" aria-label="Talk to Wisp" title="Talk to Wisp">
+          <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+        </button>
+        <button id="undo" aria-label="Undo last agent action" title="Ask the agents to undo their last action">
+          <svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+        </button>
+        <button id="stop" aria-label="Stop all running work" title="Stop everything">
+          <svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+        <button id="open" aria-label="Open dashboard" title="Open dashboard">
+          <svg viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </button>
+      </div>
+      <div id="answer" role="log"></div>
+      <div id="approvals"></div>
+      <div id="note" role="status"></div>
+    </div></div>
   </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const island = $("island"), q = $("q"), stext = $("stext"), note = $("note");
-  const state = (s) => { document.body.dataset.state = s; fit(); };
+  const island = $("island"), q = $("q"), ptext = $("ptext"),
+        answer = $("answer"), note = $("note"), approvalsBox = $("approvals");
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
-  // window height follows content (dynamic island)
+  let state = "idle", running = [], history = [], fromVoice = false;
+  const setState = (s) => { state = s; document.body.dataset.state = s; };
+
   const fit = () => requestAnimationFrame(() =>
-    window.wisp && window.wisp.resize(Math.ceil(island.getBoundingClientRect().height) + 20));
+    window.wisp && window.wisp.resize(Math.ceil(island.getBoundingClientRect().height) + 16));
 
-  // ── magnetic buttons (Phantom-style, skipped under reduced motion) ──
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    document.addEventListener("mousemove", (e) => {
-      for (const b of document.querySelectorAll("button")) {
-        const r = b.getBoundingClientRect();
-        const dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
-        const d = Math.hypot(dx, dy);
-        b.style.transform = d < 60 ? `translate(${dx * 0.18}px, ${dy * 0.18}px)` : "";
-      }
-    });
-    document.addEventListener("mouseleave", () =>
-      document.querySelectorAll("button").forEach((b) => (b.style.transform = "")));
+  // ── morph open/close ──
+  let closeTimer = 0;
+  function open() { clearTimeout(closeTimer); island.dataset.open = "1"; fit();
+                    setTimeout(fit, 320); }
+  function maybeClose() {
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => {
+      const busy = state !== "idle" || answer.classList.contains("show") ||
+                   approvalsBox.children.length || note.classList.contains("show") ||
+                   document.activeElement === q;
+      if (!busy) { island.dataset.open = "0"; setTimeout(fit, 320); }
+    }, 700);
+  }
+  island.addEventListener("mouseenter", open);
+  island.addEventListener("mouseleave", maybeClose);
+  island.addEventListener("focusin", open);
+
+  function pill(text) { ptext.textContent = text; }
+
+  // ── status like a real assistant, then the actual answer ──
+  let statusTimer = 0;
+  function stage(texts, i = 0) {
+    clearTimeout(statusTimer);
+    pill(texts[i]);
+    if (i < texts.length - 1)
+      statusTimer = setTimeout(() => stage(texts, i + 1), i === 0 ? 750 : 5000);
+  }
+  function idlePill() {
+    clearTimeout(statusTimer);
+    pill(running.length
+      ? running.length + " running — " + running.map((x) => x.title).join(" · ")
+      : "Ask Wisp — hover to open");
   }
 
   const speak = (t) => { try { speechSynthesis.cancel();
     speechSynthesis.speak(new SpeechSynthesisUtterance(t)); } catch (_) {} };
 
-  function toast(html, say) {
-    note.innerHTML = html;
-    note.classList.add("show"); fit();
-    if (say) speak(say);
+  function toast(html) {
+    note.innerHTML = html; note.classList.add("show"); open(); fit();
     clearTimeout(toast.t);
-    toast.t = setTimeout(() => { note.classList.remove("show"); fit(); }, 6000);
-    if (Notification.permission === "granted") {
+    toast.t = setTimeout(() => { note.classList.remove("show"); fit(); maybeClose(); }, 6000);
+    if (Notification.permission === "granted")
       new Notification("Wisp", { body: note.textContent, silent: true });
-    }
   }
 
   async function api(path, body) {
@@ -211,32 +212,50 @@
     return { ok: r.ok, status: r.status, data: await r.json().catch(() => ({})) };
   }
 
+  // ── ask: instant chat answer; "run …" hands off to the agents ──
   async function send(text) {
     const t = text.trim();
     if (!t) return;
+    const voice = fromVoice; fromVoice = false;
     if (/^(stop|cancel|abort)\b/i.test(t)) return stopAll();
     if (/^undo\b/i.test(t)) return undo();
-    const r = await api("/api/message", { text: t, source: "minibar" });
-    toast(r.ok ? "<b>Queued.</b> Wisp will pick this up." : "Engine error " + r.status,
-          r.ok ? "Queued." : "Engine error");
-    if (r.ok) q.value = "";
+    if (/^(run|mission)[:\s]/i.test(t)) {
+      const goal = t.replace(/^(run|mission)[:\s]+/i, "");
+      const r = await api("/api/message", { text: goal, source: "minibar" });
+      toast(r.ok ? "<b>Handed to the agents.</b> Track it on the dashboard."
+                 : "Engine error " + r.status);
+      if (r.ok) q.value = "";
+      return;
+    }
+    setState("thinking");
+    stage(["Recalling the brain…", "Thinking about your prompt…",
+           "Still thinking — long one…"]);
+    const r = await api("/api/chat", { message: t, history });
+    clearTimeout(statusTimer); setState("idle"); idlePill();
+    if (!r.ok || !r.data.reply)
+      return toast("Engine error: " + esc(r.data.error || r.status));
+    history.push({ role: "user", content: t },
+                 { role: "assistant", content: r.data.reply });
+    history = history.slice(-12);
+    answer.textContent = r.data.reply;
+    answer.classList.add("show"); open(); fit();
+    q.value = ""; q.focus();
+    if (voice) speak(r.data.reply.split(/(?<=[.!?])\s/)[0].slice(0, 220));
   }
 
   async function stopAll() {
     const r = await api("/api/stop-all", {});
     const n = (r.data.stopped || []).length;
-    toast("<b>Stopped.</b> " + n + " task" + (n === 1 ? "" : "s") + " halted.", "Stopped.");
+    toast("<b>Stopped.</b> " + n + " task" + (n === 1 ? "" : "s") + " halted.");
   }
-
   async function undo() {
     const r = await api("/api/message",
       { text: "Undo the last action you performed and report what was reverted.",
         source: "minibar-undo" });
-    toast(r.ok ? "<b>Undo requested.</b> Wisp will revert its last action."
-               : "Engine error " + r.status, r.ok ? "Undoing." : "Engine error");
+    toast(r.ok ? "<b>Undo requested.</b>" : "Engine error " + r.status);
   }
 
-  // ── voice: click to talk, click again to finish ──
+  // ── voice: click to talk, click again to finish; replies are spoken ──
   let rec = null, chunks = [];
   $("mic").addEventListener("click", async () => {
     if (rec) { rec.stop(); return; }
@@ -248,31 +267,33 @@
       rec.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         $("mic").classList.remove("live");
-        state("idle"); stext.textContent = "";
         const blob = new Blob(chunks, { type: "audio/webm" });
         rec = null;
-        if (blob.size < 2000) return;
-        stext.textContent = "transcribing…"; state("listening");
+        if (blob.size < 2000) { setState("idle"); idlePill(); return; }
+        stage(["Transcribing…"]); setState("thinking");
         const buf = new Uint8Array(await blob.arrayBuffer());
         let bin = "";
-        for (let i = 0; i < buf.length; i += 0x8000) {
+        for (let i = 0; i < buf.length; i += 0x8000)
           bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
-        }
         const r = await api("/api/voice", { audio_b64: btoa(bin) });
-        state("idle"); stext.textContent = "";
-        if (r.status === 501) return toast("<b>Whisper missing.</b> pip install faster-whisper", "");
-        if (!r.ok || !r.data.text) return toast("Didn't catch that.", "");
-        q.value = r.data.text;
+        setState("idle"); idlePill();
+        if (r.status === 501) return toast("<b>Whisper missing.</b> pip install faster-whisper");
+        if (!r.ok || !r.data.text) return toast("Didn't catch that.");
+        q.value = r.data.text; fromVoice = true;
         send(r.data.text);
       };
       rec.start();
       $("mic").classList.add("live");
-      stext.textContent = "listening — click the mic to finish";
-      state("listening");
-    } catch (_) { toast("<b>Microphone unavailable.</b>", ""); }
+      setState("listening"); pill("Listening — click the mic to finish"); open();
+    } catch (_) { toast("<b>Microphone unavailable.</b>"); }
   });
 
-  q.addEventListener("keydown", (e) => { if (e.key === "Enter") send(q.value); });
+  q.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") send(q.value);
+    if (e.key === "Escape" && answer.classList.contains("show")) {
+      answer.classList.remove("show"); fit(); e.stopPropagation();
+    }
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") window.wisp && window.wisp.hide();
   });
@@ -280,21 +301,13 @@
   $("undo").addEventListener("click", undo);
   $("open").addEventListener("click", () => window.wisp && window.wisp.openMain());
 
-  // ── approval queue: the island is the fastest path to allow/deny ──
-  const approvalsBox = $("approvals");
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  // ── approval queue ──
   let seenApprovals = new Set();
-
   function renderApprovals(list) {
     const ids = new Set(list.map((a) => a.request_id));
-    for (const a of list) {
-      if (!seenApprovals.has(a.request_id)) {
-        speak("Approval needed.");
-        if (Notification.permission === "granted")
-          new Notification("Wisp — approval needed", { body: a.summary });
-      }
-    }
+    for (const a of list)
+      if (!seenApprovals.has(a.request_id) && Notification.permission === "granted")
+        new Notification("Wisp — approval needed", { body: a.summary });
     seenApprovals = ids;
     approvalsBox.innerHTML = list.map((a) => `
       <div class="appr" data-rid="${esc(a.request_id)}">
@@ -306,59 +319,57 @@
           ${a.can_authorize ? `<button class="deny" data-act="deny">Deny &amp; skip</button>` : ""}
         </div>
       </div>`).join("");
+    if (list.length) open();
     approvalsBox.querySelectorAll("button").forEach((b) =>
       b.addEventListener("click", async () => {
-        const card = b.closest(".appr");
-        const a = list.find((x) => x.request_id === card.dataset.rid);
+        const a = list.find((x) => x.request_id === b.closest(".appr").dataset.rid);
         if (!a) return;
         b.disabled = true;
         const r = await api("/api/ceo-action",
           { cid: a.cid, role: a.role, action: b.dataset.act, request_id: a.request_id });
-        toast(r.ok ? "<b>" + b.textContent + ".</b>" : "Rejected: " + esc(r.data.error || r.status), "");
+        toast(r.ok ? "<b>" + b.textContent + ".</b>" : "Rejected: " + esc(r.data.error || r.status));
         poll();
       }));
     fit();
   }
 
-  // ── activity: live agent tracker + completion notifications ──
+  // ── live activity + completion notifications ──
   let wasRunning = new Map();
   async function poll() {
     try {
       const { data } = await api("/api/activity");
       renderApprovals(data.approvals || []);
-      const run = data.running || [];
-      if (run.length) {
-        if (!rec) state("working");
-        stext.textContent = run.length + " running — " + run.map((x) => x.title).join(" · ");
-      } else if (!rec) { state("idle"); stext.textContent = ""; }
+      running = data.running || [];
+      if (running.length && state === "idle") setState("working");
+      if (!running.length && state === "working") setState("idle");
+      if (state === "idle" || state === "working") idlePill();
       for (const item of data.recent || []) {
         if (wasRunning.has(item.id)) {
           wasRunning.delete(item.id);
           const good = /done|accept/.test(item.status);
           toast("<b>" + (good ? "Finished" : "Ended (" + item.status + ")") + ":</b> " +
-                item.title, good ? "Task finished." : "");
+                esc(item.title));
         }
       }
-      run.forEach((x) => wasRunning.set(x.id, 1));
-    } catch (_) { /* engine offline; island stays idle */ }
+      running.forEach((x) => wasRunning.set(x.id, 1));
+    } catch (_) { /* engine offline */ }
   }
   setInterval(poll, 4000); poll();
 
-  // ── daily briefing notification (new briefing id → one toast) ──
   async function brief() {
     try {
       const { data } = await api("/api/briefing");
       const id = data && data.batch && data.batch.id;
       if (id && localStorage.getItem("wisp-brief") !== id) {
         localStorage.setItem("wisp-brief", id);
-        toast("<b>Daily brief is ready.</b> Open the dashboard to read it.", "Your daily brief is ready.");
+        toast("<b>Daily brief is ready.</b> Open the dashboard to read it.");
       }
     } catch (_) {}
   }
   setInterval(brief, 10 * 60 * 1000); brief();
 
   if (Notification.permission === "default") Notification.requestPermission();
-  fit();
+  idlePill(); fit();
 </script>
 </body>
 </html>

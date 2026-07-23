@@ -88,7 +88,7 @@ def _context(recall_block=""):
     Brain cards are query-selected instead of attaching recent cards to every
     turn: recency is not relevance, and unrelated cards waste context.
     """
-    parts = ["You are the in-dashboard assistant for Maestro, a personal AI "
+    parts = ["You are Wisp, the local assistant for a personal AI "
              "operating system (a 'conductor' that keeps memory fresh, reuses "
              "skills, and spawns specialist agents). Answer questions about the "
              "software, the brain (Obsidian vault + Hermes solved-problem log), "
@@ -170,5 +170,5 @@ if __name__ == "__main__":
     assert (SONNET if HEAVY.search("why does the guard block writes?") else HAIKU) == SONNET
     assert (SONNET if HEAVY.search("hi") else HAIKU) == HAIKU
     ctx = _context()
-    assert "Maestro" in ctx and len(ctx) > 200, "context too thin"
+    assert "Wisp" in ctx and len(ctx) > 200, "context too thin"
     print("chat.py OK — key present:", bool(_api_key()), "| context chars:", len(ctx))

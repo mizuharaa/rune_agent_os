@@ -1035,8 +1035,22 @@ def generate(date="yesterday", model=None, effort=None, more=False, force=False,
 
         evidence = collect_evidence(selected_roots, start, end)
         previous = _all_priorities(current) if (same_day and more) else []
-        priorities = _brainstorm(evidence, start, end, selected_model,
-                                 selected_effort, previous=previous, runner=runner)
+        try:
+            priorities = _brainstorm(evidence, start, end, selected_model,
+                                     selected_effort, previous=previous, runner=runner)
+            used_model = selected_model
+        except BriefingError:
+            # ``model`` is only set when a caller explicitly asked for one; the
+            # unattended 09:30 schedule always passes None and falls through to
+            # settings. Without a fallback, one provider outage (rate limit,
+            # exhausted credits) wedges the autonomous cycle into retrying the
+            # same broken model forever until an operator manually switches it.
+            fallback_model = next((m for m in GENERATOR_MODELS if m != selected_model), None)
+            if model is not None or fallback_model is None:
+                raise
+            priorities = _brainstorm(evidence, start, end, fallback_model,
+                                     selected_effort, previous=previous, runner=runner)
+            used_model = fallback_model
         batch = {
             "id": uuid.uuid4().hex[:8],
             "kind": "more" if more else "primary",
@@ -1054,7 +1068,7 @@ def generate(date="yesterday", model=None, effort=None, more=False, force=False,
             "source_window": {"start": start.isoformat(), "end": end.isoformat(),
                               "timezone": str(start.tzinfo)},
             "generated_at": batch["generated_at"],
-            "generator": {"model": selected_model, "effort": selected_effort},
+            "generator": {"model": used_model, "effort": selected_effort},
             "settings": settings,
             "batches": batches,
         }
@@ -2110,6 +2124,29 @@ def selfcheck():
         updated = update_agent(batch["id"], priority["id"], agent["id"], model="gpt-5.6-sol",
                                effort="max", store_path=store, lock_path=lock)
         assert updated["model"] == "gpt-5.6-sol" and updated["effort"] == "max"
+
+        fallback_store = os.path.join(temp, "state", "briefing-fallback.json")
+        fallback_lock = os.path.join(temp, "state", "briefing-fallback.lock")
+
+        def flaky_primary_runner(_prompt, schema, model, _effort):
+            if model == GENERATOR_MODELS[0]:
+                raise BriefingError("primary provider exhausted its usage credits")
+            ids = schema["properties"]["priorities"]["items"]["properties"]["repo_id"]["enum"]
+            return _selfcheck_output(ids)
+
+        fell_back = generate(source.isoformat(), roots=[temp], store_path=fallback_store,
+                             lock_path=fallback_lock, runner=flaky_primary_runner,
+                             today=source + dt.timedelta(days=1), tz=tz)
+        assert fell_back["generator"]["model"] == GENERATOR_MODELS[1], \
+            "an unattended run did not fall back to the other provider on failure"
+
+        try:
+            generate(source.isoformat(), roots=[temp], model=GENERATOR_MODELS[0], force=True,
+                     store_path=fallback_store, lock_path=fallback_lock,
+                     runner=flaky_primary_runner, today=source + dt.timedelta(days=1), tz=tz)
+            raise AssertionError("an explicit model request silently fell back to another provider")
+        except BriefingError:
+            pass
 
         previous_bytes = open(store, "rb").read()
         def always_bad(*_args):

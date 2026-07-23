@@ -1459,7 +1459,8 @@
         <div class="icards" id="instances"></div>
       </div>
       <div class="card">
-        <h3>Outside sessions <span class="tag">wire telemetry from sessions Rune didn't launch</span></h3>
+        <h3>Outside sessions <span class="tag">wire telemetry from sessions Rune didn't launch</span>
+          <button class="btn line sm" id="wire-sessions-clear-all" hidden>Clear all</button></h3>
         <div class="icards" id="wire-sessions"></div>
       </div>
     </section>
@@ -1641,6 +1642,13 @@ const CAPFILL=[GREEN, MINT, MID];              // rotating capsule fills (Donezo
 const PIE=[GREEN, MID, MINT, "#b879a5", "#cec5cb", "#958a92"]; // pie chart exempt from 3-color cap
 const STAGES=["think","plan","build","review","test","ship"];
 const LIVE_MS=15*60*1000;
+// Outside sessions are derived fresh from S.events every poll (not an
+// individually-addressable backend record), so "clear" is client-only,
+// persisted so a dismissed session doesn't reappear on the next 2.5s poll.
+const DISMISSED_SESSIONS=(()=>{try{return new Set(JSON.parse(localStorage.getItem("rune-dismissed-sessions")||"[]"))}catch(_){return new Set()}})();
+function saveDismissedSessions(){try{localStorage.setItem("rune-dismissed-sessions",JSON.stringify([...DISMISSED_SESSIONS].slice(-200)))}catch(_){ }}
+function dismissSession(id){if(!id)return;DISMISSED_SESSIONS.add(id);saveDismissedSessions();render()}
+function clearAllSessions(ids){ids.forEach(id=>DISMISSED_SESSIONS.add(id));saveDismissedSessions();render()}
 const S={events:[],skills:null,solved:[],approvals:{tokens:[]},inbox:[],instances:[],integ:null,wire:true,vault:"",vaultData:null,paused:false,orchs:[],ceo:[],ceoHistory:[],sshKeys:[],pulse:{},briefing:null,briefingLoaded:false,workflows:null,brain:null,brainLoaded:false,brainError:""};
 const VERIFY_RECALL={busy:false,message:"",tone:""};
 const BRIEF={open:new Set(),overrides:new Map(),saving:new Set(),runs:new Map(),busy:false,checking:false,error:"",feedback:"",
@@ -1991,12 +1999,22 @@ const nextPaint=()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimat
 function missionActivityNode(cid){
   return[...document.querySelectorAll("#ceoruns2 .mrun[data-cid]")].find(node=>String(node.dataset.cid||"")===String(cid))||null;
 }
+const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function openMissionActivity(cid){
   cid=String(cid||"").trim();if(!cid)return false;
   MOPEN.delete(cid);MOPEN.add(cid);DELIVERY.historyOpen=true;CMD.collapsed=true;renderCmdTray();
   location.hash="#/instances";route();renderCeo();await nextPaint();
   let target=missionActivityNode(cid);
-  if(!target){await poll();MOPEN.add(cid);DELIVERY.historyOpen=true;renderCeo();await nextPaint();target=missionActivityNode(cid)}
+  // A just-launched mission can lose a race against the interval-driven
+  // background poll() (an in-flight request from before the launch can
+  // resolve after this function's own fresher one, clobbering S.ceo with
+  // stale data right as we check for the node). One retry wasn't always
+  // enough to outlast that window, so retry a few times with a short gap
+  // instead of giving up after a single attempt.
+  for(let attempt=0;!target&&attempt<4;attempt++){
+    await sleep(350);await poll();MOPEN.add(cid);DELIVERY.historyOpen=true;renderCeo();await nextPaint();
+    target=missionActivityNode(cid);
+  }
   const destination=target||$("ceoruns2");if(!destination)return false;
   if(target){target.open=true;target.classList.remove("mission-focus");void target.offsetWidth;target.classList.add("mission-focus");
     setTimeout(()=>target.classList.remove("mission-focus"),1800);target.querySelector("summary")?.focus({preventScroll:true})}
@@ -2777,7 +2795,7 @@ function render(){
   renderOrchs();
   // only sessions Rune didn't launch — launched ones already show on their cards
   const named=new Map(S.instances.map(w=>[w.sid,w.name]));
-  const outside=ss.filter(s=>!named.has(s.id));
+  const outside=ss.filter(s=>!named.has(s.id)&&!DISMISSED_SESSIONS.has(s.id));
   $("wire-sessions").innerHTML=outside.length?outside.map(s=>{
     const chips=s.agents.map((a,i)=>`<span class="achip ${i<s.exits?"done":""}" title="${esc(a.detail)}">${esc(a.name)}${i<s.exits?" ✓":""}</span>`).join("");
     const label=named.get(s.id)?named.get(s.id)+" — "+(s.job||"working"):(s.job||"idle conductor");
@@ -2785,8 +2803,11 @@ function render(){
       <span class="pill ${s.live?"live":"idle"}">${s.live?"Live":"Idle"}</span></div>
       <div class="spend">${esc(s.id)} · last seen ${esc((s.last||"").slice(11,19))}</div>
       ${railFor(s)}${s.agents.length?`<div class="achips">${chips}</div>`:""}
-      ${miBlock("sl:"+s.id,"▸ "+(s.lastline||"no detail yet"),"mono","-webkit-line-clamp:1;margin-top:8px")}</div>`;
+      ${miBlock("sl:"+s.id,"▸ "+(s.lastline||"no detail yet"),"mono","-webkit-line-clamp:1;margin-top:8px")}
+      <div style="display:flex;margin-top:8px"><button class="btn line sm" data-dismiss-session="${esc(s.id)}">Clear</button></div></div>`;
   }).join(""):`<div class="none">nothing reporting yet</div>`;
+  $("wire-sessions-clear-all").hidden=!outside.length;
+  $("wire-sessions-clear-all").dataset.ids=outside.map(s=>s.id).join(",");
   $("sshsaved").innerHTML=S.sshKeys.length?"Saved: "+S.sshKeys.map(k=>
     `<span class="mono">${esc(k)}</span> <a href="#" data-forget="${esc(k)}">forget</a>`).join(" · "):"";
 
@@ -3746,6 +3767,10 @@ $("quickgo").addEventListener("click",async()=>{
   try{toast(await launch(DEFAULT_MISSION,"tab"));poll()}
   catch(e){toast("Failed: "+e.message,true)}btn.disabled=false});
 document.addEventListener("click",async e=>{
+  const sessionDismiss=e.target.closest("[data-dismiss-session]");
+  if(sessionDismiss){dismissSession(sessionDismiss.dataset.dismissSession);return}
+  const sessionClearAll=e.target.closest("#wire-sessions-clear-all");
+  if(sessionClearAll){clearAllSessions((sessionClearAll.dataset.ids||"").split(",").filter(Boolean));return}
   const cmdDismiss=e.target.closest("[data-cmd-dismiss]");
   if(cmdDismiss){CMD.items=CMD.items.filter(item=>item.id!==cmdDismiss.dataset.cmdDismiss);renderCmdTray();return}
   const cmdCollapse=e.target.closest("[data-cmd-collapse]");

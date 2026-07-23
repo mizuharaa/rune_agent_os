@@ -742,11 +742,28 @@ def _archive_file(cid):
 
 
 def archive(cid):
-    """Manual archive (the mission card's Archive button). Refuses a live run."""
+    """Manual archive (the mission card's Archive button). Refuses a live run.
+
+    A successful mission is already auto-archived into ADIR the instant it
+    finishes (see run()'s completion path), so for anything already there
+    this was previously a no-op that left the card sitting in Completed &
+    delivery forever -- the button appeared broken. Mark the record
+    `dismissed` so list_history() stops showing it. find_source_run()
+    deliberately ignores this flag: a dismissed card must never let the
+    same briefing task silently relaunch as a duplicate."""
     with LOCK:
         st = LIVE.get(cid)
         if st and st["thread"].is_alive():
             return "can't archive a running mission — stop it first"
+    path = _record_path(cid)
+    if path:
+        try:
+            record = _load_json(path)
+        except (OSError, json.JSONDecodeError):
+            record = None
+        if isinstance(record, dict) and not record.get("dismissed"):
+            record["dismissed"] = True
+            _save_record(record, path)
     return None if _archive_file(cid) else "no such mission"
 
 
@@ -810,6 +827,8 @@ def list_history(limit=HISTORY_LIMIT):
                 continue
             status = str(run.get("status") or "").lower()
             if not archived and status not in SUCCESSFUL:
+                continue
+            if archived and run.get("dismissed"):
                 continue
             cid = str(run.get("cid") or name[:-5])
             live = False
@@ -919,7 +938,13 @@ def plan_and_start(text, opts=None, source=None, workdir=None,
             recall_context={"cid": answer_cid, "route": "answer"})
         if ans.get("error"):
             return None, ans["error"]
-        return {"kind": "answer", "reply": ans.get("reply") or "(no reply)",
+        os.makedirs(CDIR, exist_ok=True)
+        _save({"cid": answer_cid, "name": text[:40], "goal": text[:1000],
+               "route": "answer", "roles": [], "status": "done", "cost": 0,
+               "reply": ans.get("reply") or "(no reply)",
+               "started": datetime.datetime.now().isoformat(timespec="seconds")})
+        return {"kind": "answer", "cid": answer_cid,
+                "reply": ans.get("reply") or "(no reply)",
                 "model": ans.get("model"), "goal": text[:1000],
                 "recall_receipt": ans.get("recall_receipt")}, None
     os.makedirs(CDIR, exist_ok=True)
@@ -2260,6 +2285,15 @@ def _run(cid):
         else:
             o["status"] = "error"
             o["detail"] = repr(e)[:300]
+            # A role mid-turn when the mission crashes is otherwise left at
+            # "working" forever (same trap _stop_state() already guards
+            # against for the operator-stop path) -- the console would show
+            # it as still running, with nothing for a click to reveal.
+            for role in o.get("roles") or []:
+                if role.get("status") in ("working", "retrying", "repairing"):
+                    role["status"] = "failed"
+                    role["detail"] = "mission crashed: " + repr(e)[:200]
+                    role["next_action"] = "Resume to retry this role, or archive the mission."
             _link_recall_outcome(o)
             _save(o)
             emit(cid, "CEO run crashed: " + repr(e)[:120])
@@ -2740,6 +2774,19 @@ def delivery_fix(cid):
             evidence = str(item.get("output") or item.get("error") or
                            item.get("detail") or "")
             break
+    commit_blocked = str((lane.get("commit") or {}).get("blocked_reason") or "")
+    if not step and commit_blocked:
+        step = "commit"
+    if step == "commit" and commit_blocked:
+        # This is delivery.py's attribution boundary, not a code defect: the
+        # gate refuses to auto-commit paths that were already dirty before the
+        # mission started (the operator's own work in progress), and no
+        # in-mission edit can ever change that fact. Spawning a fixer agent
+        # here cannot succeed — it can only edit those same excluded paths and
+        # burn cost re-discovering the same block. Surface it directly instead.
+        return None, ("Commit is blocked, not broken: %s No agent can fix this "
+                      "from inside the mission — stage and commit those paths "
+                      "yourself in Git, then Review again." % commit_blocked)
     if not step:
         return None, "no failed delivery step to fix"
     workdir = str(record.get("workdir") or "")

@@ -463,6 +463,34 @@ class CeoRecoveryTests(unittest.TestCase):
         self.assertIn("cut off, not finished", item["detail"])
         self.assertEqual(got["status"], "exhausted")
 
+    def test_run_crash_fails_the_working_role_instead_of_leaving_it_stuck(self):
+        # Regression: a role mid-turn when _run() itself crashes (e.g. a
+        # PermissionError from the OS, not a worker-reported error) used to
+        # stay at "working" forever -- the console showed it as still
+        # running with nothing for a click to reveal, and the mission never
+        # left the active list since "error" isn't a SUCCESSFUL status.
+        self.save(mission())
+        self.make_live()
+
+        def worker(*_a, **_kw):
+            raise PermissionError(13, "Access is denied")
+
+        with mock.patch.object(ceo, "_worker", worker):
+            ceo._run("m1")
+        got = self.load()
+        self.assertEqual(got["status"], "error")
+        role_state = got["roles"][0]
+        self.assertEqual(role_state["status"], "failed")
+        self.assertIn("mission crashed", role_state["detail"])
+        self.assertIn("PermissionError", role_state["detail"])
+        # A failed role is resumable, same as the operator-stop path.
+        ran = []
+        with mock.patch.object(ceo.threading, "Thread", InlineThread), \
+                mock.patch.object(ceo, "_run", lambda cid: ran.append(cid)):
+            self.assertIsNone(ceo.resume("m1"))
+        self.assertEqual(ran, ["m1"])
+        self.assertEqual(self.load()["roles"][0]["status"], "pending")
+
     def test_resume_resets_only_unfinished_roles_and_continues_exhausted(self):
         roles = [role(id="landed", status="done", result="finished"),
                  role(id="stuck", status="exhausted", session="sess-9",
@@ -954,11 +982,37 @@ class CeoRecoveryTests(unittest.TestCase):
         ceo._save(recent)
 
         self.assertIsNone(ceo.archive("old"))
-        self.assertIsNone(ceo.archive("old"))
+        self.assertIsNone(ceo.archive("old"))  # idempotent: second call is a no-op
         history = ceo.list_history(limit=1)
         self.assertEqual([item["cid"] for item in history], ["recent"])
         self.assertFalse(history[0]["archived"])
-        self.assertEqual(len(ceo.list_history(limit=ceo.HISTORY_MAX + 500)), 2)
+        # A manually archived (dismissed) record drops out of history entirely --
+        # that's the whole point of the Archive button -- but its file is kept,
+        # not deleted.
+        self.assertEqual(len(ceo.list_history(limit=ceo.HISTORY_MAX + 500)), 1)
+        self.assertTrue(os.path.isfile(os.path.join(ceo.ADIR, "old.json")))
+
+    def test_archive_button_dismisses_an_already_auto_archived_mission(self):
+        # A successful mission is auto-archived into ADIR the instant it
+        # finishes (the run() completion path), before the operator ever sees
+        # the card. Reported bug: clicking Archive on it in Completed &
+        # delivery did nothing observable because _archive_file() was already
+        # a no-op (the file was already at its destination) and list_history()
+        # unconditionally kept showing every archived record forever.
+        os.makedirs(ceo.ADIR, exist_ok=True)
+        done = mission(cid="done1", status="done", roles=[role(status="done")])
+        done["finished_at"] = "2026-07-15T10:00:00"
+        with open(os.path.join(ceo.ADIR, "done1.json"), "w", encoding="utf-8") as handle:
+            json.dump(done, handle)
+
+        self.assertIn("done1", [item["cid"] for item in ceo.list_history()])
+        self.assertIsNone(ceo.archive("done1"))
+        self.assertNotIn("done1", [item["cid"] for item in ceo.list_history()])
+        # Idempotent and still not a "no such mission" error the second time.
+        self.assertIsNone(ceo.archive("done1"))
+        self.assertTrue(os.path.isfile(os.path.join(ceo.ADIR, "done1.json")))
+        with open(os.path.join(ceo.ADIR, "done1.json"), encoding="utf-8") as handle:
+            self.assertTrue(json.load(handle)["dismissed"])
 
     def test_stop_wins_when_worker_returns_after_cancellation(self):
         self.save(mission())
